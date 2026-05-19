@@ -71,13 +71,22 @@ else
 fi
 
 # 6. PHPStan Level 8 — only against changed files for speed.
-if [ -x vendor/bin/phpstan ]; then
-    if ! vendor/bin/phpstan analyse --no-progress --memory-limit=512M "${php_files[@]}"; then
+#    Mirror phpstan.neon's analysed paths exactly: Domain, Infrastructure,
+#    Libraries, Models, Controllers (NOT Config, Views, Database/Migrations,
+#    Database/Seeds, or tests/ — those live by their own typing conventions).
+mapfile -t phpstan_files < <(printf '%s\n' "${php_files[@]}" \
+    | grep -E '^app/(Domain|Infrastructure|Libraries|Models|Controllers)/' \
+    | grep -v -E '^app/Infrastructure/Persistence/' || true)
+
+if [ -x vendor/bin/phpstan ] && [ ${#phpstan_files[@]} -gt 0 ]; then
+    if ! vendor/bin/phpstan analyse --no-progress --memory-limit=512M "${phpstan_files[@]}"; then
         echo "${RED}✗ PHPStan Level 8 found issues. Fix or commit with --no-verify (NOT recommended).${RST}"
         exit 1
     fi
-else
+elif [ ! -x vendor/bin/phpstan ]; then
     echo "${DIM}vendor/bin/phpstan not installed — skipping static analysis.${RST}"
+else
+    echo "${DIM}pre-commit: no staged PHP files under app/ — skipping PHPStan.${RST}"
 fi
 
 echo "${GRN}✓ pre-commit passed.${RST}"

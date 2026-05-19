@@ -5,6 +5,7 @@ namespace Config;
 use App\Infrastructure\Auth\Middleware\JwtAuthenticationMiddleware;
 use App\Infrastructure\Auth\Middleware\RateLimitMiddleware;
 use App\Infrastructure\Auth\Middleware\RoleAuthorizationMiddleware;
+use App\Infrastructure\Auth\Middleware\SessionAuthMiddleware;
 use CodeIgniter\Config\Filters as BaseFilters;
 use CodeIgniter\Filters\Cors;
 use CodeIgniter\Filters\CSRF;
@@ -40,6 +41,7 @@ class Filters extends BaseFilters
         'jwt'           => JwtAuthenticationMiddleware::class,
         'ratelimit'     => RateLimitMiddleware::class,
         'role'          => RoleAuthorizationMiddleware::class,
+        'web_auth'      => SessionAuthMiddleware::class,
     ];
 
     /**
@@ -110,10 +112,20 @@ class Filters extends BaseFilters
      * List of filter aliases that should run on any
      * before or after URI patterns.
      *
-     * Example:
-     * 'isLoggedIn' => ['before' => ['account/*', 'profiles/*']]
+     * SECURITY: All operational/web routes are protected by web_auth by default.
+     * Public exceptions (login, register, password reset, root) are listed
+     * directly in Routes.php and are NOT matched by these patterns.
      *
      * @var array<string, array<string, list<string>>>
      */
-    public array $filters = [];
+    public array $filters = [
+        'web_auth' => [
+            'before' => [
+                'cookies',
+                'cookies/*',
+                'admin/*',
+                'dashboard',
+            ],
+        ],
+    ];
 }

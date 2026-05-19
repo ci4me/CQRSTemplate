@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Support;
 
 use App\Infrastructure\Logging\LoggerFactory;
+use App\Infrastructure\Persistence\Models\UserModel;
 use App\Models\Cookie\CookieRepository;
 use CodeIgniter\Test\CIUnitTestCase;
 use CodeIgniter\Test\DatabaseTestTrait;
@@ -50,6 +51,11 @@ abstract class FeatureTestCase extends CIUnitTestCase
     protected CookieRepository $cookieRepository;
 
     /**
+     * Set to false in a child class to test routes as an anonymous visitor.
+     */
+    protected bool $authenticateByDefault = true;
+
+    /**
      * Setup before each test.
      */
     protected function setUp(): void
@@ -62,6 +68,65 @@ abstract class FeatureTestCase extends CIUnitTestCase
         $logger = LoggerFactory::create('test.cookie.repository');
         $loggingConfig = config('Logging');
         $this->cookieRepository = new CookieRepository($logger, $loggingConfig);
+
+        if (!$this->authenticateByDefault) {
+            return;
+        }
+
+        $this->loginAsAdmin();
+    }
+
+    /**
+     * Seed an active admin user and authenticate the test session as that user.
+     *
+     * Uses the framework's MockSession (ArrayHandler) so that
+     * {@see \App\Infrastructure\Auth\Middleware\SessionAuthMiddleware} sees
+     * the values via the standard `session()` helper during feature requests.
+     */
+    protected function loginAsAdmin(): int
+    {
+        $userId = $this->seedActiveAdminUser();
+
+        $this->mockSession();
+        $session = session();
+        $session->set('user_id', $userId);
+        $session->set('email', 'feature-test-admin@example.test');
+        $session->set('role', 'admin');
+        $session->set('logged_in', true);
+
+        $this->session = [
+            'user_id' => $userId,
+            'email' => 'feature-test-admin@example.test',
+            'role' => 'admin',
+            'logged_in' => true,
+        ];
+
+        return $userId;
+    }
+
+    private function seedActiveAdminUser(): int
+    {
+        $model = new UserModel();
+        $now = date('Y-m-d H:i:s');
+
+        $id = $model->insert([
+            'name' => 'Feature Test Admin',
+            'email' => 'feature-test-admin@example.test',
+            'password_hash' => '$argon2id$v=19$m=65536,t=4,p=1$Zm9v$' . str_repeat('a', 43),
+            'role' => 'admin',
+            'status' => 'active',
+            'failed_login_attempts' => 0,
+            'locked_until' => null,
+            'created_at' => $now,
+            'updated_at' => $now,
+            'deleted_at' => null,
+        ], true);
+
+        if (!is_int($id) && !(is_string($id) && ctype_digit($id))) {
+            throw new \RuntimeException('Failed to seed test admin user');
+        }
+
+        return (int) $id;
     }
 
     /**
