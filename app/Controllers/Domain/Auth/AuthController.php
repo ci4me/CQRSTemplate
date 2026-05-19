@@ -78,6 +78,7 @@ final class AuthController extends BaseController
             $result = $commandBus->dispatch($command);
 
             if ($result->isSuccess()) {
+                $session->regenerate(true);
                 $session->set([
                     'user_id' => $result->user->getId(),
                     'email' => $result->user->getEmail()->getValue(),
