@@ -11,6 +11,7 @@ use App\Domain\User\Ports\TokenBlacklistInterface;
 use App\Infrastructure\Auth\Adapters\Jwt\FirebaseJwtAdapter;
 use App\Infrastructure\Auth\Services\ActorResolver;
 use App\Infrastructure\Auth\Services\JwtService;
+use App\Infrastructure\Auth\Services\PermissionService;
 use App\Infrastructure\Auth\Services\LoginAttemptTracker;
 use App\Infrastructure\Auth\Services\PasswordHashingService;
 use App\Infrastructure\Auth\Services\RateLimitService;
@@ -421,5 +422,17 @@ class Services extends BaseService
         }
 
         return new ActorResolver();
+    }
+
+    /**
+     * RBAC permission gate (D3).
+     */
+    public static function permissionService(bool $getShared = true): PermissionService
+    {
+        if ($getShared) {
+            return static::getSharedInstance('permissionService');
+        }
+
+        return new PermissionService();
     }
 }

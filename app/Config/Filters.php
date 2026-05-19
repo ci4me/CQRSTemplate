@@ -3,6 +3,7 @@
 namespace Config;
 
 use App\Infrastructure\Auth\Middleware\JwtAuthenticationMiddleware;
+use App\Infrastructure\Auth\Middleware\PermissionMiddleware;
 use App\Infrastructure\Auth\Middleware\RateLimitMiddleware;
 use App\Infrastructure\Auth\Middleware\RoleAuthorizationMiddleware;
 use App\Infrastructure\Auth\Middleware\SessionAuthMiddleware;
@@ -46,6 +47,7 @@ class Filters extends BaseFilters
         'web_auth'      => SessionAuthMiddleware::class,
         'correlation'   => CorrelationIdMiddleware::class,
         'idempotency'   => IdempotencyMiddleware::class,
+        'permission'    => PermissionMiddleware::class,
     ];
 
     /**
