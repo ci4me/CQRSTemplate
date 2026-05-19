@@ -199,7 +199,17 @@ final class ServiceProviderRegistry
     }
 
     /**
-     * Extract fully qualified class name from a PHP file.
+     * Extract the fully qualified class name from a PHP file using the
+     * native PHP tokenizer (C6).
+     *
+     * The previous regex-based implementation was brittle against:
+     *  - `class` mentioned in comments / docblocks
+     *  - `class` in trait or interface declarations (skipped here)
+     *  - anonymous classes (`return new class {...}`)
+     *  - multi-line namespace declarations
+     *
+     * The tokenizer pass is also more accurate when token_get_all returns
+     * compound `T_NAME_QUALIFIED` tokens for namespaces (PHP 8+).
      *
      * @param string $filePath Path to PHP file
      * @return string|null Fully qualified class name or null if not found
@@ -212,19 +222,102 @@ final class ServiceProviderRegistry
             return null;
         }
 
-        // Extract namespace
-        if (preg_match('/namespace\s+(.+?);/', $contents, $namespaceMatch) !== 1) {
+        $tokens = token_get_all($contents);
+        $namespace = '';
+        $className = null;
+
+        $count = count($tokens);
+        for ($i = 0; $i < $count; $i++) {
+            $token = $tokens[$i];
+            if (!is_array($token)) {
+                continue;
+            }
+
+            // Namespace declaration: `namespace Foo\Bar;`
+            if ($token[0] === T_NAMESPACE) {
+                $namespace = self::readNamespaceName($tokens, $i, $count);
+                continue;
+            }
+
+            // Class declaration. Skip anonymous classes (`new class { ... }`)
+            // by ensuring the previous meaningful token is NOT T_NEW.
+            if ($token[0] !== T_CLASS || self::isAnonymousClass($tokens, $i)) {
+                continue;
+            }
+
+            $className = self::readNextIdentifier($tokens, $i, $count);
+            if ($className !== null) {
+                break;
+            }
+        }
+
+        if ($className === null) {
             return null;
         }
-        $namespace = $namespaceMatch[1];
 
-        // Extract class name (match class declaration, not comments)
-        if (preg_match('/^\s*(?:final\s+|abstract\s+)?class\s+(\w+)/m', $contents, $classMatch) !== 1) {
-            return null;
+        return $namespace === '' ? $className : $namespace . '\\' . $className;
+    }
+
+    /**
+     * Read the namespace name starting after a T_NAMESPACE token. Returns
+     * the dot-free string (e.g. "App\Domain\Cookie") or '' if not found.
+     *
+     * @param list<array{0: int, 1: string, 2: int}|string> $tokens
+     */
+    private static function readNamespaceName(array $tokens, int $start, int $count): string
+    {
+        for ($j = $start + 1; $j < $count; $j++) {
+            $next = $tokens[$j];
+            if ($next === ';' || $next === '{') {
+                return '';
+            }
+            if (!is_array($next)) {
+                continue;
+            }
+            // PHP 8: T_NAME_QUALIFIED carries the entire dotted name.
+            if ($next[0] === T_NAME_QUALIFIED || $next[0] === T_STRING) {
+                return $next[1];
+            }
         }
-        $className = $classMatch[1];
+        return '';
+    }
 
-        return $namespace . '\\' . $className;
+    /**
+     * Read the next T_STRING identifier after a position — used to find
+     * the class name following a T_CLASS token.
+     *
+     * @param list<array{0: int, 1: string, 2: int}|string> $tokens
+     */
+    private static function readNextIdentifier(array $tokens, int $start, int $count): ?string
+    {
+        for ($j = $start + 1; $j < $count; $j++) {
+            $next = $tokens[$j];
+            if (is_array($next) && $next[0] === T_STRING) {
+                return $next[1];
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Look backwards from a T_CLASS token to detect `new class { ... }`.
+     *
+     * @param list<array{0: int, 1: string, 2: int}|string> $tokens
+     */
+    private static function isAnonymousClass(array $tokens, int $classIndex): bool
+    {
+        for ($j = $classIndex - 1; $j >= 0; $j--) {
+            $prev = $tokens[$j];
+            if (!is_array($prev)) {
+                return false;
+            }
+            // Skip whitespace, comments, and modifiers (readonly, final, ...)
+            if (in_array($prev[0], [T_WHITESPACE, T_COMMENT, T_DOC_COMMENT, T_READONLY, T_FINAL, T_ABSTRACT], true)) {
+                continue;
+            }
+            return $prev[0] === T_NEW;
+        }
+        return false;
     }
 
     /**
