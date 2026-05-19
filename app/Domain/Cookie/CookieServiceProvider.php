@@ -8,6 +8,8 @@ use App\Domain\Cookie\Commands\CreateCookie\CreateCookieCommand;
 use App\Domain\Cookie\Commands\CreateCookie\CreateCookieHandler;
 use App\Domain\Cookie\Commands\DeleteCookie\DeleteCookieCommand;
 use App\Domain\Cookie\Commands\DeleteCookie\DeleteCookieHandler;
+use App\Domain\Cookie\Commands\RestoreCookie\RestoreCookieCommand;
+use App\Domain\Cookie\Commands\RestoreCookie\RestoreCookieHandler;
 use App\Domain\Cookie\Commands\UpdateCookie\UpdateCookieCommand;
 use App\Domain\Cookie\Commands\UpdateCookie\UpdateCookieHandler;
 use App\Domain\Cookie\Events\CookieCreated\CookieCreatedEvent;
@@ -104,6 +106,12 @@ final class CookieServiceProvider implements DomainServiceProviderInterface
         $commandBus->register(
             DeleteCookieCommand::class,
             new DeleteCookieHandler($repository, $eventDispatcher, $logger)
+        );
+
+        // Register RestoreCookie command
+        $commandBus->register(
+            RestoreCookieCommand::class,
+            new RestoreCookieHandler($repository, $eventDispatcher, $logger)
         );
     }
 

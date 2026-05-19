@@ -5,11 +5,14 @@ declare(strict_types=1);
 namespace App\Models\Cookie;
 
 use App\Domain\Cookie\Entities\Cookie;
+use App\Domain\Cookie\ErrorCodes;
 use App\Domain\Cookie\Ports\CookieRepositoryInterface;
 use App\Domain\Cookie\ValueObjects\CookieName;
 use App\Domain\Cookie\ValueObjects\CookiePrice;
+use App\Domain\Shared\Exceptions\DomainException;
 use App\Models\Cookie\Traits\BusinessMetricsLogging;
 use App\Models\Cookie\Traits\RepositoryLogging;
+use CodeIgniter\Database\Exceptions\DatabaseException;
 use Config\Logging;
 use Psr\Log\LoggerInterface;
 
@@ -82,10 +85,34 @@ class CookieRepository implements CookieRepositoryInterface
             $this->logBusinessMetrics($cookie, $cookieId, $oldPrice);
 
             return $cookieId;
+        } catch (DatabaseException $e) {
+            // B6: translate duplicate-key SQL errors into a domain-level
+            // violation. Concurrent creates race past the existsByName check
+            // in the handler; the DB unique index catches them and we map the
+            // result to a stable error code instead of leaking SQL state.
+            if ($this->isDuplicateKey($e)) {
+                $this->logSaveError($e);
+                throw DomainException::businessRuleViolation(
+                    'Cookie name must be unique within the tenant.',
+                    $cookie->getName()->getValue(),
+                    ErrorCodes::COOKIE_VALIDATION_NAME
+                );
+            }
+
+            $this->logSaveError($e);
+            throw $e;
         } catch (\Throwable $e) {
             $this->logSaveError($e);
             throw $e;
         }
+    }
+
+    private function isDuplicateKey(\Throwable $e): bool
+    {
+        $message = strtolower($e->getMessage());
+        return str_contains($message, 'duplicate')
+            || str_contains($message, 'unique constraint')
+            || str_contains($message, '1062');
     }
 
     /**
@@ -97,13 +124,13 @@ class CookieRepository implements CookieRepositoryInterface
     public function findById(int $id): ?Cookie
     {
         try {
+            /** @var array<int|string, bool|float|int|string|null>|object|null $data */
             $data = $this->model->find($id);
 
             if (!is_array($data)) {
                 return null;
             }
 
-            /** @var array<int|string, bool|float|int|string|null> $data */
             $cookie = $this->toDomainEntity($data);
             $this->trackPopularCookie($id);
 
@@ -205,6 +232,41 @@ class CookieRepository implements CookieRepositoryInterface
             $this->logDeleteError($e);
             throw $e;
         }
+    }
+
+    /**
+     * Restore a previously soft-deleted cookie.
+     */
+    public function restore(int $id): bool
+    {
+        try {
+            $cookie = $this->findByIdWithTrashed($id);
+            if ($cookie === null || !$cookie->isDeleted()) {
+                return false;
+            }
+
+            return $this->model->builder()
+                ->where('id', $id)
+                ->update(['deleted_at' => null]);
+        } catch (\Throwable $e) {
+            $this->logDeleteError($e);
+            throw $e;
+        }
+    }
+
+    /**
+     * Find a cookie by id, ignoring the soft-delete filter.
+     */
+    public function findByIdWithTrashed(int $id): ?Cookie
+    {
+        /** @var array<int|string, bool|float|int|string|null>|object|null $row */
+        $row = $this->model->withDeleted()->find($id);
+
+        if (!is_array($row)) {
+            return null;
+        }
+
+        return $this->toDomainEntity($row);
     }
 
     /**

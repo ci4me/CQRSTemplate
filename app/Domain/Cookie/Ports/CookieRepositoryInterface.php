@@ -39,4 +39,19 @@ interface CookieRepositoryInterface
     public function existsByNameExcludingId(string $name, int $excludeId): bool;
 
     public function delete(int $id): bool;
+
+    /**
+     * Restore a previously soft-deleted cookie.
+     *
+     * Looks the row up including soft-deleted rows, clears `deleted_at`, and
+     * returns true on success. Returns false if no row matches.
+     */
+    public function restore(int $id): bool;
+
+    /**
+     * Find a cookie by id INCLUDING soft-deleted rows.
+     *
+     * Used by the restore command to verify the target exists in the trash.
+     */
+    public function findByIdWithTrashed(int $id): ?Cookie;
 }
