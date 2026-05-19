@@ -56,6 +56,11 @@ final class LoggerFactory
         $correlationProcessor = self::createCorrelationIdProcessor();
         $logger->pushProcessor($correlationProcessor);
 
+        // SECURITY (A5): redaction MUST be the last processor pushed so it runs
+        // FIRST (Monolog processes in LIFO order). This ensures earlier
+        // processors cannot reintroduce sensitive values after we mask them.
+        $logger->pushProcessor(new RedactingProcessor());
+
         return $logger;
     }
 

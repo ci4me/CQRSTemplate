@@ -3,25 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login - CQRS Auth</title>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: system-ui, -apple-system, sans-serif; background: #f5f5f5; padding: 40px 20px; }
-        .container { max-width: 400px; margin: 0 auto; background: white; padding: 40px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-        h1 { margin-bottom: 30px; color: #333; font-size: 24px; text-align: center; }
-        .form-group { margin-bottom: 20px; }
-        label { display: block; margin-bottom: 8px; color: #555; font-weight: 500; }
-        input { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; }
-        input:focus { outline: none; border-color: #4CAF50; }
-        button { width: 100%; padding: 12px; background: #4CAF50; color: white; border: none; border-radius: 4px; font-size: 16px; cursor: pointer; font-weight: 500; }
-        button:hover { background: #45a049; }
-        .alert { padding: 12px; margin-bottom: 20px; border-radius: 4px; }
-        .alert-error { background: #fee; color: #c33; border: 1px solid #fcc; }
-        .alert-success { background: #efe; color: #3c3; border: 1px solid #cfc; }
-        .link { text-align: center; margin-top: 20px; color: #666; }
-        .link a { color: #4CAF50; text-decoration: none; }
-        .link a:hover { text-decoration: underline; }
-    </style>
+    <title>Login - ERP Template</title>
+    <link href="/assets/css/auth.css" rel="stylesheet">
 </head>
 <body>
     <div class="container">

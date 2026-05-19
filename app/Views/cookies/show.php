@@ -83,7 +83,7 @@
                     <a href="/cookies/<?= $cookie->getId() ?>/edit" class="btn btn-primary">
                         <i class="bi bi-pencil"></i> Edit Cookie
                     </a>
-                    <form method="post" action="/cookies/<?= $cookie->getId() ?>/delete" onsubmit="return confirm('Are you sure you want to delete this cookie?')">
+                    <form method="post" action="/cookies/<?= $cookie->getId() ?>/delete" data-confirm="Are you sure you want to delete this cookie?">
                         <?= csrf_field() ?>
                         <button type="submit" class="btn btn-danger w-100">
                             <i class="bi bi-trash"></i> Delete Cookie

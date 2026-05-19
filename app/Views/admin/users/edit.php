@@ -125,7 +125,7 @@
             <div class="card-body">
                 <h5 class="card-title">Danger Zone</h5>
                 <form method="post" action="/admin/users/<?= $user->getId() ?>/delete"
-                      onsubmit="return confirm('Are you sure you want to delete this user? This action can be reversed by an administrator.');">
+                      data-confirm="Are you sure you want to delete this user? This action can be reversed by an administrator.">
                     <?= csrf_field() ?>
                     <button type="submit" class="btn btn-danger w-100">
                         <i class="bi bi-trash"></i> Delete User
