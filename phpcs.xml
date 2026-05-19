@@ -17,6 +17,7 @@
     <exclude-pattern>*/writable/*</exclude-pattern>
     <exclude-pattern>app/Infrastructure/Persistence/*</exclude-pattern>
     <exclude-pattern>tests/_support/*</exclude-pattern>
+    <exclude-pattern>tests/_skipped/*</exclude-pattern>
     <exclude-pattern>tests/session/*</exclude-pattern>
     <exclude-pattern>tests/database/*</exclude-pattern>
     <exclude-pattern>tests/unit/*</exclude-pattern>
