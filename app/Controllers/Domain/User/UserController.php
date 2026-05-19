@@ -253,7 +253,10 @@ final class UserController extends BaseController
         assert($session instanceof Session);
 
         try {
-            $command = new DeleteUserCommand(userId: $id);
+            $command = new DeleteUserCommand(
+                userId: $id,
+                deletedBy: Services::actorResolver()->resolve($this->request)
+            );
             $commandBus->dispatch($command);
 
             $session->setFlashdata('success', 'User deleted successfully');
@@ -313,7 +316,8 @@ final class UserController extends BaseController
 
             $command = new ChangeUserPasswordCommand(
                 userId: $id,
-                newPassword: $newPassword
+                newPassword: $newPassword,
+                changedBy: Services::actorResolver()->resolve($this->request)
             );
 
             $commandBus->dispatch($command);

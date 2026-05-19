@@ -9,6 +9,7 @@ use App\Domain\User\Ports\PasswordHasherInterface;
 use App\Domain\User\Ports\RateLimitInterface;
 use App\Domain\User\Ports\TokenBlacklistInterface;
 use App\Infrastructure\Auth\Adapters\Jwt\FirebaseJwtAdapter;
+use App\Infrastructure\Auth\Services\ActorResolver;
 use App\Infrastructure\Auth\Services\JwtService;
 use App\Infrastructure\Auth\Services\LoginAttemptTracker;
 use App\Infrastructure\Auth\Services\PasswordHashingService;
@@ -390,5 +391,17 @@ class Services extends BaseService
         }
 
         return new SecurityEventService();
+    }
+
+    /**
+     * Resolves the authenticated actor for the current request.
+     */
+    public static function actorResolver(bool $getShared = true): ActorResolver
+    {
+        if ($getShared) {
+            return static::getSharedInstance('actorResolver');
+        }
+
+        return new ActorResolver();
     }
 }

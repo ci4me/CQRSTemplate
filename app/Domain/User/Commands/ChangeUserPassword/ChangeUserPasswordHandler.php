@@ -108,7 +108,7 @@ final readonly class ChangeUserPasswordHandler
             // Dispatch security event
             $event = new PasswordChangedEvent(
                 userId: $command->userId,
-                changedBy: 1, // TODO: Get current admin ID from auth context
+                changedBy: $command->changedBy->id,
                 changedAt: (new \DateTimeImmutable())->format('c')
             );
             $this->eventDispatcher->dispatch($event);

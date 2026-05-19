@@ -47,6 +47,20 @@ final readonly class DeleteUserHandler
         ]);
 
         try {
+            // Business rule: admin cannot delete their own account (prevent lockout)
+            if (!$command->deletedBy->isSystem() && $command->deletedBy->id === $command->userId) {
+                $this->logger->warning('Self-deletion attempt blocked', [
+                    'domain' => 'User',
+                    'command' => 'DeleteUserCommand',
+                    'user_id' => $command->userId,
+                    'actor_id' => $command->deletedBy->id,
+                ]);
+                throw new \InvalidArgumentException(
+                    'Administrators cannot delete their own account.',
+                    ErrorCodes::USER_VALIDATION_NAME
+                );
+            }
+
             // Check user exists
             $user = $this->repository->findById($command->userId);
             if ($user === null) {
@@ -78,7 +92,7 @@ final readonly class DeleteUserHandler
             // Dispatch event
             $event = new UserDeletedEvent(
                 userId: $command->userId,
-                deletedBy: 1, // TODO: Get current admin ID from auth context
+                deletedBy: $command->deletedBy->id,
                 deletedAt: (new \DateTimeImmutable())->format('c')
             );
             $this->eventDispatcher->dispatch($event);

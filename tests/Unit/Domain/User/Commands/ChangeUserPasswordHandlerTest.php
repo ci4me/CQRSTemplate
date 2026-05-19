@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Domain\User\Commands;
 
+use App\Domain\Shared\ValueObjects\Actor;
 use App\Domain\User\Commands\ChangeUserPassword\ChangeUserPasswordCommand;
 use App\Domain\User\Commands\ChangeUserPassword\ChangeUserPasswordHandler;
 use App\Domain\User\ErrorCodes;
@@ -47,7 +48,8 @@ final class ChangeUserPasswordHandlerTest extends UnitTestCase
     {
         $command = new ChangeUserPasswordCommand(
             userId: 1,
-            newPassword: 'NewSecureP@ssw0rd123!'
+            newPassword: 'NewSecureP@ssw0rd123!',
+            changedBy: Actor::user(999)
         );
 
         $existingUser = UserFactory::createPersistedUser(['id' => 1]);
@@ -74,7 +76,8 @@ final class ChangeUserPasswordHandlerTest extends UnitTestCase
     {
         $command = new ChangeUserPasswordCommand(
             userId: 999,
-            newPassword: 'NewSecureP@ssw0rd123!'
+            newPassword: 'NewSecureP@ssw0rd123!',
+            changedBy: Actor::user(999)
         );
 
         $this->repository
@@ -98,7 +101,8 @@ final class ChangeUserPasswordHandlerTest extends UnitTestCase
     {
         $command = new ChangeUserPasswordCommand(
             userId: 1,
-            newPassword: 'weak'
+            newPassword: 'weak',
+            changedBy: Actor::user(999)
         );
 
         $existingUser = UserFactory::createPersistedUser(['id' => 1]);
@@ -115,7 +119,8 @@ final class ChangeUserPasswordHandlerTest extends UnitTestCase
     {
         $command = new ChangeUserPasswordCommand(
             userId: 1,
-            newPassword: 'Short1!' // Less than 12 characters
+            newPassword: 'Short1!', // Less than 12 characters
+            changedBy: Actor::user(999)
         );
 
         $existingUser = UserFactory::createPersistedUser(['id' => 1]);
@@ -132,7 +137,8 @@ final class ChangeUserPasswordHandlerTest extends UnitTestCase
     {
         $command = new ChangeUserPasswordCommand(
             userId: 1,
-            newPassword: 'nosecurep@ssw0rd123!'
+            newPassword: 'nosecurep@ssw0rd123!',
+            changedBy: Actor::user(999)
         );
 
         $existingUser = UserFactory::createPersistedUser(['id' => 1]);
@@ -149,7 +155,8 @@ final class ChangeUserPasswordHandlerTest extends UnitTestCase
     {
         $command = new ChangeUserPasswordCommand(
             userId: 1,
-            newPassword: 'NOSECUREP@SSW0RD123!'
+            newPassword: 'NOSECUREP@SSW0RD123!',
+            changedBy: Actor::user(999)
         );
 
         $existingUser = UserFactory::createPersistedUser(['id' => 1]);
@@ -166,7 +173,8 @@ final class ChangeUserPasswordHandlerTest extends UnitTestCase
     {
         $command = new ChangeUserPasswordCommand(
             userId: 1,
-            newPassword: 'NoSecureP@ssword!'
+            newPassword: 'NoSecureP@ssword!',
+            changedBy: Actor::user(999)
         );
 
         $existingUser = UserFactory::createPersistedUser(['id' => 1]);
@@ -183,7 +191,8 @@ final class ChangeUserPasswordHandlerTest extends UnitTestCase
     {
         $command = new ChangeUserPasswordCommand(
             userId: 1,
-            newPassword: 'NoSecurePassword123'
+            newPassword: 'NoSecurePassword123',
+            changedBy: Actor::user(999)
         );
 
         $existingUser = UserFactory::createPersistedUser(['id' => 1]);
@@ -200,7 +209,8 @@ final class ChangeUserPasswordHandlerTest extends UnitTestCase
     {
         $command = new ChangeUserPasswordCommand(
             userId: 42,
-            newPassword: 'NewSecureP@ssw0rd123!'
+            newPassword: 'NewSecureP@ssw0rd123!',
+            changedBy: Actor::user(999)
         );
 
         $existingUser = UserFactory::createPersistedUser(['id' => 42]);
@@ -225,7 +235,8 @@ final class ChangeUserPasswordHandlerTest extends UnitTestCase
     {
         $command = new ChangeUserPasswordCommand(
             userId: 1,
-            newPassword: 'NewSecureP@ssw0rd123!'
+            newPassword: 'NewSecureP@ssw0rd123!',
+            changedBy: Actor::user(999)
         );
 
         $this->repository
@@ -256,7 +267,8 @@ final class ChangeUserPasswordHandlerTest extends UnitTestCase
     {
         $command = new ChangeUserPasswordCommand(
             userId: 5,
-            newPassword: 'NewSecureP@ssw0rd123!'
+            newPassword: 'NewSecureP@ssw0rd123!',
+            changedBy: Actor::user(999)
         );
 
         $customerUser = UserFactory::createPersistedUser([
@@ -278,7 +290,8 @@ final class ChangeUserPasswordHandlerTest extends UnitTestCase
     {
         $command = new ChangeUserPasswordCommand(
             userId: 10,
-            newPassword: 'NewSecureP@ssw0rd123!'
+            newPassword: 'NewSecureP@ssw0rd123!',
+            changedBy: Actor::user(999)
         );
 
         $adminUser = UserFactory::createPersistedAdmin([
@@ -299,7 +312,8 @@ final class ChangeUserPasswordHandlerTest extends UnitTestCase
     {
         $command = new ChangeUserPasswordCommand(
             userId: 1,
-            newPassword: 'NewSecureP@ssw0rd123!'
+            newPassword: 'NewSecureP@ssw0rd123!',
+            changedBy: Actor::user(999)
         );
 
         $existingUser = UserFactory::createPersistedUser(['id' => 1]);
@@ -327,7 +341,8 @@ final class ChangeUserPasswordHandlerTest extends UnitTestCase
     {
         $command = new ChangeUserPasswordCommand(
             userId: 1,
-            newPassword: 'VeryComplexP@ssw0rd123!WithExtraCharacters'
+            newPassword: 'VeryComplexP@ssw0rd123!WithExtraCharacters',
+            changedBy: Actor::user(999)
         );
 
         $existingUser = UserFactory::createPersistedUser(['id' => 1]);

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Domain\User\Commands\DeleteUser;
 
+use App\Domain\Shared\ValueObjects\Actor;
+
 /**
  * Command to soft delete a user.
  *
@@ -21,9 +23,11 @@ final readonly class DeleteUserCommand
 {
     /**
      * @param int $userId User ID to delete
+     * @param Actor $deletedBy Authenticated actor performing the deletion
      */
     public function __construct(
-        public int $userId
+        public int $userId,
+        public Actor $deletedBy
     ) {
     }
 }

@@ -321,7 +321,10 @@ final class UserController extends ResourceController
         $commandBus = Services::commandBus();
 
         try {
-            $command = new DeleteUserCommand(userId: (int) $id);
+            $command = new DeleteUserCommand(
+                userId: (int) $id,
+                deletedBy: Services::actorResolver()->resolve($this->request)
+            );
             $commandBus->dispatch($command);
 
             return $this->respond([
@@ -371,7 +374,8 @@ final class UserController extends ResourceController
 
             $command = new ChangeUserPasswordCommand(
                 userId: $id,
-                newPassword: $data['new_password'] ?? ''
+                newPassword: $data['new_password'] ?? '',
+                changedBy: Services::actorResolver()->resolve($this->request)
             );
 
             $commandBus->dispatch($command);

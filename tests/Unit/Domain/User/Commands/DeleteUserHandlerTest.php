@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Domain\User\Commands;
 
+use App\Domain\Shared\ValueObjects\Actor;
 use App\Domain\User\Commands\DeleteUser\DeleteUserCommand;
 use App\Domain\User\Commands\DeleteUser\DeleteUserHandler;
 use App\Domain\User\ErrorCodes;
@@ -43,7 +44,7 @@ final class DeleteUserHandlerTest extends UnitTestCase
 
     public function test_deletes_user_successfully(): void
     {
-        $command = new DeleteUserCommand(userId: 1);
+        $command = new DeleteUserCommand(userId: 1, deletedBy: Actor::user(999));
 
         $existingUser = UserFactory::createPersistedUser(['id' => 1]);
 
@@ -69,7 +70,7 @@ final class DeleteUserHandlerTest extends UnitTestCase
 
     public function test_throws_exception_when_user_not_found(): void
     {
-        $command = new DeleteUserCommand(userId: 999);
+        $command = new DeleteUserCommand(userId: 999, deletedBy: Actor::user(1));
 
         $this->repository
             ->expects($this->once())
@@ -90,7 +91,7 @@ final class DeleteUserHandlerTest extends UnitTestCase
 
     public function test_dispatches_event_with_correct_data(): void
     {
-        $command = new DeleteUserCommand(userId: 42);
+        $command = new DeleteUserCommand(userId: 42, deletedBy: Actor::user(999));
 
         $existingUser = UserFactory::createPersistedUser(['id' => 42]);
 
@@ -112,7 +113,7 @@ final class DeleteUserHandlerTest extends UnitTestCase
 
     public function test_throws_exception_when_delete_fails(): void
     {
-        $command = new DeleteUserCommand(userId: 1);
+        $command = new DeleteUserCommand(userId: 1, deletedBy: Actor::user(999));
 
         $existingUser = UserFactory::createPersistedUser(['id' => 1]);
 
@@ -130,7 +131,7 @@ final class DeleteUserHandlerTest extends UnitTestCase
 
     public function test_verifies_user_exists_before_attempting_delete(): void
     {
-        $command = new DeleteUserCommand(userId: 1);
+        $command = new DeleteUserCommand(userId: 1, deletedBy: Actor::user(999));
 
         $this->repository
             ->expects($this->once())
@@ -158,7 +159,7 @@ final class DeleteUserHandlerTest extends UnitTestCase
 
     public function test_deletes_customer_user(): void
     {
-        $command = new DeleteUserCommand(userId: 5);
+        $command = new DeleteUserCommand(userId: 5, deletedBy: Actor::user(999));
 
         $customerUser = UserFactory::createPersistedUser([
             'id' => 5,
@@ -177,7 +178,7 @@ final class DeleteUserHandlerTest extends UnitTestCase
 
     public function test_deletes_admin_user(): void
     {
-        $command = new DeleteUserCommand(userId: 10);
+        $command = new DeleteUserCommand(userId: 10, deletedBy: Actor::user(999));
 
         $adminUser = UserFactory::createPersistedAdmin([
             'id' => 10
@@ -193,9 +194,47 @@ final class DeleteUserHandlerTest extends UnitTestCase
         $this->handler->handle($command);
     }
 
+    public function test_blocks_admin_from_deleting_their_own_account(): void
+    {
+        // Same id for the target user and the actor performing the action
+        $command = new DeleteUserCommand(
+            userId: 7,
+            deletedBy: Actor::user(7)
+        );
+
+        // No DB lookup should happen — guard runs first
+        $this->repository->expects($this->never())->method('findById');
+        $this->repository->expects($this->never())->method('delete');
+        $this->eventDispatcher->expects($this->never())->method('dispatch');
+
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('cannot delete their own account');
+
+        $this->handler->handle($command);
+    }
+
+    public function test_system_actor_can_delete_any_user(): void
+    {
+        // System actor (id 0) bypasses self-delete check
+        $command = new DeleteUserCommand(
+            userId: 7,
+            deletedBy: Actor::system()
+        );
+
+        $user = UserFactory::createPersistedUser(['id' => 7]);
+        $this->repository->method('findById')->willReturn($user);
+        $this->repository->method('delete')->willReturn(true);
+
+        $this->eventDispatcher
+            ->expects($this->once())
+            ->method('dispatch');
+
+        $this->handler->handle($command);
+    }
+
     public function test_event_contains_valid_timestamp(): void
     {
-        $command = new DeleteUserCommand(userId: 1);
+        $command = new DeleteUserCommand(userId: 1, deletedBy: Actor::user(999));
 
         $existingUser = UserFactory::createPersistedUser(['id' => 1]);
 
