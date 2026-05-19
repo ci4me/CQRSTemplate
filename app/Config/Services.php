@@ -19,6 +19,7 @@ use App\Infrastructure\Auth\Services\SessionManagementService;
 use App\Infrastructure\Auth\Services\TokenBlacklistService;
 use App\Infrastructure\Bus\CommandBus;
 use App\Infrastructure\Bus\EventDispatcher;
+use App\Infrastructure\Bus\Middleware\AuditMiddleware;
 use App\Infrastructure\Bus\Middleware\LoggingMiddleware;
 use App\Infrastructure\Bus\Middleware\TransactionMiddleware;
 use App\Infrastructure\Bus\QueryBus;
@@ -93,9 +94,15 @@ class Services extends BaseService
 
         // Outermost first: log every dispatch, then wrap the rest in a DB
         // transaction so handler writes + synchronous event listeners share
-        // the same unit of work (B8).
+        // the same unit of work (B8). AuditMiddleware lives INSIDE the
+        // transaction so the audit row commits/rolls back atomically with
+        // the business change (D2).
         $bus->pushMiddleware(new LoggingMiddleware(LoggerFactory::create('infrastructure.command_bus')));
         $bus->pushMiddleware(new TransactionMiddleware(LoggerFactory::create('infrastructure.command_bus')));
+        $bus->pushMiddleware(new AuditMiddleware(
+            LoggerFactory::create('infrastructure.audit'),
+            self::actorResolver()
+        ));
 
         return $bus;
     }
