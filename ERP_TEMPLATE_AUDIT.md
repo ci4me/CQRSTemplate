@@ -1,8 +1,10 @@
 # ERP Template Audit
 
-Date: 2026-05-19 (updated, supersedes morning audit)
+Date: 2026-05-19 (updated)
 Project: CodeIgniter 4 CQRS Template
 Audit target: use this as the base/template for a new ERP, with `Cookie` as the canonical entity template.
+
+> **Status update (after stabilization sprint):** Phases 1, 2 (most), and 3 (most) are now implemented on branch `stabilization/erp-foundation`. See the **"Implemented since this audit"** section at the bottom for the full delta. Findings marked with **[DONE]** below have been resolved.
 
 ## Executive Summary
 
@@ -440,6 +442,57 @@ Already complete: PHPStan, PHPCS, audit, routes, test suite runs. **No regressio
 1. F1, F2: raise coverage; tests for the registry.
 2. F3, F4: prune dead tests and stale docs.
 3. G1–G4: clean artifacts, rename package, align docs.
+
+## Implemented Since This Audit
+
+Branch: `stabilization/erp-foundation` — 10 commits, all gates green at each step (PHPStan Level 8, PHPCS, full test suite). Test count rose from **332** to **376** (+44 new tests, all passing).
+
+### Phase 1 — Safe-by-default
+- **A1 [DONE]** `SessionAuthMiddleware` registered as `web_auth`; applied to `cookies/*`, `admin/*`, `dashboard`. Feature tests use the framework's `MockSession` + a seeded admin so authenticated routes are reachable.
+- **A2 [DONE]** `session()->regenerate(true)` on successful web login.
+- **A3 [DONE]** `Actor` value object + `ActorResolver` service. `ChangeUserPasswordCommand` and `DeleteUserCommand` now carry an `Actor`; the hard-coded `userId = 1` is gone. `DeleteUserHandler` now also enforces the self-deletion guard documented in its existing comments.
+- **A4 [DONE]** `ChangeUserPasswordHandler` invokes `SessionManagementService::revokeAllUserSessions()` after success.
+- **A5 [DONE]** `RedactingProcessor` masks password/token/jwt/authorization/api_key/secret/credit_card keys across context + extra. Pushed last on the LoggerFactory pipeline so it runs first.
+- **A6 [DONE]** SRI integrity + crossorigin on Bootstrap; inline `<style>` blocks moved to `public/assets/css/auth.css`; inline `onsubmit="return confirm(...)"` replaced with `data-confirm` + `public/assets/js/delete-confirm.js`.
+- **A7 [DONE]** JWT fingerprint + idle-timeout checks no longer fail open. On DB exceptions both return 401 with a CRITICAL log entry.
+- **A8 [DONE]** `RoleAuthorizationMiddleware` no longer defaults to `customer` when role cannot be resolved; throws internally, mapped to 403.
+- **A11 [DONE]** `pre_system` event in `app/Config/Events.php` aborts boot in production when `JWT_SECRET_KEY` is missing or shorter than 32 chars.
+- **A12 [DONE]** `public/test-refactor-simple.html` and `test-initialize-refactor.html` removed.
+- **E6 [DONE]** `/` redirects to `/dashboard` when authenticated, otherwise `/auth/login`.
+
+### Phase 2 — Cookie hardening
+- **B6 [DONE]** `CookieRepository::save` catches `DatabaseException`, sniffs duplicate-key/unique-constraint/MySQL 1062, rethrows as `DomainException` with `COOKIE_VALIDATION_NAME`.
+- **B7 [DONE]** `cookies.name` pinned to `utf8mb4_unicode_ci`.
+- **B9 [DONE]** `version UNSIGNED INT NOT NULL DEFAULT 0` column added to `cookies` (foundation for optimistic locking; entity/repository wiring to follow).
+- **B10 [DONE]** `created_by`, `updated_by`, `deleted_by` columns added to `cookies`.
+- **B11 [DONE]** `tenant_id` column added to `cookies` (nullable until a tenant resolver lands).
+- **B12 [DONE]** New `Currency` value object (ISO-4217 shape + minor-unit overrides); `Money` now carries a `Currency` (defaults to USD); arithmetic asserts same-currency.
+- **B13 [DONE]** `CookieUpdatedEvent` carries `previousState` + `newState` + `updatedBy`; `CookieDeletedEvent` carries the full snapshot + `deletedBy`. Handlers capture the snapshot before mutation.
+- **B16 [DONE]** Global `UNIQUE(name)` replaced with composite `UNIQUE(tenant_id, name, deleted_at)` so soft-deleted rows do not block recreation and restoration is possible.
+- **B17 [DONE]** `RestoreCookieCommand` + `RestoreCookieHandler` + `CookieRestoredEvent`; repository gains `restore()` and `findByIdWithTrashed()`. Registered in `CookieServiceProvider`.
+
+### Phase 3 — Infrastructure
+- **C1 [DONE]** `EventDispatcher` no longer calls `error_log()` on listener failure; logs via injected PSR-3 `LoggerInterface` with event class, listener FQCN, exception, correlation id.
+- **C3 [DONE]** `CommandBus` middleware pipeline. New `CommandMiddlewareInterface`, `LoggingMiddleware`, `TransactionMiddleware`. `Services::commandBus()` pushes Logging → Transaction so handler writes + synchronous event listeners share one unit of work.
+- **C7 [DONE]** `CorrelationIdMiddleware` registered as `correlation`, applied globally before+after. Adopts a validated inbound `X-Correlation-Id`, echoes back on response.
+- **B8 [DONE]** Implemented as part of `TransactionMiddleware` (every command now runs in a DB transaction by default).
+
+### Phase 5 — Cleanup
+- **F3 [DONE]** Dead AbiSageIntacct tests moved to `tests/_skipped/AbiSageIntacct/`; `phpunit.xml.dist` excludes `tests/_skipped/` as a directory; pre-commit hook skips that path from PHPCS/PHPStan.
+- **G4 [DONE]** Stale process docs moved from root to `.claude/documentation/`. Root markdowns are now `ERP_TEMPLATE_AUDIT.md`, `README.md`, `SETUP.md`.
+
+### Still Open (deferred from this sprint)
+
+These need a wider refactor than the sprint had time for; each is unblocked by what is now in place.
+
+- **B14** — DTO read models for query handlers (currently still returning domain entities directly). Unblocked by the new architecture; needs per-domain DTO classes and serialiser updates.
+- **B9 entity wiring** — `version` column exists in DB but the entity has not yet been threaded with `$version`/`getVersion()`/optimistic-locking enforcement at save time. The repository's `save()` should `WHERE id = ? AND version = ?` and bump on success.
+- **C2** — Event outbox for durable delivery. `TransactionMiddleware` covers the same-transaction guarantee; an outbox is the next reliability step.
+- **C4** — `AggregateRoot` with an event bag (`raiseEvent()` / `pullEvents()`); needs entities to extend a base and a relay in the repository.
+- **C5 / C6** — Replace the regex-based service-provider discovery and add scan-root tests.
+- **D2** — Audit log middleware on the bus that writes one row per command with actor + payload digest + correlation id. Trivial now that the middleware pipeline exists.
+- **D3–D17** — Permissions model, document numbering, state-machine scaffold, jobs queue, settings, attachments, notifications, templated email, API envelope normalisation, i18n, search, bulk import/export, idempotency, health endpoint. All ERP-shape work that requires its own design.
+- **E1–E4** — ERP layout shell, reusable view partials, permission-aware UI.
 
 ## Verdict on `Cookie` as the Entity Template
 
