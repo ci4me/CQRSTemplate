@@ -28,6 +28,7 @@ use App\Infrastructure\Email\EmailService;
 use App\Infrastructure\Jobs\JobQueue;
 use App\Infrastructure\Logging\LoggerFactory;
 use App\Infrastructure\Logging\LoggingServiceProvider;
+use App\Infrastructure\Notifications\NotificationService;
 use App\Infrastructure\Settings\SettingsService;
 use App\Infrastructure\Persistence\Models\UserModel;
 use App\Infrastructure\Persistence\Repositories\PasswordHistoryRepository;
@@ -461,5 +462,17 @@ class Services extends BaseService
         }
 
         return new JobQueue();
+    }
+
+    /**
+     * In-app notification service (D12).
+     */
+    public static function notificationService(bool $getShared = true): NotificationService
+    {
+        if ($getShared) {
+            return static::getSharedInstance('notificationService');
+        }
+
+        return new NotificationService();
     }
 }
