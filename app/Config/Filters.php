@@ -6,6 +6,7 @@ use App\Infrastructure\Auth\Middleware\JwtAuthenticationMiddleware;
 use App\Infrastructure\Auth\Middleware\RateLimitMiddleware;
 use App\Infrastructure\Auth\Middleware\RoleAuthorizationMiddleware;
 use App\Infrastructure\Auth\Middleware\SessionAuthMiddleware;
+use App\Infrastructure\Http\Middleware\IdempotencyMiddleware;
 use App\Infrastructure\Logging\CorrelationIdMiddleware;
 use CodeIgniter\Config\Filters as BaseFilters;
 use CodeIgniter\Filters\Cors;
@@ -44,6 +45,7 @@ class Filters extends BaseFilters
         'role'          => RoleAuthorizationMiddleware::class,
         'web_auth'      => SessionAuthMiddleware::class,
         'correlation'   => CorrelationIdMiddleware::class,
+        'idempotency'   => IdempotencyMiddleware::class,
     ];
 
     /**

@@ -85,8 +85,10 @@ $routes->group('api/v1', ['namespace' => 'App\Controllers\Api'], static function
         $routes->delete('sessions/(:num)', 'AuthController::revokeSession/$1');
     });
 
-    // User management API (admin only)
-    $routes->group('users', ['filter' => ['jwt', 'role:admin']], static function ($routes) {
+    // User management API (admin only). Mutating endpoints opt into idempotency
+    // so retried POST/PUT/DELETE with the same Idempotency-Key replay the
+    // original response instead of duplicating side-effects.
+    $routes->group('users', ['filter' => ['jwt', 'role:admin', 'idempotency']], static function ($routes) {
         $routes->get('', 'UserController::index');                              // GET /api/v1/users (admin only)
         $routes->post('', 'UserController::create');                            // POST /api/v1/users (admin only)
         $routes->get('(:num)', 'UserController::show/$1');                      // GET /api/v1/users/1 (admin only)
