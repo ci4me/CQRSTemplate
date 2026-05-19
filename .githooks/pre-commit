@@ -58,20 +58,32 @@ for f in "${php_files[@]}"; do
 done
 
 # 5. PHPCS (Slevomat + PSR-12) — auto-fix with phpcbf, then re-check.
-if [ -x vendor/bin/phpcs ]; then
-    if ! vendor/bin/phpcs --colors -q "${php_files[@]}"; then
+#    Mirror phpcs.xml's <file> list (Domain, Infrastructure, Controllers, tests).
+#    app/Models, app/Config, app/Database, app/Views are intentionally outside
+#    the standards scope; isolated phpcs runs on those files surface
+#    pre-existing CodeIgniter-idiomatic code that the project's standards
+#    don't enforce.
+mapfile -t phpcs_files < <(printf '%s\n' "${php_files[@]}" \
+    | grep -E '^(app/(Domain|Infrastructure|Controllers)/|tests/)' \
+    | grep -v -E '^(app/Infrastructure/Persistence/|tests/_skipped/|tests/_support/|tests/session/|tests/database/|tests/unit/)' \
+    || true)
+
+if [ -x vendor/bin/phpcs ] && [ ${#phpcs_files[@]} -gt 0 ]; then
+    if ! vendor/bin/phpcs --colors -q "${phpcs_files[@]}"; then
         echo "${YLW}phpcs failed — running phpcbf to auto-fix…${RST}"
-        vendor/bin/phpcbf -q "${php_files[@]}" || true
+        vendor/bin/phpcbf -q "${phpcs_files[@]}" || true
         # Re-stage any fixes phpcbf made.
-        git add "${php_files[@]}"
-        if ! vendor/bin/phpcs --colors -q "${php_files[@]}"; then
+        git add "${phpcs_files[@]}"
+        if ! vendor/bin/phpcs --colors -q "${phpcs_files[@]}"; then
             echo "${RED}✗ phpcs still failing after phpcbf. Fix manually and re-commit.${RST}"
             exit 1
         fi
         echo "${GRN}✓ phpcbf auto-fixed staged files (re-staged).${RST}"
     fi
-else
+elif [ ! -x vendor/bin/phpcs ]; then
     echo "${DIM}vendor/bin/phpcs not installed — skipping coding-standards check.${RST}"
+else
+    echo "${DIM}pre-commit: no staged PHP files under phpcs scope — skipping.${RST}"
 fi
 
 # 6. PHPStan Level 8 — run the project analysis (not per-file) so that

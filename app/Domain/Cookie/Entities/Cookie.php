@@ -55,6 +55,12 @@ final class Cookie
     private CookiePrice $price;
     private int $stock;
     private bool $isActive;
+    /**
+     * Optimistic-locking token. Incremented by the repository on every save;
+     * UPDATEs include `WHERE version = $version` so concurrent writers detect
+     * the race instead of silently overwriting each other.
+     */
+    private int $version = 0;
     private ?string $createdAt = null;
     private ?string $updatedAt = null;
     private ?string $deletedAt = null;
@@ -128,15 +134,49 @@ final class Cookie
         bool $isActive,
         ?string $createdAt,
         ?string $updatedAt,
-        ?string $deletedAt = null
+        ?string $deletedAt = null,
+        int $version = 0
     ): self {
         $cookie = new self($name, $description, $price, $stock, $isActive);
         $cookie->id = $id;
         $cookie->createdAt = $createdAt;
         $cookie->updatedAt = $updatedAt;
         $cookie->deletedAt = $deletedAt;
+        $cookie->version = $version;
 
         return $cookie;
+    }
+
+    /**
+     * Bump the optimistic-locking version after a successful persist.
+     * Called by the repository — should not be called by application code.
+     *
+     * @internal
+     */
+    public function bumpVersion(): void
+    {
+        $this->version++;
+    }
+
+    /**
+     * Hydrate the entity with its database id after a successful insert.
+     * Called by the repository — should not be called by application code.
+     *
+     * @internal
+     */
+    public function assignId(int $id): void
+    {
+        if ($this->id !== null && $this->id !== $id) {
+            throw new \LogicException(
+                sprintf('Cookie already has id %d; refusing to reassign to %d', $this->id, $id)
+            );
+        }
+        $this->id = $id;
+    }
+
+    public function getVersion(): int
+    {
+        return $this->version;
     }
 
     /**

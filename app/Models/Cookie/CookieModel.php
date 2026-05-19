@@ -40,6 +40,11 @@ class CookieModel extends Model
         'price',
         'stock',
         'is_active',
+        'version',
+        'tenant_id',
+        'created_by',
+        'updated_by',
+        'deleted_by',
     ];
 
     protected $useTimestamps = true;

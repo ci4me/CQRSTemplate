@@ -104,4 +104,34 @@ class DomainException extends RuntimeException
             $errorCode
         );
     }
+
+    /**
+     * Create exception for an optimistic-locking conflict — caller's `version`
+     * did not match the row's current `version`, meaning the row was modified
+     * by someone else between read and write.
+     *
+     * @param string $entityName    Name of the entity that lost the race
+     * @param int|string $identifier ID of the row
+     * @param int $expectedVersion  Version the caller held
+     * @param int $actualVersion    Current version in the database
+     * @param int $errorCode        Optional domain error code
+     */
+    public static function concurrentModification(
+        string $entityName,
+        int|string $identifier,
+        int $expectedVersion,
+        int $actualVersion,
+        int $errorCode = 0
+    ): self {
+        return new self(
+            sprintf(
+                '%s #%s was modified by someone else (expected version %d, got %d). Reload and retry.',
+                $entityName,
+                $identifier,
+                $expectedVersion,
+                $actualVersion
+            ),
+            $errorCode
+        );
+    }
 }

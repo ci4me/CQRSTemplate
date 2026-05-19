@@ -286,7 +286,8 @@ class CookieRepository implements CookieRepositoryInterface
             isActive: (bool) $data['is_active'],
             createdAt: is_string($data['created_at']) ? $data['created_at'] : null,
             updatedAt: is_string($data['updated_at']) ? $data['updated_at'] : null,
-            deletedAt: isset($data['deleted_at']) && is_string($data['deleted_at']) ? $data['deleted_at'] : null
+            deletedAt: isset($data['deleted_at']) && is_string($data['deleted_at']) ? $data['deleted_at'] : null,
+            version: isset($data['version']) ? (int) $data['version'] : 0
         );
     }
 
@@ -306,6 +307,12 @@ class CookieRepository implements CookieRepositoryInterface
 
     /**
      * Perform the actual save operation.
+     *
+     * For updates this enforces optimistic locking: the UPDATE is scoped to
+     * `WHERE id = ? AND version = ?` and the version column is bumped in the
+     * same statement. If zero rows are affected the row's version moved on
+     * (someone else wrote concurrently) and we throw a domain-level
+     * concurrent-modification exception.
      */
     private function performSave(Cookie $cookie): int
     {
@@ -317,13 +324,67 @@ class CookieRepository implements CookieRepositoryInterface
             'is_active' => $cookie->getIsActive() ? 1 : 0,
         ];
 
-        if ($cookie->getId() !== null) {
-            $this->model->update($cookie->getId(), $data);
+        $id = $cookie->getId();
+        if ($id !== null) {
+            $this->updateWithOptimisticLock($cookie, $data);
+            $cookie->bumpVersion();
 
-            return $cookie->getId();
+            return $id;
         }
 
-        return (int) $this->model->insert($data);
+        // First insert: row and entity start at version 1. Subsequent updates
+        // bump in lock-step so DB and in-memory version always agree.
+        $cookie->bumpVersion();
+        $data['version'] = $cookie->getVersion();
+
+        $newId = (int) $this->model->insert($data);
+        // Hydrate the entity so subsequent saves take the UPDATE path and
+        // optimistic locking applies.
+        $cookie->assignId($newId);
+
+        return $newId;
+    }
+
+    /**
+     * @param array<string, scalar|null> $data
+     */
+    private function updateWithOptimisticLock(Cookie $cookie, array $data): void
+    {
+        $expectedVersion = $cookie->getVersion();
+        $now = date('Y-m-d H:i:s');
+        $data['version'] = $expectedVersion + 1;
+        $data['updated_at'] = $now;
+
+        $builder = $this->model->builder();
+        $builder->where('id', $cookie->getId())
+            ->where('version', $expectedVersion)
+            ->update($data);
+
+        $affected = $this->model->db->affectedRows();
+
+        if ($affected === 1) {
+            return;
+        }
+
+        $this->raiseConcurrentModification($cookie, $expectedVersion);
+    }
+
+    private function raiseConcurrentModification(Cookie $cookie, int $expectedVersion): never
+    {
+        /** @var array<string, scalar|null>|object|null $current */
+        $current = $this->model->find($cookie->getId());
+        $actual = -1;
+        if (is_array($current) && isset($current['version'])) {
+            $actual = (int) $current['version'];
+        }
+
+        throw DomainException::concurrentModification(
+            'Cookie',
+            (string) $cookie->getId(),
+            $expectedVersion,
+            $actual,
+            ErrorCodes::COOKIE_STATE_CONCURRENT_MODIFICATION
+        );
     }
 
 
