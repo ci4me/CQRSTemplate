@@ -27,6 +27,7 @@ use App\Infrastructure\Bus\QueryBus;
 use App\Infrastructure\Email\EmailService;
 use App\Infrastructure\Logging\LoggerFactory;
 use App\Infrastructure\Logging\LoggingServiceProvider;
+use App\Infrastructure\Settings\SettingsService;
 use App\Infrastructure\Persistence\Models\UserModel;
 use App\Infrastructure\Persistence\Repositories\PasswordHistoryRepository;
 use App\Infrastructure\Persistence\Repositories\UserRepository;
@@ -434,5 +435,17 @@ class Services extends BaseService
         }
 
         return new PermissionService();
+    }
+
+    /**
+     * Runtime settings store (D10).
+     */
+    public static function settingsService(bool $getShared = true): SettingsService
+    {
+        if ($getShared) {
+            return static::getSharedInstance('settingsService');
+        }
+
+        return new SettingsService();
     }
 }
