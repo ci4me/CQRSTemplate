@@ -19,8 +19,11 @@ use App\Infrastructure\Auth\Services\SessionManagementService;
 use App\Infrastructure\Auth\Services\TokenBlacklistService;
 use App\Infrastructure\Bus\CommandBus;
 use App\Infrastructure\Bus\EventDispatcher;
+use App\Infrastructure\Bus\Middleware\LoggingMiddleware;
+use App\Infrastructure\Bus\Middleware\TransactionMiddleware;
 use App\Infrastructure\Bus\QueryBus;
 use App\Infrastructure\Email\EmailService;
+use App\Infrastructure\Logging\LoggerFactory;
 use App\Infrastructure\Logging\LoggingServiceProvider;
 use App\Infrastructure\Persistence\Models\UserModel;
 use App\Infrastructure\Persistence\Repositories\PasswordHistoryRepository;
@@ -86,7 +89,15 @@ class Services extends BaseService
             return $bus;
         }
 
-        return new CommandBus();
+        $bus = new CommandBus();
+
+        // Outermost first: log every dispatch, then wrap the rest in a DB
+        // transaction so handler writes + synchronous event listeners share
+        // the same unit of work (B8).
+        $bus->pushMiddleware(new LoggingMiddleware(LoggerFactory::create('infrastructure.command_bus')));
+        $bus->pushMiddleware(new TransactionMiddleware(LoggerFactory::create('infrastructure.command_bus')));
+
+        return $bus;
     }
 
     /**

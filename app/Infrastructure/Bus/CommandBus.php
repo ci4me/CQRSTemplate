@@ -15,28 +15,14 @@ use RuntimeException;
  * - Ensuring one command = one handler (no ambiguity)
  * - Decoupling controllers from command handlers
  * - Providing a single entry point for all write operations
+ * - Running registered {@see CommandMiddlewareInterface} around every dispatch
  *
- * CQRS Pattern - Commands:
- * Commands represent INTENT to change system state. They:
- * - Are named in imperative (CreateCookie, UpdateCookie)
- * - Contain all data needed for the operation
- * - Do not return domain data (only success indicators or IDs)
- * - Are handled by exactly ONE handler
- *
- * Why use a Command Bus:
- * - Single responsibility: Controllers don't know about business logic
- * - Testability: Easy to test handlers in isolation
- * - Flexibility: Easy to add middleware (logging, transactions, etc.)
- * - Consistency: All commands follow the same pattern
- *
- * Usage Example:
- * ```php
- * $command = new CreateCookieCommand(
- *     name: 'Chocolate Chip',
- *     price: '2.99'
- * );
- * $cookieId = $commandBus->dispatch($command);
- * ```
+ * Middleware pipeline (C3):
+ * Middlewares are wrapped around the handler in registration order; the
+ * first middleware registered is the outermost. Typical layering:
+ *   LoggingMiddleware -> TransactionMiddleware -> handler
+ * so that the log entry captures the transaction outcome AND the handler
+ * runs inside the transaction.
  *
  * @package App\Infrastructure\Bus
  */
@@ -50,11 +36,29 @@ final class CommandBus
     private array $handlers = [];
 
     /**
-     * Register a command handler.
+     * Pipeline of middlewares executed in registration order.
      *
-     * @param string $commandClass Fully qualified command class name
-     * @param object $handler The handler instance with handle() method
-     * @throws RuntimeException If handler is already registered for this command
+     * @var list<CommandMiddlewareInterface>
+     */
+    private array $middleware = [];
+
+    public function pushMiddleware(CommandMiddlewareInterface $middleware): void
+    {
+        $this->middleware[] = $middleware;
+    }
+
+    /**
+     * Replace the middleware pipeline (useful in tests).
+     *
+     * @param list<CommandMiddlewareInterface> $middleware
+     */
+    public function setMiddleware(array $middleware): void
+    {
+        $this->middleware = $middleware;
+    }
+
+    /**
+     * Register a command handler.
      */
     public function register(string $commandClass, object $handler): void
     {
@@ -68,11 +72,7 @@ final class CommandBus
     }
 
     /**
-     * Dispatch a command to its handler.
-     *
-     * @param object $command The command to dispatch
-     * @return mixed The result from the handler (typically an ID or void)
-     * @throws DomainException If no handler is registered for this command
+     * Dispatch a command through the middleware pipeline to its handler.
      */
     public function dispatch(object $command): mixed
     {
@@ -86,23 +86,25 @@ final class CommandBus
 
         $handler = $this->handlers[$commandClass];
 
-        // Verify handler has handle() method
         if (!method_exists($handler, 'handle')) {
             throw new DomainException(
                 sprintf('Handler for command "%s" does not have a handle() method', $commandClass)
             );
         }
 
-        // Call the handler's handle() method
-        return $handler->handle($command);
+        // Build the pipeline: outermost middleware -> ... -> handler invocation.
+        $core = static fn(object $c): mixed => $handler->handle($c);
+
+        $pipeline = array_reduce(
+            array_reverse($this->middleware),
+            static fn(callable $next, CommandMiddlewareInterface $mw): callable
+                => static fn(object $c): mixed => $mw->handle($c, $next),
+            $core
+        );
+
+        return $pipeline($command);
     }
 
-    /**
-     * Check if a handler is registered for a command.
-     *
-     * @param string $commandClass The command class name
-     * @return bool True if handler is registered
-     */
     public function hasHandler(string $commandClass): bool
     {
         return isset($this->handlers[$commandClass]);
