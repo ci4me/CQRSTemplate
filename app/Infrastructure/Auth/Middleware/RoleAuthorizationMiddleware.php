@@ -57,7 +57,19 @@ final readonly class RoleAuthorizationMiddleware implements FilterInterface
         }
 
         // Check if user has required role
-        $userRole = $this->getUserRole($user);
+        try {
+            $userRole = $this->getUserRole($user);
+        } catch (\RuntimeException $e) {
+            $this->logger->error('Role resolution failed; refusing request', [
+                'domain' => 'Auth',
+                'middleware' => 'RoleAuthorizationMiddleware',
+                'exception' => $e->getMessage(),
+                'security' => 'CRITICAL',
+            ]);
+
+            return $this->createForbiddenResponse('unknown', $requiredRole);
+        }
+
         if (!$this->hasRequiredRole($userRole, $requiredRole)) {
             $this->logAuthorizationFailure($request, $user, $userRole, $requiredRole);
             return $this->createForbiddenResponse($userRole, $requiredRole);
@@ -160,7 +172,11 @@ final readonly class RoleAuthorizationMiddleware implements FilterInterface
             }
         }
 
-        return 'customer'; // Default to customer role
+        // SECURITY (A8): fail-secure — if the role cannot be resolved we MUST
+        // NOT silently down-grade to a customer; refuse the request instead.
+        throw new \RuntimeException(
+            'Could not resolve user role for authorization. Refusing request.'
+        );
     }
 
     /**

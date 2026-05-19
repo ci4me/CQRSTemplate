@@ -273,14 +273,22 @@ final class JwtAuthenticationMiddleware implements FilterInterface
 
             return null; // Validation passed
         } catch (\Throwable $e) {
-            // Log error but don't fail the request - fingerprint validation is non-critical
-            $this->logger->warning('Device fingerprint validation failed with exception', [
+            // SECURITY (A7): fail-secure. The fingerprint check is here precisely
+            // to detect session hijacking; if we cannot run the check because the
+            // sessions table is unreachable/corrupted, we MUST refuse rather than
+            // silently allow the request through.
+            $this->logger->error('Device fingerprint validation failed; refusing request', [
                 'domain' => 'Auth',
                 'middleware' => 'JwtAuthenticationMiddleware',
                 'exception' => $e->getMessage(),
+                'security' => 'CRITICAL',
             ]);
 
-            return null;
+            return $this->unauthorizedResponse(
+                'session_validation_unavailable',
+                'Session could not be validated; please log in again.',
+                ['ip' => $request->getIPAddress(), 'security' => 'CRITICAL']
+            );
         }
     }
 
@@ -359,14 +367,20 @@ final class JwtAuthenticationMiddleware implements FilterInterface
 
             return null; // Timeout not exceeded
         } catch (\Throwable $e) {
-            // Log error but don't fail the request - idle timeout is non-critical
-            $this->logger->warning('Idle timeout check failed with exception', [
+            // SECURITY (A7): fail-secure. Idle timeout enforcement is a PCI-DSS
+            // requirement; we refuse rather than silently allowing the request.
+            $this->logger->error('Idle timeout check failed; refusing request', [
                 'domain' => 'Auth',
                 'middleware' => 'JwtAuthenticationMiddleware',
                 'exception' => $e->getMessage(),
+                'security' => 'CRITICAL',
             ]);
 
-            return null;
+            return $this->unauthorizedResponse(
+                'session_validation_unavailable',
+                'Session could not be validated; please log in again.',
+                ['security' => 'CRITICAL']
+            );
         }
     }
 

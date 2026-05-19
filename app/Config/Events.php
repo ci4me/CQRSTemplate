@@ -52,4 +52,23 @@ Events::on('pre_system', static function (): void {
             });
         }
     }
+
+    /*
+     * --------------------------------------------------------------------
+     * SECURITY (A11): boot-time JWT secret presence check.
+     * --------------------------------------------------------------------
+     * In production we refuse to start the application if JWT_SECRET_KEY is
+     * absent or shorter than 32 chars. This catches misconfiguration AT
+     * BOOT instead of waiting until the first auth-protected API request.
+     * The check is skipped in CLI (so migrations/spark commands without
+     * JWT can still run) and in testing.
+     */
+    if (ENVIRONMENT === 'production' && ! is_cli()) {
+        $secret = getenv('JWT_SECRET_KEY');
+        if ($secret === false || strlen((string) $secret) < 32) {
+            throw new \RuntimeException(
+                'SECURITY ERROR: JWT_SECRET_KEY must be set and >= 32 chars in production.'
+            );
+        }
+    }
 });

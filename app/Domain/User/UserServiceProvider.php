@@ -85,7 +85,13 @@ final class UserServiceProvider implements DomainServiceProviderInterface
 
         $commandBus->register(
             ChangeUserPasswordCommand::class,
-            new ChangeUserPasswordHandler($repository, $passwordHistory, $eventDispatcher, $logger)
+            new ChangeUserPasswordHandler(
+                $repository,
+                $passwordHistory,
+                $eventDispatcher,
+                $logger,
+                \Config\Services::sessionManagementService()
+            )
         );
     }
 

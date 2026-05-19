@@ -7,6 +7,7 @@ namespace App\Domain\User\Commands\ChangeUserPassword;
 use App\Domain\User\ErrorCodes;
 use App\Domain\User\Events\PasswordChanged\PasswordChangedEvent;
 use App\Domain\User\ValueObjects\HashedPassword;
+use App\Infrastructure\Auth\Services\SessionManagementService;
 use App\Infrastructure\Bus\EventDispatcher;
 use App\Infrastructure\Persistence\Repositories\PasswordHistoryRepository;
 use App\Infrastructure\Persistence\Repositories\UserRepositoryInterface;
@@ -40,7 +41,8 @@ final readonly class ChangeUserPasswordHandler
         private UserRepositoryInterface $repository,
         private PasswordHistoryRepository $passwordHistory,
         private EventDispatcher $eventDispatcher,
-        private LoggerInterface $logger
+        private LoggerInterface $logger,
+        private ?SessionManagementService $sessionManager = null
     ) {
     }
 
@@ -104,6 +106,10 @@ final readonly class ChangeUserPasswordHandler
                 'user_id' => $command->userId,
                 'security' => 'CRITICAL',
             ]);
+
+            // SECURITY (A4): revoke every active session for the affected user
+            // so that any previously-issued JWT/web session cannot be used.
+            $this->sessionManager?->revokeAllUserSessions($command->userId);
 
             // Dispatch security event
             $event = new PasswordChangedEvent(
