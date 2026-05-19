@@ -496,18 +496,24 @@ Added on top of the first stabilization sprint. Test suite now at **427 tests / 
 - **D14 [DONE]** — `App\Infrastructure\Http\ApiResponse` standardised envelope: `ok` / `created` / `paginated` / `noContent` / `problem` (RFC 7807 problem+json) / `validationFailed` / `notFound` / `conflict`. Every payload carries `meta.correlation_id`. 8 unit tests.
 - **D16 [DONE]** — `GET /health` returns a JSON probe with DB status, correlation id, and a 200/503 status code. Unauthenticated by design. 2 feature tests.
 
+### Sprint 3 — third batch
+
+Test suite now at **472 tests / 1213 assertions**. All gates green at every commit.
+
+- **C2 [DONE]** — transactional event outbox: new `event_outbox` table, `EventOutboxWriter` (called inside the bus transaction), `EventOutboxRelay` (claims pending rows, dispatches through the in-process EventDispatcher, exponential-backoff retry: 30s/2m/10m/1h/6h/24h, then `failed`). `spark events:relay` command with `--batch`, `--watch`, `--sleep`. 5 integration tests cover writer persistence, relay delivery, retry, delayed rows, max-attempts failure.
+- **C6 [DONE]** — `ServiceProviderRegistry::getClassNameFromFile()` rewritten using the native PHP tokenizer instead of regex. Handles docblock false-positives, anonymous classes inside method bodies, and `final readonly class` modifier combinations. 5 targeted unit tests via reflection.
+- **D4 [DONE]** — document numbering service. New `document_sequences` table with composite unique key on `(series, scope)`, `DocumentNumber` VO, and `DocumentNumberingService` (`allocate` / `peek`). Generates gapless, prefix/suffix/zero-padded identifiers like `INV-2026-00042`. 9 integration + 2 unit tests.
+- **D5 [DONE]** — declarative state-machine scaffold under `Domain/Shared/StateMachine`: `State` interface, `InvalidTransition` exception, `StateMachine` class with `transition`/`canTransition`/`allowedFrom`/`isTerminal`. Accepts strings or `State`-implementing enums. 8 unit tests.
+- **D6 [DONE]** — database-backed job queue. New `jobs` table, `JobHandlerInterface`, `JobQueue` (producer, supports delayed jobs + max_attempts + named queues), `JobWorker` (atomic claim via UPDATE, exponential backoff). `spark jobs:work` worker command with `--queue`, `--batch`, `--watch`, `--sleep`. Multiple workers can run concurrently. 7 integration tests.
+- **D10 [DONE]** — runtime settings store. New `settings` table with composite unique key on `(key_name, tenant_id)`, JSON-typed values, secret flag for the future admin UI. `SettingsService` with `get` / `set` / `forget` / `has` and a per-request cache. Tenant scoping is explicit — no automatic fallback to global, so call sites stay obvious. 9 integration tests.
+
 ### Still Open
 
-- **C2** — Event outbox for durable delivery. `TransactionMiddleware` already covers same-transaction guarantee; an outbox is the next reliability step for cross-process / async listeners.
-- **C6** — Replace regex-based service-provider class extraction with the PHP tokenizer or composer classmap.
-- **D4** — Document numbering service (fiscal-year-aware sequences for invoice/PO/receipt numbers).
-- **D5** — State-machine scaffold (Draft → Approved → Posted → Cancelled lifecycle helper).
-- **D6** — Background job runner / queue (currently emails block the request).
-- **D7** — Full Money/Currency rollout to every monetary field (CookiePrice still operates on its own minor-units representation).
+- **D7** — Full Money/Currency rollout to every monetary field (CookiePrice still operates on its own minor-units representation, parallel to `Money`).
 - **D8** — i18n surface beyond the empty `app/Language/en/`.
-- **D10–D13** — Settings table, attachments/filesystem abstraction, in-app notifications, templated emails.
+- **D11–D13** — attachments/filesystem abstraction, in-app notifications, templated emails.
 - **D15** — Read-model projections separate from write tables.
-- **D17, D18** — Bulk import/export, outbound HTTP integration patterns.
+- **D17, D18** — Bulk import/export, outbound HTTP integration patterns (HttpClient with retries + idempotency keys, webhook receiver scaffold).
 - **E1–E4** — ERP layout shell, reusable view partials, permission-aware UI, auth-view layout.
 
 ## Verdict on `Cookie` as the Entity Template
