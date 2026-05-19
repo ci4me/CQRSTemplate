@@ -481,18 +481,34 @@ Branch: `stabilization/erp-foundation` — 10 commits, all gates green at each s
 - **F3 [DONE]** Dead AbiSageIntacct tests moved to `tests/_skipped/AbiSageIntacct/`; `phpunit.xml.dist` excludes `tests/_skipped/` as a directory; pre-commit hook skips that path from PHPCS/PHPStan.
 - **G4 [DONE]** Stale process docs moved from root to `.claude/documentation/`. Root markdowns are now `ERP_TEMPLATE_AUDIT.md`, `README.md`, `SETUP.md`.
 
-### Still Open (deferred from this sprint)
+### Sprint 2 — second batch
 
-These need a wider refactor than the sprint had time for; each is unblocked by what is now in place.
+Added on top of the first stabilization sprint. Test suite now at **427 tests / 1106 assertions**.
 
-- **B14** — DTO read models for query handlers (currently still returning domain entities directly). Unblocked by the new architecture; needs per-domain DTO classes and serialiser updates.
-- **B9 entity wiring** — `version` column exists in DB but the entity has not yet been threaded with `$version`/`getVersion()`/optimistic-locking enforcement at save time. The repository's `save()` should `WHERE id = ? AND version = ?` and bump on success.
-- **C2** — Event outbox for durable delivery. `TransactionMiddleware` covers the same-transaction guarantee; an outbox is the next reliability step.
-- **C4** — `AggregateRoot` with an event bag (`raiseEvent()` / `pullEvents()`); needs entities to extend a base and a relay in the repository.
-- **C5 / C6** — Replace the regex-based service-provider discovery and add scan-root tests.
-- **D2** — Audit log middleware on the bus that writes one row per command with actor + payload digest + correlation id. Trivial now that the middleware pipeline exists.
-- **D3–D17** — Permissions model, document numbering, state-machine scaffold, jobs queue, settings, attachments, notifications, templated email, API envelope normalisation, i18n, search, bulk import/export, idempotency, health endpoint. All ERP-shape work that requires its own design.
-- **E1–E4** — ERP layout shell, reusable view partials, permission-aware UI.
+- **B9 entity wiring [DONE]** — Cookie entity now carries `version`, repository's `save()` runs `WHERE id = ? AND version = ?` with version bump in the same statement; mismatched version throws `DomainException::concurrentModification`. 4 integration tests prove concurrent-update detection and that the winner's write is preserved.
+- **B14 [DONE]** — `App\Domain\Cookie\ReadModels\CookieView` DTO with `detail()` / `summary()` / `summarise(list)` factories. Snake-case `toArray()` for API/JSON. 5 unit tests. Controllers will migrate to the DTO + ApiResponse envelope incrementally.
+- **C4 [DONE]** — `App\Domain\Shared\AggregateRoot` trait (`raiseEvent` / `pullEvents` / `peekEvents` / `hasPendingEvents`). Cookie pilots the pattern: `decreaseStock` and `increaseStock` raise `CookieStockChangedEvent`. Repository drains pending events on save. `CookieStockChangedEventHandler` registered.
+- **C5 [DONE]** — `ServiceProviderRegistryTest` (4 tests) locks the auto-discovery contract in: provider attribute scanning, command/query/event wiring on Cookie, missing-repo error path, cache reset.
+- **C7 [DONE]** — `CorrelationIdMiddleware` already shipped in the first sprint; cited here for completeness.
+- **D2 [DONE]** — `AuditMiddleware` writes one row per command to `audit_log` inside the bus transaction. Includes command class, actor, correlation id, status, duration, and a SHA-256 digest of the *redacted* payload (passwords never reach the table). 3 integration tests, including a proof that two commands differing only by password produce the same digest.
+- **D3 [DONE]** — Full RBAC schema (`permissions`, `roles`, `role_permissions`, `user_roles`), `Permission` value object with `{module}.{action}` validation, `PermissionService` with legacy-admin shim + RBAC join, `PermissionMiddleware` filter alias `permission`. 9 unit + 4 integration tests.
+- **D9 [DONE]** — `Idempotency-Key` middleware (`idempotency` filter alias). Captures response under `(id_key, actor_id)` for 24 h; replays exact response on retry with same body; 422 on same-key-different-body; per-key validation. Wired into the admin user-management API group. 6 unit tests.
+- **D14 [DONE]** — `App\Infrastructure\Http\ApiResponse` standardised envelope: `ok` / `created` / `paginated` / `noContent` / `problem` (RFC 7807 problem+json) / `validationFailed` / `notFound` / `conflict`. Every payload carries `meta.correlation_id`. 8 unit tests.
+- **D16 [DONE]** — `GET /health` returns a JSON probe with DB status, correlation id, and a 200/503 status code. Unauthenticated by design. 2 feature tests.
+
+### Still Open
+
+- **C2** — Event outbox for durable delivery. `TransactionMiddleware` already covers same-transaction guarantee; an outbox is the next reliability step for cross-process / async listeners.
+- **C6** — Replace regex-based service-provider class extraction with the PHP tokenizer or composer classmap.
+- **D4** — Document numbering service (fiscal-year-aware sequences for invoice/PO/receipt numbers).
+- **D5** — State-machine scaffold (Draft → Approved → Posted → Cancelled lifecycle helper).
+- **D6** — Background job runner / queue (currently emails block the request).
+- **D7** — Full Money/Currency rollout to every monetary field (CookiePrice still operates on its own minor-units representation).
+- **D8** — i18n surface beyond the empty `app/Language/en/`.
+- **D10–D13** — Settings table, attachments/filesystem abstraction, in-app notifications, templated emails.
+- **D15** — Read-model projections separate from write tables.
+- **D17, D18** — Bulk import/export, outbound HTTP integration patterns.
+- **E1–E4** — ERP layout shell, reusable view partials, permission-aware UI, auth-view layout.
 
 ## Verdict on `Cookie` as the Entity Template
 
