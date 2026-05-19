@@ -25,6 +25,7 @@ use App\Infrastructure\Bus\Middleware\LoggingMiddleware;
 use App\Infrastructure\Bus\Middleware\TransactionMiddleware;
 use App\Infrastructure\Bus\QueryBus;
 use App\Infrastructure\Email\EmailService;
+use App\Infrastructure\Jobs\JobQueue;
 use App\Infrastructure\Logging\LoggerFactory;
 use App\Infrastructure\Logging\LoggingServiceProvider;
 use App\Infrastructure\Settings\SettingsService;
@@ -447,5 +448,18 @@ class Services extends BaseService
         }
 
         return new SettingsService();
+    }
+
+    /**
+     * Database-backed job queue producer (D6).
+     * Workers run via `php spark jobs:work`.
+     */
+    public static function jobQueue(bool $getShared = true): JobQueue
+    {
+        if ($getShared) {
+            return static::getSharedInstance('jobQueue');
+        }
+
+        return new JobQueue();
     }
 }
