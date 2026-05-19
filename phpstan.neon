@@ -1,0 +1,17 @@
+parameters:
+    level: 8
+    paths:
+        - app/Domain
+        - app/Infrastructure
+        - app/Libraries
+        - app/Models
+        - app/Controllers
+    excludePaths:
+        - app/Config/Constants.php
+        - app/Views
+        - app/Infrastructure/Persistence (?)
+    bootstrapFiles:
+        - phpstan-bootstrap.php
+
+includes:
+    - vendor/phpstan/phpstan-strict-rules/rules.neon

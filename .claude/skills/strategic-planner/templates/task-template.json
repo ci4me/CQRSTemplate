@@ -1,0 +1,79 @@
+{
+  "task_1.1": {
+    "name": "Add UserName value object with validation",
+    "files": [
+      "app/Domain/User/ValueObjects/UserName.php"
+    ],
+    "duration_minutes": 8,
+    "depends_on": [],
+    "risk": "low",
+    "specific_changes": "Create UserName.php in app/Domain/User/ValueObjects/ with readonly class, constructor validation (3-50 chars, alphanumeric+spaces), getValue() method, and proper exceptions",
+    "success_criteria": "UserName value object created with validation rules enforced",
+    "blockers": [
+      "none"
+    ],
+    "verification_command": "vendor/bin/phpstan analyse app/Domain/User/ValueObjects/UserName.php --level=8",
+    "can_start_immediately": true,
+    "definition_of_done": [
+      "UserName.php file exists",
+      "Validation rules implemented (3-50 chars)",
+      "PHPStan Level 8 passes with 0 errors",
+      "Proper exceptions thrown for invalid input"
+    ],
+    "contributes_to": "Implementing User domain with type-safe value objects",
+    "group": 1
+  },
+  "task_1.2": {
+    "name": "Create User entity with factory methods",
+    "files": [
+      "app/Domain/User/Entities/User.php"
+    ],
+    "duration_minutes": 12,
+    "depends_on": [
+      "task_1.1"
+    ],
+    "risk": "low",
+    "specific_changes": "Create User.php in app/Domain/User/Entities/ with private properties (id, name, email, createdAt, updatedAt), static create() and reconstitute() factory methods, readonly getters, and updateName() method",
+    "success_criteria": "User entity created following DDD patterns with immutability",
+    "blockers": [
+      "none"
+    ],
+    "verification_command": "vendor/bin/phpstan analyse app/Domain/User/Entities/User.php --level=8",
+    "can_start_immediately": false,
+    "definition_of_done": [
+      "User.php file exists",
+      "Factory methods implemented (create/reconstitute)",
+      "Protected invariants enforced",
+      "PHPStan Level 8 passes with 0 errors",
+      "Readonly getters for all properties"
+    ],
+    "contributes_to": "Implementing User domain entity layer",
+    "group": 2
+  },
+  "task_2.1": {
+    "name": "Create CreateUserCommand readonly DTO",
+    "files": [
+      "app/Domain/User/Commands/CreateUser/CreateUserCommand.php"
+    ],
+    "duration_minutes": 5,
+    "depends_on": [
+      "task_1.2"
+    ],
+    "risk": "low",
+    "specific_changes": "Create CreateUserCommand.php in app/Domain/User/Commands/CreateUser/ as readonly class with public readonly properties (name, email) and constructor",
+    "success_criteria": "Immutable command DTO created following CQRS pattern",
+    "blockers": [
+      "none"
+    ],
+    "verification_command": "vendor/bin/phpstan analyse app/Domain/User/Commands/CreateUser/CreateUserCommand.php --level=8",
+    "can_start_immediately": false,
+    "definition_of_done": [
+      "CreateUserCommand.php file exists",
+      "Readonly class with public readonly properties",
+      "PHPStan Level 8 passes with 0 errors",
+      "Follows CQRS command pattern"
+    ],
+    "contributes_to": "Implementing User domain command layer",
+    "group": 3
+  }
+}

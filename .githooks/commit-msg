@@ -1,0 +1,42 @@
+#!/usr/bin/env bash
+# commit-msg: enforce Conventional Commits 1.0
+# Format: type(scope)!: subject
+# Skip with `git commit --no-verify`.
+set -euo pipefail
+
+RED=$'\033[31m'; GRN=$'\033[32m'; DIM=$'\033[2m'; RST=$'\033[0m'
+msg_file="$1"
+
+# Read first non-comment, non-empty line.
+subject=$(grep -vE '^\s*#' "$msg_file" | sed -n '/[^[:space:]]/{p;q;}')
+
+# Allow special git-generated subjects.
+if [[ "$subject" =~ ^(Merge|Revert|fixup!|squash!) ]]; then
+    exit 0
+fi
+
+# Strict Conventional Commits regex.
+pattern='^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\([a-z0-9._-]+\))?!?: .{1,100}$'
+if ! [[ "$subject" =~ $pattern ]]; then
+    echo "${RED}✗ Commit message does not follow Conventional Commits.${RST}"
+    echo
+    echo "  Got: ${DIM}${subject}${RST}"
+    echo
+    echo "  Expected: ${GRN}type(scope)!: subject${RST}"
+    echo "    type   = feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert"
+    echo "    scope  = optional, lowercase (e.g. cookie, infra)"
+    echo "    !      = optional, marks breaking change"
+    echo
+    echo "  Examples:"
+    echo "    feat(cookie): add stock-decrement business rule"
+    echo "    fix(order)!: reject negative quantity"
+    exit 1
+fi
+
+# Subject must not end with a period.
+if [[ "$subject" =~ \.$ ]]; then
+    echo "${RED}✗ Subject must not end with a period.${RST}"
+    exit 1
+fi
+
+echo "${GRN}✓ commit-msg passed.${RST}"

@@ -1,0 +1,178 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://cqrs-template.local/schemas/execution-schema.json",
+  "title": "Execution State Schema",
+  "description": "Schema for validating execution state files",
+  "type": "object",
+  "required": [
+    "execution_id",
+    "plan_name",
+    "task_file",
+    "task_file_path",
+    "started_at",
+    "last_updated",
+    "status",
+    "total_tasks",
+    "total_groups",
+    "current_group",
+    "completed_tasks",
+    "pending_tasks",
+    "todowrite_mapping",
+    "execution_log"
+  ],
+  "properties": {
+    "execution_id": {
+      "type": "string",
+      "pattern": "^exec-\\d{8}-\\d{6}$",
+      "description": "Unique execution ID (format: exec-YYYYMMDD-HHMMSS)",
+      "examples": ["exec-20251022-143000"]
+    },
+    "plan_name": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 200,
+      "description": "Human-readable plan name from user request"
+    },
+    "task_file": {
+      "type": "string",
+      "enum": ["tasks.json"],
+      "description": "Task file name (always tasks.json)"
+    },
+    "task_file_path": {
+      "type": "string",
+      "pattern": "^\\.claude/planning/executions/exec-\\d{8}-\\d{6}/tasks\\.json$",
+      "description": "Full path to task file"
+    },
+    "started_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp when execution started"
+    },
+    "last_updated": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp of last update"
+    },
+    "completed_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp when execution completed (optional)"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["in_progress", "completed", "failed", "paused"],
+      "description": "Current execution status"
+    },
+    "total_tasks": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Total number of tasks in plan"
+    },
+    "total_groups": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Total number of parallel execution groups"
+    },
+    "current_group": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Currently executing group number"
+    },
+    "completed_tasks": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Number of completed tasks"
+    },
+    "pending_tasks": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Number of pending tasks"
+    },
+    "todowrite_mapping": {
+      "type": "object",
+      "patternProperties": {
+        "^\\d+$": {
+          "type": "object",
+          "required": ["task_id", "description", "status"],
+          "properties": {
+            "task_id": {
+              "type": "string",
+              "pattern": "^task_\\d+\\.\\d+$",
+              "description": "Task ID reference"
+            },
+            "description": {
+              "type": "string",
+              "minLength": 5,
+              "description": "Human-readable task description"
+            },
+            "status": {
+              "type": "string",
+              "enum": ["pending", "in_progress", "completed"],
+              "description": "Task status"
+            },
+            "started_at": {
+              "type": "string",
+              "format": "date-time",
+              "description": "When task started (optional)"
+            },
+            "completed_at": {
+              "type": "string",
+              "format": "date-time",
+              "description": "When task completed (optional)"
+            },
+            "group": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Group number (optional)"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "description": "Mapping from TodoWrite position to task details"
+    },
+    "execution_log": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["time", "event"],
+        "properties": {
+          "time": {
+            "type": "string",
+            "format": "date-time",
+            "description": "ISO 8601 timestamp of event"
+          },
+          "event": {
+            "type": "string",
+            "minLength": 5,
+            "description": "Event description"
+          },
+          "group": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Group number (optional)"
+          },
+          "tasks": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Number of tasks (optional)"
+          },
+          "tasks_completed": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Number completed (optional)"
+          },
+          "duration_minutes": {
+            "type": "number",
+            "minimum": 0,
+            "description": "Duration in minutes (optional)"
+          }
+        },
+        "additionalProperties": false
+      },
+      "minItems": 1,
+      "description": "Chronological log of execution events"
+    }
+  },
+  "additionalProperties": false
+}

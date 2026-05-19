@@ -1,0 +1,141 @@
+{
+  "execution_id": "exec-20251022-143000",
+  "plan_name": "Implement User Authentication Domain",
+  "task_file": "tasks.json",
+  "task_file_path": ".claude/planning/executions/exec-20251022-143000/tasks.json",
+  "started_at": "2025-10-22T14:30:00.000Z",
+  "last_updated": "2025-10-22T14:45:00.000Z",
+  "completed_at": null,
+  "status": "in_progress",
+  "total_tasks": 12,
+  "total_groups": 4,
+  "current_group": 2,
+  "completed_tasks": 3,
+  "pending_tasks": 9,
+  "todowrite_mapping": {
+    "1": {
+      "task_id": "task_1.1",
+      "description": "Add UserName value object with validation",
+      "status": "completed",
+      "started_at": "2025-10-22T14:30:00.000Z",
+      "completed_at": "2025-10-22T14:38:00.000Z",
+      "group": 1
+    },
+    "2": {
+      "task_id": "task_1.2",
+      "description": "Create User entity with factory methods",
+      "status": "completed",
+      "started_at": "2025-10-22T14:38:00.000Z",
+      "completed_at": "2025-10-22T14:42:00.000Z",
+      "group": 1
+    },
+    "3": {
+      "task_id": "task_2.1",
+      "description": "Create CreateUserCommand readonly DTO",
+      "status": "in_progress",
+      "started_at": "2025-10-22T14:42:00.000Z",
+      "group": 2
+    },
+    "4": {
+      "task_id": "task_2.2",
+      "description": "Implement CreateUserHandler with validation",
+      "status": "pending",
+      "group": 2
+    },
+    "5": {
+      "task_id": "task_2.3",
+      "description": "Create UserCreatedEvent with readonly properties",
+      "status": "pending",
+      "group": 2
+    },
+    "6": {
+      "task_id": "task_3.1",
+      "description": "Create UserRepository interface",
+      "status": "pending",
+      "group": 3
+    },
+    "7": {
+      "task_id": "task_3.2",
+      "description": "Implement UserModel with database mapping",
+      "status": "pending",
+      "group": 3
+    },
+    "8": {
+      "task_id": "task_3.3",
+      "description": "Create users migration with all fields",
+      "status": "pending",
+      "group": 3
+    },
+    "9": {
+      "task_id": "task_4.1",
+      "description": "Create UserController with create endpoint",
+      "status": "pending",
+      "group": 4
+    },
+    "10": {
+      "task_id": "task_4.2",
+      "description": "Add routes for user endpoints",
+      "status": "pending",
+      "group": 4
+    },
+    "11": {
+      "task_id": "task_4.3",
+      "description": "Create unit tests for UserName value object",
+      "status": "pending",
+      "group": 4
+    },
+    "12": {
+      "task_id": "task_4.4",
+      "description": "Create integration tests for CreateUserHandler",
+      "status": "pending",
+      "group": 4
+    }
+  },
+  "execution_log": [
+    {
+      "time": "2025-10-22T14:30:00.000Z",
+      "event": "Execution started",
+      "group": 1,
+      "tasks": 12
+    },
+    {
+      "time": "2025-10-22T14:30:00.000Z",
+      "event": "Group 1 started (2 tasks)",
+      "group": 1,
+      "tasks": 2
+    },
+    {
+      "time": "2025-10-22T14:38:00.000Z",
+      "event": "Task task_1.1 completed",
+      "group": 1,
+      "tasks_completed": 1,
+      "duration_minutes": 8
+    },
+    {
+      "time": "2025-10-22T14:42:00.000Z",
+      "event": "Task task_1.2 completed",
+      "group": 1,
+      "tasks_completed": 2,
+      "duration_minutes": 4
+    },
+    {
+      "time": "2025-10-22T14:42:00.000Z",
+      "event": "Group 1 completed",
+      "group": 1,
+      "tasks": 2,
+      "tasks_completed": 2,
+      "duration_minutes": 12
+    },
+    {
+      "time": "2025-10-22T14:42:00.000Z",
+      "event": "Group 2 started (3 tasks)",
+      "group": 2,
+      "tasks": 3
+    },
+    {
+      "time": "2025-10-22T14:42:00.000Z",
+      "event": "Task task_2.1 started",
+      "group": 2
+    }
+  ]
+}

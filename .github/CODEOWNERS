@@ -1,0 +1,11 @@
+# Default owner for everything.
+*                              @ci4me
+
+# Sensitive areas — extra review.
+/app/Domain/                   @ci4me
+/.github/                      @ci4me
+/.githooks/                    @ci4me
+/composer.json                 @ci4me
+/composer.lock                 @ci4me
+/phpstan.neon                  @ci4me
+/phpcs.xml                     @ci4me

@@ -1,0 +1,34 @@
+name: Bug report
+description: Something behaves incorrectly.
+labels: [bug, triage]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: A clear description of the bug and what you expected.
+    validations: { required: true }
+  - type: textarea
+    id: repro
+    attributes:
+      label: Reproduction steps
+      placeholder: |
+        1. ...
+        2. ...
+        3. ...
+    validations: { required: true }
+  - type: input
+    id: domain
+    attributes:
+      label: Affected domain
+      placeholder: Cookie / Order / ...
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant logs (writable/logs/app-YYYY-MM-DD.json)
+      render: json
+  - type: input
+    id: php
+    attributes:
+      label: PHP version
+      placeholder: "8.4.x"

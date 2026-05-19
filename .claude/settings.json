@@ -1,0 +1,46 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cat:*)",
+      "Bash(test:*)",
+      "Bash(composer:*)",
+      "Bash(vendor/bin/phpstan:*)",
+      "Bash(vendor/bin/phpcs:*)",
+      "Bash(vendor/bin/phpcbf:*)",
+      "Bash(vendor/bin/phpunit:*)",
+      "Bash(php spark:*)",
+      "Bash(php -l:*)",
+      "Bash(php -r:*)",
+      "Bash(mysql:*)",
+      "Bash(sudo mysql:*)",
+      "Bash(curl:*)",
+      "Bash(find:*)",
+      "Bash(/dev/null)",
+      "Read(*)",
+      "Edit(*)",
+      "Write(*)",
+      "Glob(*)",
+      "Grep(*)",
+      "TodoWrite(*)",
+      "Task(*)"
+    ],
+    "deny": [
+      "Bash(rm -rf:*)",
+      "Bash(git push --force:*)",
+      "Bash(git push -f:*)",
+      "Bash(drop database:*)",
+      "Write(.env)",
+      "Write(*.pem)",
+      "Write(*.key)"
+    ],
+    "ask": [
+      "Bash(git push:*)",
+      "Bash(git commit:*)"
+    ]
+  },
+  "env": {
+    "CI": "false",
+    "XDEBUG_MODE": "coverage,debug",
+    "ENVIRONMENT": "development"
+  }
+}

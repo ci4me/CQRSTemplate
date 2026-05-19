@@ -1,0 +1,67 @@
+#!/usr/bin/env bash
+# pre-commit: format, lint, and statically check staged PHP only.
+# Skip with `git commit --no-verify` (use sparingly).
+set -euo pipefail
+
+RED=$'\033[31m'; GRN=$'\033[32m'; YLW=$'\033[33m'; DIM=$'\033[2m'; RST=$'\033[0m'
+
+# 1. Block obvious secrets / disallowed paths in the staged set.
+if git diff --cached --name-only | grep -E '^\.env$|^\.env\.[a-z]+$|secrets/|\.pem$|\.p12$' >/dev/null; then
+    echo "${RED}✗ Refusing to commit secret-looking files (.env, secrets/, *.pem, *.p12).${RST}"
+    echo "  Unstage them: git restore --staged <file>"
+    exit 1
+fi
+
+# 2. Detect committing-to-main (warn, don't block — main may be intentional on this repo).
+branch=$(git symbolic-ref --short HEAD 2>/dev/null || echo "DETACHED")
+if [ "$branch" = "main" ] || [ "$branch" = "master" ]; then
+    echo "${YLW}⚠ Committing directly to ${branch}. Prefer a feature branch + PR.${RST}"
+fi
+
+# 3. Collect staged PHP files only (ACM = added, copied, modified).
+mapfile -t php_files < <(git diff --cached --name-only --diff-filter=ACMR -- '*.php' || true)
+
+if [ ${#php_files[@]} -eq 0 ]; then
+    echo "${DIM}pre-commit: no staged PHP files — skipping PHP checks.${RST}"
+    exit 0
+fi
+
+echo "${DIM}pre-commit: checking ${#php_files[@]} staged PHP file(s)…${RST}"
+
+# 4. Lint syntax (cheap, fast).
+for f in "${php_files[@]}"; do
+    if ! php -l "$f" >/dev/null 2>&1; then
+        echo "${RED}✗ PHP syntax error in $f${RST}"
+        php -l "$f"
+        exit 1
+    fi
+done
+
+# 5. PHPCS (Slevomat + PSR-12) — auto-fix with phpcbf, then re-check.
+if [ -x vendor/bin/phpcs ]; then
+    if ! vendor/bin/phpcs --colors -q "${php_files[@]}"; then
+        echo "${YLW}phpcs failed — running phpcbf to auto-fix…${RST}"
+        vendor/bin/phpcbf -q "${php_files[@]}" || true
+        # Re-stage any fixes phpcbf made.
+        git add "${php_files[@]}"
+        if ! vendor/bin/phpcs --colors -q "${php_files[@]}"; then
+            echo "${RED}✗ phpcs still failing after phpcbf. Fix manually and re-commit.${RST}"
+            exit 1
+        fi
+        echo "${GRN}✓ phpcbf auto-fixed staged files (re-staged).${RST}"
+    fi
+else
+    echo "${DIM}vendor/bin/phpcs not installed — skipping coding-standards check.${RST}"
+fi
+
+# 6. PHPStan Level 8 — only against changed files for speed.
+if [ -x vendor/bin/phpstan ]; then
+    if ! vendor/bin/phpstan analyse --no-progress --memory-limit=512M "${php_files[@]}"; then
+        echo "${RED}✗ PHPStan Level 8 found issues. Fix or commit with --no-verify (NOT recommended).${RST}"
+        exit 1
+    fi
+else
+    echo "${DIM}vendor/bin/phpstan not installed — skipping static analysis.${RST}"
+fi
+
+echo "${GRN}✓ pre-commit passed.${RST}"

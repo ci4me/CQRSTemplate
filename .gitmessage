@@ -1,0 +1,33 @@
+# <type>(<scope>): <subject>   (max 72 chars, imperative mood)
+#
+# Body (wrap at 72): WHY this change, not WHAT — code shows the what.
+#
+# Footer:
+#   BREAKING CHANGE: <what breaks + migration>
+#   Refs: #123, ABC-456
+#   Co-Authored-By: Name <email@example.com>
+#
+# Allowed <type>:
+#   feat      new feature                          (MINOR)
+#   fix       bug fix                              (PATCH)
+#   docs      docs only
+#   style     formatting, missing semicolons, etc.
+#   refactor  code change, no behaviour change
+#   perf      performance improvement
+#   test      tests only
+#   build     build system / deps (composer, npm)
+#   ci        CI configuration
+#   chore     other (no src or test changes)
+#   revert    revert a previous commit
+#
+# Allowed <scope> (this repo):
+#   cookie | order | product | user | shared        domain slices
+#   cqrs | ddd | infra | logging | mcp              cross-cutting
+#   tests | docs | config | tooling                 plumbing
+#
+# Examples:
+#   feat(cookie): add stock-decrement business rule
+#   fix(order): reject negative quantity in CreateOrderCommand
+#   refactor(shared)!: rename EventBus to EventDispatcher
+#
+#     BREAKING CHANGE: callers must use EventDispatcher::dispatch().

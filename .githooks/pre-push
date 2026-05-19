@@ -1,0 +1,50 @@
+#!/usr/bin/env bash
+# pre-push: block pushing WIP commits to protected branches and run the test suite.
+# Skip with `git push --no-verify` (only if you know what you're doing).
+set -euo pipefail
+
+RED=$'\033[31m'; GRN=$'\033[32m'; YLW=$'\033[33m'; DIM=$'\033[2m'; RST=$'\033[0m'
+
+protected_re='^(main|master|develop|release/.*)$'
+remote="${1:-origin}"
+
+# stdin format from git: <local_ref> <local_sha> <remote_ref> <remote_sha>
+while read -r local_ref local_sha remote_ref _; do
+    [ "$local_sha" = "0000000000000000000000000000000000000000" ] && continue
+
+    remote_branch="${remote_ref#refs/heads/}"
+
+    if [[ "$remote_branch" =~ $protected_re ]]; then
+        # Block force-pushes to protected branches.
+        if [ -n "${GIT_PUSH_FORCE:-}" ]; then
+            echo "${RED}✗ Force-push to '${remote_branch}' is blocked by pre-push hook.${RST}"
+            exit 1
+        fi
+
+        # Block WIP / fixup commits going to protected branches.
+        range="${remote_sha}..${local_sha}"
+        if [ "$remote_sha" = "0000000000000000000000000000000000000000" ]; then
+            range="$local_sha"
+        fi
+        if git log --format=%s "$range" 2>/dev/null | grep -iE '^(wip|fixup!|squash!|temp|do not merge)' >/dev/null; then
+            echo "${RED}✗ Refusing to push WIP/fixup commits to '${remote_branch}'.${RST}"
+            echo "  Squash or rename them first."
+            exit 1
+        fi
+    fi
+done
+
+# Run the test suite if it exists. Allow skip with SKIP_TESTS=1.
+if [ -n "${SKIP_TESTS:-}" ]; then
+    echo "${YLW}⚠ SKIP_TESTS set — skipping test suite.${RST}"
+    exit 0
+fi
+
+if [ -x vendor/bin/phpunit ]; then
+    echo "${DIM}pre-push: running test suite…${RST}"
+    if ! vendor/bin/phpunit --no-coverage; then
+        echo "${RED}✗ Tests failed. Fix before pushing, or use SKIP_TESTS=1 git push (last resort).${RST}"
+        exit 1
+    fi
+    echo "${GRN}✓ Tests passed.${RST}"
+fi

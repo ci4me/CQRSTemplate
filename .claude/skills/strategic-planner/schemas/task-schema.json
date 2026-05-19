@@ -1,0 +1,111 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://cqrs-template.local/schemas/task-schema.json",
+  "title": "Task Definition Schema",
+  "description": "Schema for validating SMART-E atomic task definitions",
+  "type": "object",
+  "patternProperties": {
+    "^task_\\d+\\.\\d+$": {
+      "type": "object",
+      "required": [
+        "name",
+        "files",
+        "duration_minutes",
+        "depends_on",
+        "risk",
+        "specific_changes",
+        "success_criteria",
+        "blockers",
+        "verification_command",
+        "can_start_immediately",
+        "definition_of_done"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 5,
+          "maxLength": 200,
+          "description": "Clear, concise task name (imperative form)"
+        },
+        "files": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[^\\s]+$"
+          },
+          "minItems": 1,
+          "maxItems": 3,
+          "description": "Files to be modified (≤3 for atomicity)"
+        },
+        "duration_minutes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 30,
+          "description": "Estimated duration in minutes (≤30 for atomicity)"
+        },
+        "depends_on": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^task_\\d+\\.\\d+$"
+          },
+          "description": "List of task IDs this task depends on"
+        },
+        "risk": {
+          "type": "string",
+          "enum": ["low", "medium", "high", "critical"],
+          "description": "Risk level of this task"
+        },
+        "specific_changes": {
+          "type": "string",
+          "minLength": 10,
+          "description": "Specific: Exact changes to make"
+        },
+        "success_criteria": {
+          "type": "string",
+          "minLength": 5,
+          "description": "Measurable: How to know it's done"
+        },
+        "blockers": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Achievable: List of blockers (or ['none'])"
+        },
+        "verification_command": {
+          "type": "string",
+          "minLength": 3,
+          "description": "Testable: Command to verify completion"
+        },
+        "can_start_immediately": {
+          "type": "boolean",
+          "description": "Executable: Can start now (true) or after deps (false)"
+        },
+        "definition_of_done": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 5
+          },
+          "minItems": 1,
+          "maxItems": 5,
+          "description": "Clear completion criteria (binary: done or not done)"
+        },
+        "contributes_to": {
+          "type": "string",
+          "description": "Relevant: How this task contributes to overall goal (optional)"
+        },
+        "group": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Parallel execution group number (optional)"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false,
+  "minProperties": 1,
+  "description": "All task definitions with task_X.Y as keys"
+}

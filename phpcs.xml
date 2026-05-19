@@ -1,0 +1,123 @@
+<?xml version="1.0"?>
+<ruleset name="CodeIgniter4 CQRS Coding Standard">
+    <description>PSR-12 + Slevomat Coding Standard with Clean Code enforcement</description>
+
+    <!-- Files to check -->
+    <file>app/Domain</file>
+    <file>app/Infrastructure</file>
+    <file>app/Controllers</file>
+    <file>tests</file>
+
+    <!-- Exclude patterns -->
+    <exclude-pattern>*/Database/Migrations/*</exclude-pattern>
+    <exclude-pattern>*/Database/Seeds/*</exclude-pattern>
+    <exclude-pattern>*/Views/*</exclude-pattern>
+    <exclude-pattern>*/Config/*</exclude-pattern>
+    <exclude-pattern>*/vendor/*</exclude-pattern>
+    <exclude-pattern>*/writable/*</exclude-pattern>
+    <exclude-pattern>app/Infrastructure/Persistence/*</exclude-pattern>
+    <exclude-pattern>tests/_support/*</exclude-pattern>
+    <exclude-pattern>tests/session/*</exclude-pattern>
+    <exclude-pattern>tests/database/*</exclude-pattern>
+    <exclude-pattern>tests/unit/*</exclude-pattern>
+
+    <!-- Arguments -->
+    <arg name="basepath" value="."/>
+    <arg name="colors"/>
+    <arg name="parallel" value="80"/>
+    <arg value="np"/>
+
+    <!-- PSR-12 Coding Standard -->
+    <rule ref="PSR12">
+        <!-- Allow snake_case test method names in test files -->
+        <exclude name="PSR1.Methods.CamelCapsMethodName.NotCamelCaps"/>
+    </rule>
+
+    <!-- Slevomat Coding Standard -->
+
+    <!-- Enforce strict types declaration -->
+    <rule ref="SlevomatCodingStandard.TypeHints.DeclareStrictTypes">
+        <properties>
+            <property name="linesCountBeforeDeclare" value="1"/>
+            <property name="linesCountAfterDeclare" value="1"/>
+            <property name="spacesCountAroundEqualsSign" value="0"/>
+        </properties>
+    </rule>
+
+    <!-- Require type hints -->
+    <rule ref="SlevomatCodingStandard.TypeHints.ParameterTypeHint">
+        <!-- Exclude API controllers - CodeIgniter parent class doesn't have typed parameters -->
+        <exclude-pattern>app/Controllers/Api/*Controller.php</exclude-pattern>
+        <!-- Exclude AbiSageIntacct library - third-party namespace with different conventions -->
+        <exclude-pattern>app/Libraries/AbiSageIntacct/*</exclude-pattern>
+    </rule>
+    <rule ref="SlevomatCodingStandard.TypeHints.PropertyTypeHint">
+        <!-- Exclude BaseController and API controllers due to CodeIgniter parent class limitations -->
+        <exclude-pattern>app/Controllers/BaseController.php</exclude-pattern>
+        <exclude-pattern>app/Controllers/Api/*Controller.php</exclude-pattern>
+        <!-- Exclude test support classes - they override parent properties without type hints -->
+        <exclude-pattern>tests/Support/*TestCase.php</exclude-pattern>
+        <!-- Exclude AbiSageIntacct library - third-party namespace with different conventions -->
+        <exclude-pattern>app/Libraries/AbiSageIntacct/*</exclude-pattern>
+    </rule>
+    <rule ref="SlevomatCodingStandard.TypeHints.ReturnTypeHint"/>
+
+    <!-- Discourage else (encourage early returns) -->
+    <rule ref="SlevomatCodingStandard.ControlStructures.EarlyExit"/>
+    <rule ref="SlevomatCodingStandard.ControlStructures.DisallowYodaComparison"/>
+
+    <!-- Require null coalesce operator -->
+    <rule ref="SlevomatCodingStandard.ControlStructures.RequireNullCoalesceOperator"/>
+    <rule ref="SlevomatCodingStandard.ControlStructures.RequireNullCoalesceEqualOperator"/>
+
+    <!-- Clean up unused code -->
+    <rule ref="SlevomatCodingStandard.Functions.UnusedParameter"/>
+    <rule ref="SlevomatCodingStandard.Namespaces.UnusedUses">
+        <properties>
+            <property name="searchAnnotations" value="true"/>
+        </properties>
+    </rule>
+    <rule ref="SlevomatCodingStandard.Namespaces.UseFromSameNamespace"/>
+    <rule ref="SlevomatCodingStandard.Variables.UnusedVariable"/>
+    <rule ref="SlevomatCodingStandard.Variables.UselessVariable"/>
+
+    <!-- Code quality -->
+    <rule ref="SlevomatCodingStandard.Classes.ClassConstantVisibility"/>
+    <rule ref="SlevomatCodingStandard.Classes.ModernClassNameReference"/>
+    <rule ref="SlevomatCodingStandard.Classes.UselessLateStaticBinding"/>
+    <rule ref="SlevomatCodingStandard.Commenting.EmptyComment"/>
+    <rule ref="SlevomatCodingStandard.Commenting.InlineDocCommentDeclaration"/>
+    <rule ref="SlevomatCodingStandard.Commenting.UselessInheritDocComment"/>
+    <rule ref="SlevomatCodingStandard.ControlStructures.UselessIfConditionWithReturn"/>
+    <rule ref="SlevomatCodingStandard.ControlStructures.UselessTernaryOperator"/>
+    <rule ref="SlevomatCodingStandard.Exceptions.DeadCatch"/>
+    <rule ref="SlevomatCodingStandard.Functions.UselessParameterDefaultValue"/>
+    <rule ref="SlevomatCodingStandard.PHP.UselessParentheses"/>
+    <rule ref="SlevomatCodingStandard.PHP.UselessSemicolon"/>
+
+    <!-- Namespace and use statements -->
+    <rule ref="SlevomatCodingStandard.Namespaces.AlphabeticallySortedUses"/>
+    <rule ref="SlevomatCodingStandard.Namespaces.RequireOneNamespaceInFile"/>
+    <rule ref="SlevomatCodingStandard.Namespaces.NamespaceDeclaration"/>
+    <rule ref="SlevomatCodingStandard.Namespaces.UseSpacing">
+        <properties>
+            <property name="linesCountBeforeFirstUse" value="1"/>
+            <property name="linesCountBetweenUseTypes" value="1"/>
+            <property name="linesCountAfterLastUse" value="1"/>
+        </properties>
+    </rule>
+
+    <!-- Arrays -->
+    <rule ref="SlevomatCodingStandard.Arrays.TrailingArrayComma"/>
+
+    <!-- Operators -->
+    <rule ref="SlevomatCodingStandard.Operators.RequireCombinedAssignmentOperator"/>
+
+    <!-- Type casting -->
+    <rule ref="SlevomatCodingStandard.PHP.TypeCast"/>
+
+    <!-- Modern PHP features -->
+    <rule ref="SlevomatCodingStandard.Functions.StrictCall"/>
+    <rule ref="SlevomatCodingStandard.PHP.ShortList"/>
+
+</ruleset>

@@ -1,0 +1,50 @@
+#!/usr/bin/env bash
+# prepare-commit-msg: auto-prefix subject with branch-derived scope/issue.
+# Branch examples:
+#   feat/cookie-add-stock         → "feat(cookie): "
+#   fix/order-123-negative-qty    → "fix(order): " + footer "Refs: #123"
+#   chore/tooling-bump-phpstan    → "chore(tooling): "
+# Does nothing on merge/squash/template/message sources.
+set -euo pipefail
+
+msg_file="$1"
+source="${2:-}"
+
+# Skip when message was supplied another way.
+case "$source" in
+    merge|squash|commit|template) exit 0 ;;
+esac
+
+branch=$(git symbolic-ref --short HEAD 2>/dev/null || true)
+[ -z "$branch" ] && exit 0
+
+# Don't prefix from main/master/HEAD.
+case "$branch" in main|master|HEAD) exit 0 ;; esac
+
+# Parse: <type>/<scope>[-<issue>]-<rest>
+type="${branch%%/*}"
+rest="${branch#*/}"
+[ "$type" = "$branch" ] && exit 0    # no slash → don't guess
+
+valid_types='^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)$'
+[[ "$type" =~ $valid_types ]] || exit 0
+
+scope="${rest%%-*}"
+[ -z "$scope" ] && exit 0
+
+# Extract first numeric segment as issue ref (if any).
+issue=$(echo "$rest" | grep -oE '[0-9]+' | head -1 || true)
+
+# Only prefix if first non-comment line is empty.
+existing=$(grep -vE '^\s*#' "$msg_file" | sed -n '/[^[:space:]]/{p;q;}' || true)
+if [ -z "$existing" ]; then
+    prefix="${type}(${scope}): "
+    # Insert prefix on line 1, preserving the rest of the file.
+    tmp=$(mktemp)
+    printf '%s\n' "$prefix" > "$tmp"
+    if [ -n "$issue" ]; then
+        printf '\n\nRefs: #%s\n' "$issue" >> "$tmp"
+    fi
+    cat "$msg_file" >> "$tmp"
+    mv "$tmp" "$msg_file"
+fi

@@ -1,0 +1,40 @@
+{
+  "mcpServers": {
+    "local-logs": {
+      "command": "node",
+      "args": ["/tmp/local-logs-mcp-server/local-logs-mcp-server.js"],
+      "env": {
+        "LOGS_DIR": "${PWD}/writable/logs",
+        "LOG_EXTENSIONS": ".log,.json,.txt"
+      }
+    },
+    "memory": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-memory"]
+    },
+    "puppeteer": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-puppeteer"]
+    },
+    "filesystem": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "${PWD}"]
+    },
+    "sequential-thinking": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-sequential-thinking"]
+    },
+    "git": {
+      "command": "/home/gabriel/.local/bin/mcp-server-git",
+      "args": ["--repository", "${PWD}"]
+    },
+    "fetch": {
+      "command": "/home/gabriel/.local/bin/mcp-server-fetch",
+      "args": []
+    },
+    "time": {
+      "command": "/home/gabriel/.local/bin/mcp-server-time",
+      "args": []
+    }
+  }
+}

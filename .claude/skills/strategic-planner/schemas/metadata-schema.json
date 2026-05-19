@@ -1,0 +1,151 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://cqrs-template.local/schemas/metadata-schema.json",
+  "title": "Execution Metadata Schema",
+  "description": "Optional metadata for execution analysis and learning",
+  "type": "object",
+  "properties": {
+    "execution_id": {
+      "type": "string",
+      "pattern": "^exec-\\d{8}-\\d{6}$",
+      "description": "Reference to execution ID"
+    },
+    "user_request": {
+      "type": "string",
+      "description": "Original user request text"
+    },
+    "complexity_level": {
+      "type": "string",
+      "enum": ["TRIVIAL", "SIMPLE", "MODERATE", "COMPLEX", "VERY COMPLEX"],
+      "description": "Assessed complexity level"
+    },
+    "risk_level": {
+      "type": "string",
+      "enum": ["LOW", "MEDIUM", "HIGH", "CRITICAL"],
+      "description": "Assessed risk level"
+    },
+    "approach_selected": {
+      "type": "string",
+      "description": "Which approach was chosen (from ToT exploration)"
+    },
+    "approaches_considered": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Approach name"
+          },
+          "pros": {
+            "type": "array",
+            "items": {"type": "string"}
+          },
+          "cons": {
+            "type": "array",
+            "items": {"type": "string"}
+          },
+          "selected": {
+            "type": "boolean",
+            "description": "Whether this approach was selected"
+          }
+        }
+      },
+      "description": "All approaches considered (from ToT)"
+    },
+    "pre_mortem_risks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "risk": {
+            "type": "string",
+            "description": "Risk description"
+          },
+          "severity": {
+            "type": "string",
+            "enum": ["CRITICAL", "HIGH", "MEDIUM", "LOW"]
+          },
+          "mitigation": {
+            "type": "string",
+            "description": "How risk was mitigated"
+          },
+          "mitigated_by_task": {
+            "type": "string",
+            "pattern": "^task_\\d+\\.\\d+$",
+            "description": "Task ID that mitigates this risk (optional)"
+          }
+        }
+      },
+      "description": "Risks identified in pre-mortem (if applicable)"
+    },
+    "actual_duration_minutes": {
+      "type": "number",
+      "minimum": 0,
+      "description": "Actual total execution time"
+    },
+    "estimated_duration_minutes": {
+      "type": "number",
+      "minimum": 0,
+      "description": "Estimated execution time from planning"
+    },
+    "accuracy_percent": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 100,
+      "description": "Estimate accuracy percentage"
+    },
+    "efficiency_gain_percent": {
+      "type": "number",
+      "description": "Parallelization efficiency gain"
+    },
+    "critical_path": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^task_\\d+\\.\\d+$"
+      },
+      "description": "Tasks on critical path"
+    },
+    "bottlenecks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "task_id": {
+            "type": "string",
+            "pattern": "^task_\\d+\\.\\d+$"
+          },
+          "reason": {
+            "type": "string",
+            "description": "Why this was a bottleneck"
+          }
+        }
+      },
+      "description": "Tasks that caused delays"
+    },
+    "learnings": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Key learnings from this execution"
+    },
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Tags for categorization (e.g., 'refactoring', 'new-feature', 'bug-fix')"
+    },
+    "related_executions": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^exec-\\d{8}-\\d{6}$"
+      },
+      "description": "IDs of related executions for comparison"
+    }
+  },
+  "additionalProperties": true
+}

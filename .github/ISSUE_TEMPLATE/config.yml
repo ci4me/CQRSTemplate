@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: CQRS / DDD docs
+    url: https://github.com/ci4me/CQRSTemplate/blob/main/.claude/documentation
+    about: Read the architecture and patterns first.
