@@ -6,6 +6,7 @@ use App\Infrastructure\Auth\Middleware\JwtAuthenticationMiddleware;
 use App\Infrastructure\Auth\Middleware\RateLimitMiddleware;
 use App\Infrastructure\Auth\Middleware\RoleAuthorizationMiddleware;
 use App\Infrastructure\Auth\Middleware\SessionAuthMiddleware;
+use App\Infrastructure\Logging\CorrelationIdMiddleware;
 use CodeIgniter\Config\Filters as BaseFilters;
 use CodeIgniter\Filters\Cors;
 use CodeIgniter\Filters\CSRF;
@@ -42,6 +43,7 @@ class Filters extends BaseFilters
         'ratelimit'     => RateLimitMiddleware::class,
         'role'          => RoleAuthorizationMiddleware::class,
         'web_auth'      => SessionAuthMiddleware::class,
+        'correlation'   => CorrelationIdMiddleware::class,
     ];
 
     /**
@@ -86,10 +88,16 @@ class Filters extends BaseFilters
             // verify CSRF behavior separately (see tests/Integration/Security/)
             'csrf' => (ENVIRONMENT !== 'testing') ? [] : ['except' => ['*']],
             // 'invalidchars',
+            // OBSERVABILITY: adopt inbound X-Correlation-Id before any handler
+            // runs so logs / commands / events share one trace id.
+            'correlation',
         ],
         'after' => [
             // 'honeypot',
             'secureheaders', // SECURITY: Enable secure headers (HSTS, CSP, X-Frame-Options, etc.)
+            // OBSERVABILITY: echo the correlation id on the response so
+            // downstream callers can include it in bug reports / further hops.
+            'correlation',
         ],
     ];
 

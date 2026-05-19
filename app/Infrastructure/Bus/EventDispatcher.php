@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Bus;
 
+use App\Infrastructure\Logging\CorrelationIdService;
+use App\Infrastructure\Logging\LoggerFactory;
+use Psr\Log\LoggerInterface;
+
 /**
  * Event Dispatcher for domain events.
  *
@@ -18,22 +22,15 @@ namespace App\Infrastructure\Bus;
  * - Are named in past tense (CookieCreated, CookieDeleted)
  * - Are immutable (you can't change history)
  * - Can have MULTIPLE listeners (unlike commands)
- * - Should not fail (if a listener fails, catch and log)
+ * - Should not fail (if a listener fails, log via PSR-3 and continue)
  *
- * Why Domain Events:
- * - Decouple bounded contexts (e.g., Order created -> send email)
- * - Audit trail (know what happened and when)
- * - Event sourcing foundation (if needed later)
- * - Side effects without coupling (logging, notifications, etc.)
- *
- * Usage Example:
- * ```php
- * $event = new CookieCreatedEvent($cookieId, $cookieName);
- * $eventDispatcher->dispatch($event);
- * ```
- *
- * Note: In a simple implementation like this, events are dispatched
- * synchronously. For async processing, consider a queue system.
+ * Error handling (C1):
+ * Listener exceptions are caught and logged via the injected PSR-3 logger
+ * with full structured context (event class, listener class, correlation id,
+ * exception class/message). Other listeners still execute. Calls to
+ * error_log() are intentionally avoided because they bypass log aggregation
+ * and lose the correlation context that makes failures debuggable in
+ * production.
  *
  * @package App\Infrastructure\Bus
  */
@@ -45,6 +42,16 @@ class EventDispatcher
      * @var array<string, array<callable>> Format: [EventClassName => [callable, callable, ...]]
      */
     private array $listeners = [];
+
+    private LoggerInterface $logger;
+
+    public function __construct(?LoggerInterface $logger = null)
+    {
+        // Allow zero-arg construction (existing call sites) by falling back
+        // to a dedicated dispatcher channel. Production code should inject a
+        // shared logger so correlation/redaction processors are consistent.
+        $this->logger = $logger ?? LoggerFactory::create('infrastructure.event_dispatcher');
+    }
 
     /**
      * Register a listener for an event.
@@ -67,8 +74,8 @@ class EventDispatcher
      * Dispatch an event to all registered listeners.
      *
      * Listeners are called in the order they were registered.
-     * If a listener throws an exception, it's caught and logged,
-     * but other listeners still execute.
+     * If a listener throws, the exception is logged via the structured
+     * logger and other listeners still execute.
      *
      * @param object $event The event to dispatch
      */
@@ -77,7 +84,6 @@ class EventDispatcher
         $eventClass = $event::class;
 
         if (!isset($this->listeners[$eventClass])) {
-            // No listeners registered for this event - that's okay
             return;
         }
 
@@ -85,15 +91,15 @@ class EventDispatcher
             try {
                 $listener($event);
             } catch (\Throwable $e) {
-                // Log the error but don't stop other listeners
-                // In production, this should use a proper logger
-                error_log(
-                    sprintf(
-                        'Event listener failed for %s: %s',
-                        $eventClass,
-                        $e->getMessage()
-                    )
-                );
+                $this->logger->error('Event listener failed', [
+                    'domain' => 'Infrastructure',
+                    'component' => 'EventDispatcher',
+                    'event_class' => $eventClass,
+                    'listener' => $this->describeListener($listener),
+                    'exception' => $e->getMessage(),
+                    'exception_class' => $e::class,
+                    'correlation_id' => CorrelationIdService::get(),
+                ]);
             }
         }
     }
@@ -118,5 +124,25 @@ class EventDispatcher
     public function getListenerCount(string $eventClass): int
     {
         return isset($this->listeners[$eventClass]) ? count($this->listeners[$eventClass]) : 0;
+    }
+
+    private function describeListener(callable $listener): string
+    {
+        if (is_object($listener) && !($listener instanceof \Closure)) {
+            return $listener::class;
+        }
+
+        if (is_array($listener) && count($listener) === 2) {
+            $obj = $listener[0];
+            $method = $listener[1];
+            $class = is_object($obj) ? $obj::class : (string) $obj;
+            return $class . '::' . (string) $method;
+        }
+
+        if (is_string($listener)) {
+            return $listener;
+        }
+
+        return 'Closure';
     }
 }
