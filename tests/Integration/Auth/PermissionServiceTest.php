@@ -7,18 +7,11 @@ namespace Tests\Integration\Auth;
 use App\Domain\Shared\ValueObjects\Actor;
 use App\Domain\Shared\ValueObjects\Permission;
 use App\Infrastructure\Auth\Services\PermissionService;
-use CodeIgniter\Test\CIUnitTestCase;
-use CodeIgniter\Test\DatabaseTestTrait;
 use Config\Database;
+use Tests\Support\IntegrationTestCase;
 
-final class PermissionServiceTest extends CIUnitTestCase
+final class PermissionServiceTest extends IntegrationTestCase
 {
-    use DatabaseTestTrait;
-
-    protected bool $migrate = true;
-    protected bool $refresh = true;
-    protected ?string $namespace = null;
-
     public function test_system_actor_is_always_allowed(): void
     {
         $service = new PermissionService();
