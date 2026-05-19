@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Cookie\Commands\UpdateCookie;
 
+use App\Domain\Cookie\Entities\Cookie;
 use App\Domain\Cookie\ErrorCodes;
 use App\Domain\Cookie\Events\CookieUpdated\CookieUpdatedEvent;
 use App\Domain\Cookie\Ports\CookieRepositoryInterface;
@@ -76,6 +77,10 @@ final readonly class UpdateCookieHandler
                 throw DomainException::notFound('Cookie', $command->id, ErrorCodes::COOKIE_NOT_FOUND);
             }
 
+            // B13: snapshot previous state BEFORE mutation so the event can
+            // carry a structured diff for the audit log.
+            $previousState = $this->snapshot($cookie);
+
             // Create Value Objects (validates format/constraints)
             $name = CookieName::fromString($command->name);
             $price = CookiePrice::fromString($command->price);
@@ -100,14 +105,18 @@ final readonly class UpdateCookieHandler
                 isActive: $command->isActive
             );
 
+            $newState = $this->snapshot($cookie);
+
             // Persist changes
             $this->repository->save($cookie);
 
-            // Dispatch domain event
+            // Dispatch domain event with structured before/after diff
             $this->eventDispatcher->dispatch(new CookieUpdatedEvent(
                 cookieId: $command->id,
                 cookieName: $name->getValue(),
-                cookiePrice: $price->toDecimalString()
+                cookiePrice: $price->toDecimalString(),
+                previousState: $previousState,
+                newState: $newState
             ));
 
             $durationMs = (microtime(true) - $startTime) * 1000;
@@ -142,5 +151,20 @@ final readonly class UpdateCookieHandler
         }
 
         return ErrorCodes::COOKIE_REPOSITORY_SAVE_FAILED;
+    }
+
+    /**
+     * @return array<string, scalar|null>
+     */
+    private function snapshot(Cookie $cookie): array
+    {
+        return [
+            'id' => $cookie->getId(),
+            'name' => $cookie->getName()->getValue(),
+            'description' => $cookie->getDescription(),
+            'price' => $cookie->getPrice()->toDecimalString(),
+            'stock' => $cookie->getStock(),
+            'is_active' => $cookie->getIsActive(),
+        ];
     }
 }

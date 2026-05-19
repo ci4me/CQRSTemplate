@@ -5,24 +5,26 @@ declare(strict_types=1);
 namespace App\Domain\Cookie\Events\CookieDeleted;
 
 /**
- * Event fired when a Cookie is deleted (soft delete).
+ * Event fired when a Cookie is soft-deleted.
  *
- * Note: This represents a SOFT delete. The cookie record remains
- * in the database but is marked as deleted.
+ * Carries the full final snapshot so an audit consumer can reconstruct the
+ * row at the moment of deletion without a follow-up query.
  *
  * @package App\Domain\Cookie\Events\CookieDeleted
  */
 final readonly class CookieDeletedEvent
 {
     /**
-     * Create a new CookieDeletedEvent.
-     *
-     * @param int $cookieId The ID of the deleted cookie
-     * @param string $cookieName The name of the deleted cookie
+     * @param int $cookieId        ID of the deleted cookie
+     * @param string $cookieName   Denormalised name for log readability
+     * @param array<string, scalar|null> $snapshot Final state at time of delete
+     * @param int $deletedBy       Actor id (0 for system)
      */
     public function __construct(
         public int $cookieId,
-        public string $cookieName
+        public string $cookieName,
+        public array $snapshot = [],
+        public int $deletedBy = 0
     ) {
     }
 }

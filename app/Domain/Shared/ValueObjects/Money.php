@@ -43,13 +43,23 @@ final readonly class Money
     private float $value;
 
     /**
+     * Currency this monetary amount is denominated in.
+     *
+     * Defaults to USD when not specified, which keeps single-currency callers
+     * working unchanged. Multi-currency operations MUST pass an explicit
+     * Currency and {@see self::assertSameCurrency()} guards arithmetic.
+     */
+    public Currency $currency;
+
+    /**
      * Create a new Money value object.
      *
      * @param float $value The monetary amount
+     * @param Currency|null $currency Currency (defaults to USD)
      * @param bool $allowZero Whether to allow zero values (default: true)
      * @throws ValidationException If value is negative or zero (when not allowed)
      */
-    private function __construct(float $value, bool $allowZero = true)
+    private function __construct(float $value, ?Currency $currency = null, bool $allowZero = true)
     {
         if ($value < 0) {
             throw ValidationException::tooSmall('amount', 0, $value);
@@ -61,32 +71,35 @@ final readonly class Money
 
         // Round to 2 decimal places for consistency
         $this->value = round($value, 2);
+        $this->currency = $currency ?? Currency::usd();
     }
 
     /**
      * Create Money from a float value.
      *
      * @param float $value The monetary amount
+     * @param Currency|null $currency Currency (defaults to USD)
      * @param bool $allowZero Whether to allow zero values
      * @throws ValidationException If validation fails
      */
-    public static function fromFloat(float $value, bool $allowZero = true): self
+    public static function fromFloat(float $value, ?Currency $currency = null, bool $allowZero = true): self
     {
-        return new self($value, $allowZero);
+        return new self($value, $currency, $allowZero);
     }
 
     /**
      * Create Money from a string value.
      *
      * @param string $value The monetary amount as string (e.g., "29.99")
+     * @param Currency|null $currency Currency (defaults to USD)
      * @param bool $allowZero Whether to allow zero values
      * @throws ValidationException If validation fails
      */
-    public static function fromString(string $value, bool $allowZero = true): self
+    public static function fromString(string $value, ?Currency $currency = null, bool $allowZero = true): self
     {
         $floatValue = (float) $value;
 
-        return new self($floatValue, $allowZero);
+        return new self($floatValue, $currency, $allowZero);
     }
 
     /**
@@ -110,35 +123,38 @@ final readonly class Money
     }
 
     /**
-     * Check if this money equals another.
+     * Check if this money equals another (same currency + same value).
      *
      * @param Money $other The other money to compare
-     * @return bool True if values are equal
+     * @return bool True if values and currency are equal
      */
     public function equals(Money $other): bool
     {
-        return abs($this->value - $other->value) < 0.001;
+        return $this->currency->equals($other->currency)
+            && abs($this->value - $other->value) < 0.001;
     }
 
     /**
-     * Check if this money is greater than another.
+     * Check if this money is greater than another (same currency required).
      *
      * @param Money $other The other money to compare
      * @return bool True if this value is greater
      */
     public function greaterThan(Money $other): bool
     {
+        $this->assertSameCurrency($other);
         return $this->value > $other->value;
     }
 
     /**
-     * Check if this money is less than another.
+     * Check if this money is less than another (same currency required).
      *
      * @param Money $other The other money to compare
      * @return bool True if this value is less
      */
     public function lessThan(Money $other): bool
     {
+        $this->assertSameCurrency($other);
         return $this->value < $other->value;
     }
 
@@ -150,7 +166,8 @@ final readonly class Money
      */
     public function add(Money $other): Money
     {
-        return new self($this->value + $other->value);
+        $this->assertSameCurrency($other);
+        return new self($this->value + $other->value, $this->currency);
     }
 
     /**
@@ -162,7 +179,8 @@ final readonly class Money
      */
     public function subtract(Money $other): Money
     {
-        return new self($this->value - $other->value);
+        $this->assertSameCurrency($other);
+        return new self($this->value - $other->value, $this->currency);
     }
 
     /**
@@ -173,7 +191,20 @@ final readonly class Money
      */
     public function multiply(float|int $multiplier): Money
     {
-        return new self($this->value * $multiplier);
+        return new self($this->value * $multiplier, $this->currency);
+    }
+
+    private function assertSameCurrency(Money $other): void
+    {
+        if (!$this->currency->equals($other->currency)) {
+            throw new \InvalidArgumentException(
+                sprintf(
+                    'Cannot mix currencies: %s vs %s. Convert explicitly first.',
+                    $this->currency->iso,
+                    $other->currency->iso
+                )
+            );
+        }
     }
 
     /**

@@ -67,6 +67,17 @@ final readonly class DeleteCookieHandler
 
             $cookieName = $cookie->getName()->getValue();
 
+            // B13: snapshot the cookie before persistence flips deleted_at,
+            // so the event payload preserves the final state for audit.
+            $snapshot = [
+                'id' => $cookie->getId(),
+                'name' => $cookieName,
+                'description' => $cookie->getDescription(),
+                'price' => $cookie->getPrice()->toDecimalString(),
+                'stock' => $cookie->getStock(),
+                'is_active' => $cookie->getIsActive(),
+            ];
+
             $this->logger->info('Cookie found, performing soft delete', [
                 'domain' => 'Cookie',
                 'command' => 'DeleteCookieCommand',
@@ -80,7 +91,8 @@ final readonly class DeleteCookieHandler
             // Dispatch domain event
             $this->eventDispatcher->dispatch(new CookieDeletedEvent(
                 cookieId: $command->id,
-                cookieName: $cookieName
+                cookieName: $cookieName,
+                snapshot: $snapshot
             ));
 
             $durationMs = (hrtime(true) - $startTime) / 1_000_000;
