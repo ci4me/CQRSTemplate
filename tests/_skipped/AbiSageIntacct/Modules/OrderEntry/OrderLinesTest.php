@@ -198,5 +198,4 @@ final class OrderLinesTest extends TestCase
         $this->assertIsArray($result);
         $this->assertEquals('deleted', $result['status']);
     }
-
 }

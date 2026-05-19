@@ -24,12 +24,13 @@ final class TransactionsTest extends TestCase
      * Create an anonymous class that acts like CurlClient for testing
      *
      * @param array<string, mixed> $responses
-     * @return HttpClientInterface
      */
     private function createHttpClientStub(array $responses): HttpClientInterface
     {
-        return new class($responses) implements HttpClientInterface {
-            public function __construct(private array $responses) {}
+        return new class ($responses) implements HttpClientInterface {
+            public function __construct(private array $responses)
+            {
+            }
 
             public function setAccessToken(string $token): void
             {

@@ -35,7 +35,11 @@ if [ "$branch" = "main" ] || [ "$branch" = "master" ]; then
 fi
 
 # 3. Collect staged PHP files only (ACM = added, copied, modified).
-mapfile -t php_files < <(git diff --cached --name-only --diff-filter=ACMR -- '*.php' || true)
+#    Exclude tests/_skipped/* — quarantined tests are kept verbatim as
+#    historical artefacts and are intentionally outside the test suite,
+#    so they should not gate commits on PHPCS / PHPStan / lint.
+mapfile -t php_files < <(git diff --cached --name-only --diff-filter=ACMR -- '*.php' \
+    | grep -v -E '^tests/_skipped/' || true)
 
 if [ ${#php_files[@]} -eq 0 ]; then
     echo "${DIM}pre-commit: no staged PHP files — skipping PHP checks.${RST}"

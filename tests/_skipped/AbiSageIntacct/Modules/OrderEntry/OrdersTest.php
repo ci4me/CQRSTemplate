@@ -267,5 +267,4 @@ final class OrdersTest extends TestCase
         $this->assertEquals('cancelled', $result['status']);
         $this->assertEquals('Customer request', $result['cancelReason']);
     }
-
 }

@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace Tests\Unit\Libraries\AbiSageIntacct;
 
 use AbiSageIntacct\Client;
-use AbiSageIntacct\Modules\CompanyConfig\Users;
 use AbiSageIntacct\Modules\CompanyConfig\Departments;
+use AbiSageIntacct\Modules\CompanyConfig\Users;
 use PHPUnit\Framework\TestCase;
 
 /**

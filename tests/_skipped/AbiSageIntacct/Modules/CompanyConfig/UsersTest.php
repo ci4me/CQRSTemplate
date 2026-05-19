@@ -144,7 +144,7 @@ final class UsersTest extends TestCase
         $reflection = new \ReflectionClass($this->users);
         $method = $reflection->getMethod('list');
         $params = $method->getParameters();
-        
+
         $this->assertCount(1, $params);
         $this->assertEquals('filters', $params[0]->getName());
     }
@@ -154,7 +154,7 @@ final class UsersTest extends TestCase
         $reflection = new \ReflectionClass($this->users);
         $method = $reflection->getMethod('get');
         $params = $method->getParameters();
-        
+
         $this->assertCount(1, $params);
         $this->assertEquals('userId', $params[0]->getName());
     }
@@ -164,7 +164,7 @@ final class UsersTest extends TestCase
         $reflection = new \ReflectionClass($this->users);
         $method = $reflection->getMethod('create');
         $params = $method->getParameters();
-        
+
         $this->assertCount(1, $params);
         $this->assertEquals('userData', $params[0]->getName());
     }
@@ -174,7 +174,7 @@ final class UsersTest extends TestCase
         $reflection = new \ReflectionClass($this->users);
         $method = $reflection->getMethod('update');
         $params = $method->getParameters();
-        
+
         $this->assertCount(2, $params);
         $this->assertEquals('userId', $params[0]->getName());
         $this->assertEquals('userData', $params[1]->getName());
@@ -185,7 +185,7 @@ final class UsersTest extends TestCase
         $reflection = new \ReflectionClass($this->users);
         $method = $reflection->getMethod('delete');
         $params = $method->getParameters();
-        
+
         $this->assertCount(1, $params);
         $this->assertEquals('userId', $params[0]->getName());
     }
@@ -195,7 +195,7 @@ final class UsersTest extends TestCase
         $reflection = new \ReflectionClass($this->users);
         $method = $reflection->getMethod('getRoles');
         $params = $method->getParameters();
-        
+
         $this->assertCount(1, $params);
         $this->assertEquals('userId', $params[0]->getName());
     }
@@ -205,7 +205,7 @@ final class UsersTest extends TestCase
         $reflection = new \ReflectionClass($this->users);
         $method = $reflection->getMethod('getPermissions');
         $params = $method->getParameters();
-        
+
         $this->assertCount(1, $params);
         $this->assertEquals('userId', $params[0]->getName());
     }
@@ -219,7 +219,7 @@ final class UsersTest extends TestCase
         $reflection = new \ReflectionClass($this->users);
         $method = $reflection->getMethod('list');
         $returnType = $method->getReturnType();
-        
+
         $this->assertNotNull($returnType);
         $this->assertEquals('array', (string)$returnType);
     }
@@ -229,7 +229,7 @@ final class UsersTest extends TestCase
         $reflection = new \ReflectionClass($this->users);
         $method = $reflection->getMethod('get');
         $returnType = $method->getReturnType();
-        
+
         $this->assertNotNull($returnType);
         $this->assertEquals('array', (string)$returnType);
     }
@@ -239,7 +239,7 @@ final class UsersTest extends TestCase
         $reflection = new \ReflectionClass($this->users);
         $method = $reflection->getMethod('create');
         $returnType = $method->getReturnType();
-        
+
         $this->assertNotNull($returnType);
         $this->assertEquals('array', (string)$returnType);
     }
@@ -249,7 +249,7 @@ final class UsersTest extends TestCase
         $reflection = new \ReflectionClass($this->users);
         $method = $reflection->getMethod('update');
         $returnType = $method->getReturnType();
-        
+
         $this->assertNotNull($returnType);
         $this->assertEquals('array', (string)$returnType);
     }
@@ -259,7 +259,7 @@ final class UsersTest extends TestCase
         $reflection = new \ReflectionClass($this->users);
         $method = $reflection->getMethod('delete');
         $returnType = $method->getReturnType();
-        
+
         $this->assertNotNull($returnType);
         $this->assertEquals('array', (string)$returnType);
     }
@@ -269,7 +269,7 @@ final class UsersTest extends TestCase
         $reflection = new \ReflectionClass($this->users);
         $method = $reflection->getMethod('getRoles');
         $returnType = $method->getReturnType();
-        
+
         $this->assertNotNull($returnType);
         $this->assertEquals('array', (string)$returnType);
     }
@@ -279,7 +279,7 @@ final class UsersTest extends TestCase
         $reflection = new \ReflectionClass($this->users);
         $method = $reflection->getMethod('getPermissions');
         $returnType = $method->getReturnType();
-        
+
         $this->assertNotNull($returnType);
         $this->assertEquals('array', (string)$returnType);
     }
@@ -298,7 +298,7 @@ final class UsersTest extends TestCase
     {
         $filename = (new \ReflectionClass($this->users))->getFileName();
         $content = file_get_contents($filename);
-        
+
         $this->assertStringContainsString('declare(strict_types=1)', $content);
     }
 

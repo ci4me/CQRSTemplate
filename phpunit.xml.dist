@@ -27,7 +27,7 @@
     <testsuites>
         <testsuite name="App">
             <directory>./tests</directory>
-            <exclude>./tests/Unit/Libraries/AbiSageIntacct</exclude>
+            <exclude>./tests/_skipped</exclude>
         </testsuite>
     </testsuites>
     <logging>

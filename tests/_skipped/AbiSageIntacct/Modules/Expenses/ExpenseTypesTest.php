@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Libraries\AbiSageIntacct\Modules\Expenses;
 
-use AbiSageIntacct\Modules\Expenses\ExpenseTypes;
 use AbiSageIntacct\Contracts\HttpClientInterface;
-use PHPUnit\Framework\TestCase;
+use AbiSageIntacct\Modules\Expenses\ExpenseTypes;
 use PHPUnit\Framework\MockObject\MockObject;
+use PHPUnit\Framework\TestCase;
 
 /**
  * Tests for ExpenseTypes module

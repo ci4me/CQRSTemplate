@@ -120,7 +120,7 @@ final class DepartmentsTest extends TestCase
         $reflection = new \ReflectionClass($this->departments);
         $method = $reflection->getMethod('list');
         $params = $method->getParameters();
-        
+
         $this->assertCount(1, $params);
         $this->assertEquals('filters', $params[0]->getName());
     }
@@ -130,7 +130,7 @@ final class DepartmentsTest extends TestCase
         $reflection = new \ReflectionClass($this->departments);
         $method = $reflection->getMethod('get');
         $params = $method->getParameters();
-        
+
         $this->assertCount(1, $params);
         $this->assertEquals('departmentId', $params[0]->getName());
     }
@@ -140,7 +140,7 @@ final class DepartmentsTest extends TestCase
         $reflection = new \ReflectionClass($this->departments);
         $method = $reflection->getMethod('create');
         $params = $method->getParameters();
-        
+
         $this->assertCount(1, $params);
         $this->assertEquals('departmentData', $params[0]->getName());
     }
@@ -150,7 +150,7 @@ final class DepartmentsTest extends TestCase
         $reflection = new \ReflectionClass($this->departments);
         $method = $reflection->getMethod('update');
         $params = $method->getParameters();
-        
+
         $this->assertCount(2, $params);
         $this->assertEquals('departmentId', $params[0]->getName());
         $this->assertEquals('departmentData', $params[1]->getName());
@@ -161,7 +161,7 @@ final class DepartmentsTest extends TestCase
         $reflection = new \ReflectionClass($this->departments);
         $method = $reflection->getMethod('delete');
         $params = $method->getParameters();
-        
+
         $this->assertCount(1, $params);
         $this->assertEquals('departmentId', $params[0]->getName());
     }
@@ -175,7 +175,7 @@ final class DepartmentsTest extends TestCase
         $reflection = new \ReflectionClass($this->departments);
         $method = $reflection->getMethod('list');
         $returnType = $method->getReturnType();
-        
+
         $this->assertNotNull($returnType);
         $this->assertEquals('array', (string)$returnType);
     }
@@ -185,7 +185,7 @@ final class DepartmentsTest extends TestCase
         $reflection = new \ReflectionClass($this->departments);
         $method = $reflection->getMethod('get');
         $returnType = $method->getReturnType();
-        
+
         $this->assertNotNull($returnType);
         $this->assertEquals('array', (string)$returnType);
     }
@@ -195,7 +195,7 @@ final class DepartmentsTest extends TestCase
         $reflection = new \ReflectionClass($this->departments);
         $method = $reflection->getMethod('create');
         $returnType = $method->getReturnType();
-        
+
         $this->assertNotNull($returnType);
         $this->assertEquals('array', (string)$returnType);
     }
@@ -205,7 +205,7 @@ final class DepartmentsTest extends TestCase
         $reflection = new \ReflectionClass($this->departments);
         $method = $reflection->getMethod('update');
         $returnType = $method->getReturnType();
-        
+
         $this->assertNotNull($returnType);
         $this->assertEquals('array', (string)$returnType);
     }
@@ -215,7 +215,7 @@ final class DepartmentsTest extends TestCase
         $reflection = new \ReflectionClass($this->departments);
         $method = $reflection->getMethod('delete');
         $returnType = $method->getReturnType();
-        
+
         $this->assertNotNull($returnType);
         $this->assertEquals('array', (string)$returnType);
     }
@@ -234,7 +234,7 @@ final class DepartmentsTest extends TestCase
     {
         $filename = (new \ReflectionClass($this->departments))->getFileName();
         $content = file_get_contents($filename);
-        
+
         $this->assertStringContainsString('declare(strict_types=1)', $content);
     }
 
@@ -260,7 +260,7 @@ final class DepartmentsTest extends TestCase
     public function testAllCrudMethodsArePublic(): void
     {
         $reflection = new \ReflectionClass($this->departments);
-        
+
         foreach (['list', 'get', 'create', 'update', 'delete'] as $methodName) {
             $method = $reflection->getMethod($methodName);
             $this->assertTrue(

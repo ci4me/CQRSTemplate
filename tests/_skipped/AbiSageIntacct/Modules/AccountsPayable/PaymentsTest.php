@@ -1,6 +1,6 @@
 <?php
 
-declare(strict_types = 1);
+declare(strict_types=1);
 
 namespace Tests\Unit\Libraries\AbiSageIntacct\Modules\AccountsPayable;
 
@@ -10,7 +10,6 @@ use PHPUnit\Framework\TestCase;
 
 final class PaymentsTest extends TestCase
 {
-
     private HttpClientInterface $httpClientMock;
     private Payments $payments;
 
@@ -139,5 +138,4 @@ final class PaymentsTest extends TestCase
 
         $this->assertSame($expectedResponse, $result);
     }
-
 }
