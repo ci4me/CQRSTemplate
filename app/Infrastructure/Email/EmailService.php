@@ -8,79 +8,123 @@ use CodeIgniter\Email\Email;
 use Psr\Log\LoggerInterface;
 
 /**
- * Email Service.
+ * Centralised email sending (D13).
  *
- * Centralized email sending with SMTP configuration and error handling.
+ * Templates live under `app/Views/emails/` and inherit from
+ * `emails/layout`. Domain code calls {@see self::sendTemplate()} with a
+ * view path and a payload array — the inline-HTML smell from earlier
+ * versions is gone.
  *
- * SECURITY: Validates email configuration before sending to prevent failures
- *
- * @package App\Infrastructure\Email
+ * SMTP configuration comes from environment variables; tests inject a
+ * fake transport via {@see self::setTransport()} so the suite doesn't
+ * try to open a real socket.
  */
 final class EmailService
 {
+    /**
+     * Closure of signature (string $to, string $subject, string $html): bool
+     *
+     * @var (callable(string, string, string): bool)|null
+     */
+    private $transport = null;
+
     public function __construct(
-        private LoggerInterface $logger
+        private readonly LoggerInterface $logger
     ) {
     }
 
     /**
-     * Send password reset email.
+     * Render an email template and send the resulting HTML.
      *
-     * @param string $toEmail Recipient email address
-     * @param string $resetToken Password reset token
-     * @param string $baseUrl Application base URL
-     * @return bool True if email sent successfully, false otherwise
+     * @param string $toEmail   Recipient address (single)
+     * @param string $subject   Subject line
+     * @param string $view      View path under app/Views/, e.g. 'emails/auth/password_reset'
+     * @param array<string, mixed> $payload View variables (must include $title for the layout)
      */
-    public function sendPasswordResetEmail(string $toEmail, string $resetToken, string $baseUrl): bool
-    {
+    public function sendTemplate(
+        string $toEmail,
+        string $subject,
+        string $view,
+        array $payload = []
+    ): bool {
         try {
-            $resetUrl = rtrim($baseUrl, '/') . '/reset-password?token=' . urlencode($resetToken);
-
-            $subject = 'Password Reset Request';
-            $message = $this->getPasswordResetEmailBody($resetUrl);
-
-            return $this->sendEmail($toEmail, $subject, $message);
+            $payload['title'] ??= $subject;
+            $html = view($view, $payload);
+            return $this->sendEmail($toEmail, $subject, $html);
         } catch (\Throwable $e) {
-            $this->logger->error('Failed to send password reset email', [
+            $this->logger->error('Failed to render or send templated email', [
                 'domain' => 'Email',
                 'to' => $toEmail,
+                'view' => $view,
                 'exception' => $e->getMessage(),
                 'exception_class' => $e::class,
             ]);
-
             return false;
         }
     }
 
     /**
-     * Send email using CodeIgniter Email library.
-     *
-     * @param string $to Recipient email address
-     * @param string $subject Email subject
-     * @param string $message Email body (HTML)
-     * @return bool True if sent successfully, false otherwise
+     * Convenience wrapper that builds the password-reset URL and renders
+     * the corresponding template. Preserved for backward compatibility
+     * with existing call sites in the auth flow.
      */
+    public function sendPasswordResetEmail(string $toEmail, string $resetToken, string $baseUrl): bool
+    {
+        $resetUrl = rtrim($baseUrl, '/') . '/reset-password?token=' . urlencode($resetToken);
+
+        return $this->sendTemplate(
+            toEmail: $toEmail,
+            subject: 'Password Reset Request',
+            view: 'emails/auth/password_reset',
+            payload: [
+                'resetUrl' => $resetUrl,
+                'expiresInMinutes' => 60,
+            ]
+        );
+    }
+
+    /**
+     * Override the underlying transport. Intended for testing — production
+     * callers leave this alone and the service falls back to CI4's Email.
+     *
+     * @param (callable(string, string, string): bool)|null $transport
+     */
+    public function setTransport(?callable $transport): void
+    {
+        $this->transport = $transport;
+    }
+
     private function sendEmail(string $to, string $subject, string $message): bool
     {
-        // Configure SMTP from environment
-        $config = [
-            'protocol' => 'smtp',
-            'SMTPHost' => getenv('EMAIL_SMTP_HOST') !== false ? getenv('EMAIL_SMTP_HOST') : 'localhost',
-            'SMTPPort' => (int) (getenv('EMAIL_SMTP_PORT') !== false ? getenv('EMAIL_SMTP_PORT') : 587),
-            'SMTPUser' => getenv('EMAIL_SMTP_USER') !== false ? getenv('EMAIL_SMTP_USER') : '',
-            'SMTPPass' => getenv('EMAIL_SMTP_PASSWORD') !== false ? getenv('EMAIL_SMTP_PASSWORD') : '',
-            'SMTPCrypto' => getenv('EMAIL_SMTP_ENCRYPTION') !== false ? getenv('EMAIL_SMTP_ENCRYPTION') : 'tls',
-            'mailType' => 'html',
-            'charset' => 'utf-8',
-            'newline' => "\r\n",
-        ];
+        if ($this->transport !== null) {
+            return $this->dispatchViaTransport($to, $subject, $message);
+        }
 
-        $email = new Email($config);
+        return $this->dispatchViaCodeIgniter($to, $subject, $message);
+    }
 
-        $fromAddressEnv = getenv('EMAIL_FROM_ADDRESS');
-        $fromAddress = $fromAddressEnv !== false ? $fromAddressEnv : 'noreply@localhost';
-        $fromNameEnv = getenv('EMAIL_FROM_NAME');
-        $fromName = $fromNameEnv !== false ? $fromNameEnv : 'Application';
+    private function dispatchViaTransport(string $to, string $subject, string $message): bool
+    {
+        $transport = $this->transport;
+        if ($transport === null) {
+            return false;
+        }
+        $result = $transport($to, $subject, $message);
+
+        $this->logger->info('Email dispatched via injected transport', [
+            'domain' => 'Email',
+            'to' => $to,
+            'subject' => $subject,
+            'ok' => $result,
+        ]);
+
+        return $result;
+    }
+
+    private function dispatchViaCodeIgniter(string $to, string $subject, string $message): bool
+    {
+        $email = new Email($this->buildConfig());
+        [$fromAddress, $fromName] = $this->resolveFrom();
 
         $email->setFrom($fromAddress, $fromName);
         $email->setTo($to);
@@ -95,84 +139,50 @@ final class EmailService
                 'to' => $to,
                 'subject' => $subject,
             ]);
-        } else {
-            $this->logger->error('Email sending failed', [
-                'domain' => 'Email',
-                'to' => $to,
-                'subject' => $subject,
-                'error' => $email->printDebugger(['headers']),
-            ]);
+            return true;
         }
 
-        return $result;
+        $this->logger->error('Email sending failed', [
+            'domain' => 'Email',
+            'to' => $to,
+            'subject' => $subject,
+            'error' => $email->printDebugger(['headers']),
+        ]);
+        return false;
     }
 
     /**
-     * Get password reset email body HTML.
-     *
-     * @param string $resetUrl Password reset URL
-     * @return string HTML email body
+     * @return array<string, mixed>
      */
-    private function getPasswordResetEmailBody(string $resetUrl): string
+    private function buildConfig(): array
     {
-        return <<<HTML
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="UTF-8">
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            line-height: 1.6;
-            color: #333;
-            max-width: 600px;
-            margin: 0 auto;
-            padding: 20px;
-        }
-        .container {
-            background-color: #f9f9f9;
-            border: 1px solid #ddd;
-            border-radius: 5px;
-            padding: 30px;
-        }
-        .button {
-            display: inline-block;
-            background-color: #007bff;
-            color: #ffffff;
-            text-decoration: none;
-            padding: 12px 24px;
-            border-radius: 4px;
-            margin: 20px 0;
-        }
-        .footer {
-            margin-top: 30px;
-            padding-top: 20px;
-            border-top: 1px solid #ddd;
-            font-size: 12px;
-            color: #666;
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <h2>Password Reset Request</h2>
-        <p>You have requested to reset your password. Click the button below to proceed:</p>
+        return [
+            'protocol' => 'smtp',
+            'SMTPHost' => $this->envOr('EMAIL_SMTP_HOST', 'localhost'),
+            'SMTPPort' => (int) $this->envOr('EMAIL_SMTP_PORT', '587'),
+            'SMTPUser' => $this->envOr('EMAIL_SMTP_USER', ''),
+            'SMTPPass' => $this->envOr('EMAIL_SMTP_PASSWORD', ''),
+            'SMTPCrypto' => $this->envOr('EMAIL_SMTP_ENCRYPTION', 'tls'),
+            'mailType' => 'html',
+            'charset' => 'utf-8',
+            'newline' => "\r\n",
+        ];
+    }
 
-        <a href="{$resetUrl}" class="button">Reset Password</a>
+    /**
+     * @return array{0: string, 1: string}
+     */
+    private function resolveFrom(): array
+    {
+        return [
+            $this->envOr('EMAIL_FROM_ADDRESS', 'noreply@localhost'),
+            $this->envOr('EMAIL_FROM_NAME', 'Application'),
+        ];
+    }
 
-        <p>Or copy and paste this link into your browser:</p>
-        <p style="word-break: break-all; color: #007bff;">{$resetUrl}</p>
-
-        <p><strong>This link will expire in 1 hour.</strong></p>
-
-        <p>If you did not request this password reset, please ignore this email and your password will remain unchanged.</p>
-
-        <div class="footer">
-            <p>This is an automated email. Please do not reply to this message.</p>
-        </div>
-    </div>
-</body>
-</html>
-HTML;
+    private function envOr(string $key, string $default): string
+    {
+        $value = getenv($key);
+        return $value === false ? $default : $value;
     }
 }
