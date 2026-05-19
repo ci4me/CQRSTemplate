@@ -507,13 +507,21 @@ Test suite now at **472 tests / 1213 assertions**. All gates green at every comm
 - **D6 [DONE]** — database-backed job queue. New `jobs` table, `JobHandlerInterface`, `JobQueue` (producer, supports delayed jobs + max_attempts + named queues), `JobWorker` (atomic claim via UPDATE, exponential backoff). `spark jobs:work` worker command with `--queue`, `--batch`, `--watch`, `--sleep`. Multiple workers can run concurrently. 7 integration tests.
 - **D10 [DONE]** — runtime settings store. New `settings` table with composite unique key on `(key_name, tenant_id)`, JSON-typed values, secret flag for the future admin UI. `SettingsService` with `get` / `set` / `forget` / `has` and a per-request cache. Tenant scoping is explicit — no automatic fallback to global, so call sites stay obvious. 9 integration tests.
 
+### Sprint 4 — fourth batch
+
+Test suite now at **525 tests / 1337 assertions**. All gates green.
+
+- **D11 [DONE]** — attachments + filesystem abstraction. New `attachments` table with polymorphic owner (attachable_type/id), `StorageInterface` + `LocalStorage` driver (path-traversal safe), `AttachmentRef` VO, `AttachmentService` (attach/read/list/soft-delete). Deterministic non-guessable storage keys grouped by owner. 16 tests.
+- **D12 [DONE]** — in-app notifications. New `notifications` table with type/title/body/data_json/url/level/read_at/correlation_id. `NotificationLevel` enum, `Notification` DTO, `NotificationService` (notify/listFor/countUnread/markRead with ownership/markAllRead). 9 integration tests.
+- **D13 [DONE]** — templated emails. New `app/Views/emails/layout.php` shell + `emails/auth/password_reset.php` template. `EmailService::sendTemplate(view, payload)` renders any view; `sendPasswordResetEmail()` preserved but now delegates. Removed the ~60-line inline-HTML heredoc. Tests inject a fake transport via `setTransport()` to capture rendered HTML without opening a socket. 3 feature tests.
+- **D17 [DONE]** — bulk CSV import/export. New `CsvReader`/`CsvWriter` (streaming, BOM-safe, column-count-strict), `BulkImportInterface` (name/requiredColumns/mapRow/process), `BulkImportRunner` (fail-fast header validation, per-row error collection, dry-run mode), `ImportSummary` DTO. 14 unit tests.
+- **D18 [DONE]** — outbound HTTP client. New `HttpResponse`/`HttpException`/`HttpTransportInterface`/`CurlHttpTransport` and the high-level `OutboundHttpClient` with: retry on 408/425/429/5xx with exponential backoff, auto Idempotency-Key for POST/PUT/PATCH/DELETE, X-Correlation-Id propagation, structured per-call logging (never the payload), `get`/`getJson`/`postJson`/`request`. 11 unit tests using a recording transport double.
+
 ### Still Open
 
 - **D7** — Full Money/Currency rollout to every monetary field (CookiePrice still operates on its own minor-units representation, parallel to `Money`).
 - **D8** — i18n surface beyond the empty `app/Language/en/`.
-- **D11–D13** — attachments/filesystem abstraction, in-app notifications, templated emails.
 - **D15** — Read-model projections separate from write tables.
-- **D17, D18** — Bulk import/export, outbound HTTP integration patterns (HttpClient with retries + idempotency keys, webhook receiver scaffold).
 - **E1–E4** — ERP layout shell, reusable view partials, permission-aware UI, auth-view layout.
 
 ## Verdict on `Cookie` as the Entity Template
