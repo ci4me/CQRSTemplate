@@ -8,23 +8,29 @@ on:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 permissions:
   contents: read
 
+env:
+  PHP_VERSION: '8.4'
+  COVERAGE_THRESHOLD: 90
+
 jobs:
+  # ---------------------------------------------------------------------------
   quality:
     name: Lint · PHPStan · PHPCS
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
 
-      - name: Setup PHP 8.4
-        uses: shivammathur/setup-php@v2
+      - name: Setup PHP ${{ env.PHP_VERSION }}
+        uses: shivammathur/setup-php@7c071dfe9dc99bdf297fa79cb49ea005b9fcadbc  # v2
         with:
-          php-version: '8.4'
+          php-version: ${{ env.PHP_VERSION }}
           coverage: none
           tools: composer:v2
           extensions: intl, mbstring, json, mysqli, pdo_mysql
@@ -33,11 +39,13 @@ jobs:
         run: composer validate --strict --no-check-publish
 
       - name: Cache Composer
-        uses: actions/cache@v4
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830  # v4
         with:
-          path: ~/.cache/composer
-          key: composer-${{ runner.os }}-${{ hashFiles('composer.lock') }}
-          restore-keys: composer-${{ runner.os }}-
+          path: |
+            ~/.cache/composer
+            vendor
+          key: composer-${{ runner.os }}-php${{ env.PHP_VERSION }}-${{ hashFiles('composer.lock') }}
+          restore-keys: composer-${{ runner.os }}-php${{ env.PHP_VERSION }}-
 
       - name: Install dependencies
         run: composer install --no-interaction --no-progress --prefer-dist
@@ -47,12 +55,27 @@ jobs:
           find app tests -name '*.php' -print0 \
             | xargs -0 -n1 -P4 php -l > /dev/null
 
+      - name: Cache PHPCS
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830  # v4
+        with:
+          path: .phpcs.cache
+          key: phpcs-${{ runner.os }}-${{ hashFiles('phpcs.xml', 'app/**/*.php') }}
+          restore-keys: phpcs-${{ runner.os }}-
+
       - name: PHPCS (PSR-12 + Slevomat)
-        run: vendor/bin/phpcs --no-cache --colors -q
+        run: vendor/bin/phpcs --colors -q
+
+      - name: Cache PHPStan result
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830  # v4
+        with:
+          path: build/phpstan
+          key: phpstan-${{ runner.os }}-${{ hashFiles('phpstan.neon', 'app/**/*.php') }}
+          restore-keys: phpstan-${{ runner.os }}-
 
       - name: PHPStan Level 8
         run: vendor/bin/phpstan analyse --no-progress --memory-limit=1G
 
+  # ---------------------------------------------------------------------------
   tests:
     name: PHPUnit (PHP ${{ matrix.php }})
     runs-on: ubuntu-latest
@@ -72,10 +95,11 @@ jobs:
           --health-cmd="mysqladmin ping -uroot -proot"
           --health-interval=5s --health-timeout=5s --health-retries=10
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
 
       - name: Setup PHP ${{ matrix.php }}
-        uses: shivammathur/setup-php@v2
+        uses: shivammathur/setup-php@7c071dfe9dc99bdf297fa79cb49ea005b9fcadbc  # v2
         with:
           php-version: ${{ matrix.php }}
           coverage: pcov
@@ -83,11 +107,13 @@ jobs:
           extensions: intl, mbstring, json, mysqli, pdo_mysql, pcov
 
       - name: Cache Composer
-        uses: actions/cache@v4
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830  # v4
         with:
-          path: ~/.cache/composer
-          key: composer-${{ runner.os }}-${{ hashFiles('composer.lock') }}
-          restore-keys: composer-${{ runner.os }}-
+          path: |
+            ~/.cache/composer
+            vendor
+          key: composer-${{ runner.os }}-php${{ matrix.php }}-${{ hashFiles('composer.lock') }}
+          restore-keys: composer-${{ runner.os }}-php${{ matrix.php }}-
 
       - name: Install dependencies
         run: composer install --no-interaction --no-progress --prefer-dist
@@ -95,11 +121,13 @@ jobs:
       - name: Configure environment
         run: |
           cp env .env || true
-          echo "database.default.hostname = 127.0.0.1" >> .env
-          echo "database.default.database = ci_test"   >> .env
-          echo "database.default.username = root"      >> .env
-          echo "database.default.password = root"      >> .env
-          echo "database.default.DBDriver = MySQLi"    >> .env
+          {
+            echo "database.default.hostname = 127.0.0.1"
+            echo "database.default.database = ci_test"
+            echo "database.default.username = root"
+            echo "database.default.password = root"
+            echo "database.default.DBDriver = MySQLi"
+          } >> .env
 
       - name: Run migrations
         run: php spark migrate --all || true
@@ -107,10 +135,51 @@ jobs:
       - name: PHPUnit with coverage
         run: vendor/bin/phpunit --coverage-text --coverage-clover=coverage.xml
 
-      - name: Upload coverage
+      - name: Coverage gate (>= ${{ env.COVERAGE_THRESHOLD }}%)
+        run: |
+          if [ ! -f coverage.xml ]; then
+            echo "::error::coverage.xml missing — was PHPUnit configured with PCOV?"
+            exit 1
+          fi
+          # Parse Clover: elements covered / total statements.
+          covered=$(grep -oP '(?<=coveredstatements=")\d+' coverage.xml | head -1)
+          total=$(grep -oP '(?<= statements=")\d+' coverage.xml | head -1)
+          if [ -z "$covered" ] || [ -z "$total" ] || [ "$total" -eq 0 ]; then
+            echo "::warning::Could not parse coverage figures — skipping gate."
+            exit 0
+          fi
+          pct=$(awk "BEGIN{printf \"%.2f\", ($covered/$total)*100}")
+          echo "Coverage: $pct% ($covered / $total statements)"
+          awk -v p="$pct" -v t="${{ env.COVERAGE_THRESHOLD }}" 'BEGIN{exit (p+0 < t+0) ? 1 : 0}' || {
+            echo "::error::Coverage $pct% < threshold ${{ env.COVERAGE_THRESHOLD }}%."
+            exit 1
+          }
+
+      - name: Upload coverage artifact
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4
         with:
-          name: coverage-report
+          name: coverage-php${{ matrix.php }}
           path: coverage.xml
           if-no-files-found: ignore
+          retention-days: 14
+
+  # ---------------------------------------------------------------------------
+  secrets:
+    name: Gitleaks (secret scan)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - name: Checkout (full history)
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
+        with:
+          fetch-depth: 0
+
+      - name: Gitleaks scan
+        uses: gitleaks/gitleaks-action@ff98106e4c7b2bc287b24eaf42907196329070c7  # v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_CONFIG: .gitleaks.toml

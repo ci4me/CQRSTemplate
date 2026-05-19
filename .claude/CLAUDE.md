@@ -159,6 +159,98 @@ Serena optimization works WITH existing specialists:
 
 ---
 
+## 🔒 Git Conventions (MANDATORY)
+
+**This project enforces git policy at THREE layers. All three must pass.**
+
+| Layer                            | Where                          | Skippable?              |
+|----------------------------------|--------------------------------|-------------------------|
+| Local git hooks                  | `.githooks/`                   | `--no-verify` (blocked) |
+| Claude Code PreToolUse hook      | `.claude/hooks/git-guard.sh`   | env-var `GIT_GUARD_DISABLE=1` |
+| GitHub status checks + ruleset   | `.github/workflows/` + ruleset | server-side, no bypass  |
+
+### Hard rules — all agents
+
+1. **Use the `git-specialist` agent for any git operation.** It enforces the
+   rules in this section. Other specialists must delegate to it.
+2. **Conventional Commits 1.0** — required. Format: `type(scope)[!]: subject`.
+   Allowed types: `feat | fix | docs | style | refactor | perf | test | build | ci | chore | revert`.
+   Allowed scopes are listed in `.commitlintrc.json` (`scope-enum`).
+3. **Never use `--no-verify`.** Fix the hook complaint instead.
+4. **Never `git push --force`.** Use `git push --force-with-lease --force-if-includes`
+   (alias: `git fpush`).
+5. **Never commit directly to `main`** unless the user says the exact phrase
+   "commit directly to main". Default flow: branch → commit → PR.
+6. **Branch names**: `<type>/<scope>-<short-description>`, kebab-case. Include the
+   issue number when one exists: `fix/order-123-negative-qty`. The
+   `prepare-commit-msg` hook auto-prefixes subjects from this.
+7. **Signed commits**: commits are SSH-signed via `~/.ssh/git_signing_ed25519`.
+   Do not disable signing.
+8. **AI-assisted commits** must include a `Co-Authored-By:` trailer.
+
+### What the layers block
+
+The local hooks + `git-guard.sh` reject (with helpful hints):
+
+- `git commit --no-verify ...`
+- `git push --no-verify ...`
+- `git push --force` / `git push -f`
+- `git reset --hard origin/<branch>` (silent work loss)
+- `git config --global / --system` (must stay local)
+- Commits on `main` / `master`
+- Commit messages that don't match Conventional Commits
+- Staged files matching `.env*`, `secrets/`, `*.pem`, `*.p12`, `*.key`
+- Real secrets found by `gitleaks` content scan
+
+### Server-side enforcement
+
+On every push and PR to `main`:
+
+- `ci.yml` — PHPStan L8, PHPCS, PHPUnit (≥90% coverage), gitleaks
+- `commitlint.yml` — re-validates every commit message in the PR
+- `dependency-review.yml` — blocks high-severity CVEs + non-allowed licenses
+- `codeql.yml` — SAST on Actions and JS/TS
+- `scorecard.yml` — weekly OpenSSF supply-chain score
+- Repository **ruleset on `main`** requires:
+  - PR (no direct pushes)
+  - All status checks passing
+  - Linear history, no force-pushes, no deletions, signed commits
+
+### Aliases worth knowing
+
+```bash
+git lg          # pretty graph log
+git recent      # branches sorted by last activity
+git sync        # pull --rebase --autostash && push
+git cleanup     # delete branches already merged into main
+git fpush       # push --force-with-lease --force-if-includes
+git aliases     # list every alias defined in this repo
+git staged      # show staged diff
+git wipe        # save a WIP commit then drop it (safe scratch reset)
+```
+
+### Verify your setup
+
+```bash
+git config --local --get core.hooksPath        # → .githooks
+git config --local --get commit.gpgsign        # → true
+git config --local --get user.signingkey       # → ~/.ssh/git_signing_ed25519.pub
+git log --show-signature -1                    # last commit signed?
+```
+
+If any of those don't match, run `bin/setup-hooks` (or `composer install`,
+which runs it automatically via post-install).
+
+### See also
+
+- **`.claude/agents/git-specialist.md`** — full playbook
+- **`.github/CONTRIBUTING.md`** — developer flow
+- **`.githooks/`** — local hook scripts
+- **`.claude/hooks/git-guard.sh`** — agent-level enforcement
+- **`.gitmessage`** — commit template
+
+---
+
 ## Mandatory Agent Usage (Orchestrator Pattern)
 
 ### Pre-Execution Rules
@@ -1026,6 +1118,7 @@ For detailed protocols and guidelines, see:
 - Testing Guidelines: `.claude/documentation/TESTING_GUIDELINES.md`
 - Architecture Decisions: `.claude/documentation/ARCHITECTURE_DECISIONS.md`
 - Complete File List: `.claude/documentation/COMPLETE_FILE_INVENTORY.md`
+- **Git Workflow**: `.claude/documentation/GIT_WORKFLOW.md` (hooks, signing, ruleset, releases)
 
 ---
 

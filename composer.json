@@ -49,15 +49,34 @@
         }
     },
     "scripts": {
+        "post-install-cmd": [
+            "@setup-hooks"
+        ],
+        "post-update-cmd": [
+            "@setup-hooks"
+        ],
+        "setup-hooks": "@php -r \"if (PHP_OS_FAMILY === 'Windows') { passthru('bash bin/setup-hooks'); } else { passthru('./bin/setup-hooks'); }\"",
         "test": "phpunit",
         "test:coverage": "phpunit --coverage-html coverage",
+        "test:clover": "phpunit --coverage-clover=coverage.xml",
         "phpstan": "phpstan analyse",
         "phpcs": "phpcs",
         "phpcbf": "phpcbf",
+        "gitleaks": "@php -r \"passthru('command -v gitleaks >/dev/null 2>&1 && gitleaks detect --no-banner --redact --staged || echo gitleaks-not-installed-skipping');\"",
         "check": [
             "@phpstan",
             "@phpcs",
             "@test"
+        ],
+        "ci": [
+            "@phpstan",
+            "@phpcs",
+            "@test:clover"
         ]
+    },
+    "scripts-descriptions": {
+        "setup-hooks": "Wire .githooks/ as core.hooksPath (idempotent; runs automatically on install/update).",
+        "check": "Run PHPStan + PHPCS + PHPUnit locally before pushing.",
+        "ci": "CI variant of check (with Clover coverage output)."
     }
 }
