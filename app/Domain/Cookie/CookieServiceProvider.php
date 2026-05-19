@@ -16,6 +16,8 @@ use App\Domain\Cookie\Events\CookieCreated\CookieCreatedEvent;
 use App\Domain\Cookie\Events\CookieCreated\CookieCreatedEventHandler;
 use App\Domain\Cookie\Events\CookieDeleted\CookieDeletedEvent;
 use App\Domain\Cookie\Events\CookieDeleted\CookieDeletedEventHandler;
+use App\Domain\Cookie\Events\CookieStockChanged\CookieStockChangedEvent;
+use App\Domain\Cookie\Events\CookieStockChanged\CookieStockChangedEventHandler;
 use App\Domain\Cookie\Events\CookieUpdated\CookieUpdatedEvent;
 use App\Domain\Cookie\Events\CookieUpdated\CookieUpdatedEventHandler;
 use App\Domain\Cookie\Ports\CookieRepositoryInterface;
@@ -183,6 +185,13 @@ final class CookieServiceProvider implements DomainServiceProviderInterface
         $dispatcher->subscribe(
             CookieDeletedEvent::class,
             new CookieDeletedEventHandler($logger)
+        );
+
+        // Register CookieStockChanged event handler (C4 — raised by the
+        // entity through the AggregateRoot event bag).
+        $dispatcher->subscribe(
+            CookieStockChangedEvent::class,
+            new CookieStockChangedEventHandler($logger)
         );
     }
 

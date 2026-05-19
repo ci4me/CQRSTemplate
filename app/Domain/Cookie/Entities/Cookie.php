@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace App\Domain\Cookie\Entities;
 
 use App\Domain\Cookie\ErrorCodes;
+use App\Domain\Cookie\Events\CookieStockChanged\CookieStockChangedEvent;
 use App\Domain\Cookie\ValueObjects\CookieName;
 use App\Domain\Cookie\ValueObjects\CookiePrice;
+use App\Domain\Shared\AggregateRoot;
 use App\Domain\Shared\Exceptions\DomainException;
 use App\Domain\Shared\Exceptions\ValidationException;
 
@@ -49,6 +51,8 @@ use App\Domain\Shared\Exceptions\ValidationException;
  */
 final class Cookie
 {
+    use AggregateRoot;
+
     private ?int $id = null;
     private CookieName $name;
     private ?string $description;
@@ -226,7 +230,15 @@ final class Cookie
             );
         }
 
+        $previous = $this->stock;
         $this->stock = $newStock;
+
+        $this->raiseEvent(new CookieStockChangedEvent(
+            cookieId: $this->id,
+            previousStock: $previous,
+            newStock: $newStock,
+            reason: 'decreaseStock'
+        ));
     }
 
     /**
@@ -241,7 +253,15 @@ final class Cookie
             throw ValidationException::tooSmall('quantity', 1, $quantity);
         }
 
+        $previous = $this->stock;
         $this->stock += $quantity;
+
+        $this->raiseEvent(new CookieStockChangedEvent(
+            cookieId: $this->id,
+            previousStock: $previous,
+            newStock: $this->stock,
+            reason: 'increaseStock'
+        ));
     }
 
     /**

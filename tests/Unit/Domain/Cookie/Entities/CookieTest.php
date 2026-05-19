@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Unit\Domain\Cookie\Entities;
 
 use App\Domain\Cookie\Entities\Cookie;
+use App\Domain\Cookie\Events\CookieStockChanged\CookieStockChangedEvent;
 use App\Domain\Cookie\ValueObjects\CookieName;
 use App\Domain\Cookie\ValueObjects\CookiePrice;
 use App\Domain\Shared\Exceptions\DomainException;
@@ -245,6 +246,50 @@ final class CookieTest extends UnitTestCase
         $cookie->decreaseStock(10);
 
         $this->assertEquals(0, $cookie->getStock());
+    }
+
+    public function test_decrease_stock_raises_event_on_aggregate(): void
+    {
+        $cookie = Cookie::create(
+            name: CookieName::fromString('Stock Event A'),
+            description: null,
+            price: CookiePrice::fromString('1.00'),
+            stock: 10,
+            isActive: true
+        );
+
+        $this->assertFalse($cookie->hasPendingEvents(), 'fresh aggregate has no events');
+
+        $cookie->decreaseStock(3);
+
+        $events = $cookie->pullEvents();
+        $this->assertCount(1, $events);
+        $this->assertInstanceOf(CookieStockChangedEvent::class, $events[0]);
+        $this->assertEquals(10, $events[0]->previousStock);
+        $this->assertEquals(7, $events[0]->newStock);
+        $this->assertEquals('decreaseStock', $events[0]->reason);
+
+        $this->assertFalse($cookie->hasPendingEvents(), 'pull drains the buffer');
+    }
+
+    public function test_increase_stock_raises_event_on_aggregate(): void
+    {
+        $cookie = Cookie::create(
+            name: CookieName::fromString('Stock Event B'),
+            description: null,
+            price: CookiePrice::fromString('1.00'),
+            stock: 5,
+            isActive: true
+        );
+
+        $cookie->increaseStock(8);
+
+        $events = $cookie->pullEvents();
+        $this->assertCount(1, $events);
+        $this->assertInstanceOf(CookieStockChangedEvent::class, $events[0]);
+        $this->assertEquals(5, $events[0]->previousStock);
+        $this->assertEquals(13, $events[0]->newStock);
+        $this->assertEquals('increaseStock', $events[0]->reason);
     }
 
     public function test_has_stock_returns_true_when_available(): void

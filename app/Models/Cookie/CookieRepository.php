@@ -10,6 +10,7 @@ use App\Domain\Cookie\Ports\CookieRepositoryInterface;
 use App\Domain\Cookie\ValueObjects\CookieName;
 use App\Domain\Cookie\ValueObjects\CookiePrice;
 use App\Domain\Shared\Exceptions\DomainException;
+use App\Infrastructure\Bus\EventDispatcher;
 use App\Models\Cookie\Traits\BusinessMetricsLogging;
 use App\Models\Cookie\Traits\RepositoryLogging;
 use CodeIgniter\Database\Exceptions\DatabaseException;
@@ -58,17 +59,21 @@ class CookieRepository implements CookieRepositoryInterface
      */
     private Logging $loggingConfig;
 
+    private ?EventDispatcher $eventDispatcher;
+
     /**
      * Create a new CookieRepository.
      */
     public function __construct(
         LoggerInterface $logger,
         Logging $loggingConfig,
-        ?CookieModel $model = null
+        ?CookieModel $model = null,
+        ?EventDispatcher $eventDispatcher = null
     ) {
         $this->model = $model ?? new CookieModel();
         $this->logger = $logger;
         $this->loggingConfig = $loggingConfig;
+        $this->eventDispatcher = $eventDispatcher;
     }
 
     /**
@@ -83,6 +88,13 @@ class CookieRepository implements CookieRepositoryInterface
             $oldPrice = $this->getOldPrice($cookie);
             $cookieId = $this->performSave($cookie);
             $this->logBusinessMetrics($cookie, $cookieId, $oldPrice);
+
+            // C4: drain any events the aggregate accumulated during the
+            // operation. Dispatching is the COMMAND HANDLER's responsibility
+            // (clean separation: repository persists, handler orchestrates).
+            // We still drain here to keep the buffer bounded if a caller
+            // forgets — see CommandHandlers for the dispatch loop.
+            $this->dispatchPendingEvents($cookie);
 
             return $cookieId;
         } catch (DatabaseException $e) {
@@ -113,6 +125,20 @@ class CookieRepository implements CookieRepositoryInterface
         return str_contains($message, 'duplicate')
             || str_contains($message, 'unique constraint')
             || str_contains($message, '1062');
+    }
+
+    private function dispatchPendingEvents(Cookie $cookie): void
+    {
+        if ($this->eventDispatcher === null) {
+            // The repository was instantiated without a dispatcher (e.g.
+            // in tests). Drain anyway so the buffer doesn't grow unbounded.
+            $cookie->pullEvents();
+            return;
+        }
+
+        foreach ($cookie->pullEvents() as $event) {
+            $this->eventDispatcher->dispatch($event);
+        }
     }
 
     /**
