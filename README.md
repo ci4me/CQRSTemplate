@@ -1,6 +1,14 @@
 # CodeIgniter 4 CQRS Template
 
-A production-ready CodeIgniter 4 project template implementing **CQRS** (Command Query Responsibility Segregation) with **Domain-Driven Design** principles.
+[![CI](https://github.com/ci4me/CQRSTemplate/actions/workflows/ci.yml/badge.svg)](https://github.com/ci4me/CQRSTemplate/actions/workflows/ci.yml)
+[![CodeQL](https://github.com/ci4me/CQRSTemplate/actions/workflows/codeql.yml/badge.svg)](https://github.com/ci4me/CQRSTemplate/actions/workflows/codeql.yml)
+[![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/ci4me/CQRSTemplate/badge)](https://securityscorecards.dev/viewer/?uri=github.com/ci4me/CQRSTemplate)
+[![Conventional Commits](https://img.shields.io/badge/Conventional%20Commits-1.0.0-yellow.svg)](https://conventionalcommits.org)
+[![PHPStan Level 8](https://img.shields.io/badge/PHPStan-Level%208-brightgreen.svg)](phpstan.neon)
+[![PHP](https://img.shields.io/badge/PHP-8.4-777BB4?logo=php&logoColor=white)](composer.json)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
+A production-ready CodeIgniter 4 project template implementing **CQRS** (Command Query Responsibility Segregation) with **Domain-Driven Design** principles, **AI-agent-enforced quality gates**, and **hardened git tooling** (signed commits, server-side ruleset, supply-chain scanning).
 
 ## Features
 
@@ -8,18 +16,20 @@ A production-ready CodeIgniter 4 project template implementing **CQRS** (Command
 ✅ **Domain-Driven Design** - Business logic in domain layer
 ✅ **Type-Safe** - PHPStan Level 8 compliant
 ✅ **Clean Code** - PSR-12 + Slevomat coding standards
-✅ **90%+ Test Coverage** - Comprehensive test suite
+✅ **90%+ Test Coverage** - Comprehensive test suite, gated in CI
 ✅ **AI-Optimized** - Extensive documentation for AI agents
 ✅ **Value Objects** - Strong validation and type safety
 ✅ **Event-Driven** - Domain events for side effects
-✅ **Automated Quality Enforcement** - 9 specialized AI agents
+✅ **Automated Quality Enforcement** - 10 specialized AI agents
 ✅ **Auto-Discovery** - Zero-configuration domain registration
+✅ **Hardened Git Workflow** - Conventional Commits + signed commits + 3-layer enforcement
+✅ **Supply-Chain Security** - Gitleaks · CodeQL · OpenSSF Scorecard · Dependabot · Dependency Review
 
 ## AI Agent System
 
 This template includes a comprehensive AI agent system for **autonomous code quality enforcement**:
 
-### 9 Specialized Agents
+### 10 Specialized Agents
 - **php-specialist** - PHP 8.4 features, type safety, modern patterns
 - **phpstan-specialist** - Level 8 static analysis enforcement
 - **clean-code-specialist** - SOLID, DRY, max 20 lines/method
@@ -28,6 +38,7 @@ This template includes a comprehensive AI agent system for **autonomous code qua
 - **test-specialist** - Test pyramid, 90% coverage enforcement
 - **slevomat-specialist** - Coding standards enforcement
 - **codeigniter4-specialist** - CI4 best practices
+- **git-specialist** - Conventional Commits + signed commits + branch hygiene
 - **claude-code-specialist** - Creates new agents/skills/commands
 
 ### Quick Commands

@@ -1,0 +1,46 @@
+#!/usr/bin/env bash
+# Wire .githooks/ as the repo's hooksPath so every clone gets identical hooks
+# without each developer running `git config` manually.
+#
+# Runs idempotently from `composer install` / `composer update` (post-* hooks)
+# and can be invoked directly: `bin/setup-hooks`.
+set -euo pipefail
+
+GRN=$'\033[32m'; YLW=$'\033[33m'; DIM=$'\033[2m'; RST=$'\033[0m'
+
+# Skip silently outside a git working tree (CI, archives, etc.).
+if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+    echo "${DIM}setup-hooks: not a git repo — skipping.${RST}"
+    exit 0
+fi
+
+# Wire hooksPath only if it isn't already pointing at .githooks.
+current=$(git config --local --default '' core.hooksPath)
+if [ "$current" != ".githooks" ]; then
+    git config --local core.hooksPath .githooks
+    echo "${GRN}✓ git core.hooksPath set to .githooks${RST}"
+else
+    echo "${DIM}setup-hooks: core.hooksPath already wired.${RST}"
+fi
+
+# Ensure executable bit is set on every hook (matters on Windows + after archive extract).
+if [ -d .githooks ]; then
+    chmod +x .githooks/* 2>/dev/null || true
+fi
+
+# Wire commit template if not already set.
+if [ -f .gitmessage ] && [ -z "$(git config --local --default '' commit.template)" ]; then
+    git config --local commit.template .gitmessage
+    echo "${GRN}✓ git commit.template set to .gitmessage${RST}"
+fi
+
+# Soft-check for tooling and nudge if missing.
+missing=()
+command -v gitleaks >/dev/null 2>&1 || missing+=("gitleaks (brew install gitleaks · apt install gitleaks)")
+[ ! -x vendor/bin/phpstan ] && missing+=("vendor/bin/phpstan (run: composer install)")
+[ ! -x vendor/bin/phpcs ]   && missing+=("vendor/bin/phpcs   (run: composer install)")
+
+if [ ${#missing[@]} -gt 0 ]; then
+    echo "${YLW}setup-hooks: optional tools missing — hooks will skip them:${RST}"
+    for m in "${missing[@]}"; do echo "  - $m"; done
+fi

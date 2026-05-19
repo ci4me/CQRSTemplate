@@ -9,7 +9,7 @@ protected_re='^(main|master|develop|release/.*)$'
 remote="${1:-origin}"
 
 # stdin format from git: <local_ref> <local_sha> <remote_ref> <remote_sha>
-while read -r local_ref local_sha remote_ref _; do
+while read -r local_ref local_sha remote_ref remote_sha; do
     [ "$local_sha" = "0000000000000000000000000000000000000000" ] && continue
 
     remote_branch="${remote_ref#refs/heads/}"

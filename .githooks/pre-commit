@@ -5,11 +5,27 @@ set -euo pipefail
 
 RED=$'\033[31m'; GRN=$'\033[32m'; YLW=$'\033[33m'; DIM=$'\033[2m'; RST=$'\033[0m'
 
-# 1. Block obvious secrets / disallowed paths in the staged set.
-if git diff --cached --name-only | grep -E '^\.env$|^\.env\.[a-z]+$|secrets/|\.pem$|\.p12$' >/dev/null; then
-    echo "${RED}✗ Refusing to commit secret-looking files (.env, secrets/, *.pem, *.p12).${RST}"
+# 1a. Block obvious secret-shaped *filenames* before content-scanning.
+#    .env (no suffix) and .env.<word> (no further dot) — keeps .env.example, .env.dist allowed
+#    because those are CONVENTIONALLY public templates.
+if git diff --cached --name-only --diff-filter=ACM \
+    | grep -E '(^|/)(\.env|\.env\.(local|production|prod|dev|development|staging|test))$|(^|/)secrets/|\.pem$|\.p12$|\.key$' >/dev/null; then
+    echo "${RED}✗ Refusing to commit secret-looking files (.env*, secrets/, *.pem, *.p12, *.key).${RST}"
     echo "  Unstage them: git restore --staged <file>"
     exit 1
+fi
+
+# 1b. Content-level secret scan with gitleaks (real entropy + provider regexes).
+#    Skips silently if gitleaks isn't installed locally — CI catches it either way.
+if command -v gitleaks >/dev/null 2>&1; then
+    if ! gitleaks protect --staged --redact --no-banner --config .gitleaks.toml; then
+        echo "${RED}✗ gitleaks detected secrets in staged changes.${RST}"
+        echo "  Review the report above. If a finding is a false positive,"
+        echo "  add it to .gitleaks.toml allowlist (don't suppress per-line)."
+        exit 1
+    fi
+else
+    echo "${DIM}gitleaks not installed — skipping content-level secret scan (CI will still run it).${RST}"
 fi
 
 # 2. Detect committing-to-main (warn, don't block — main may be intentional on this repo).

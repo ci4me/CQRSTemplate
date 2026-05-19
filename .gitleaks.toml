@@ -1,0 +1,31 @@
+# Gitleaks config — extends the upstream default ruleset, then narrows it
+# for this project to cut false positives on test fixtures and templates.
+#
+# Run locally: `gitleaks detect --staged` (also fires automatically in pre-commit
+# if gitleaks is installed). CI runs `gitleaks/gitleaks-action`.
+title = "CQRSTemplate gitleaks config"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Project-wide allowlist (paths + obvious test patterns)"
+
+paths = [
+    '''(^|/)vendor/''',
+    '''(^|/)\.git/''',
+    '''(^|/)writable/''',
+    '''(^|/)build/''',
+    '''(^|/)coverage/''',
+    '''(^|/)\.claude/skills/strategic-planner/venv/''',
+    '''\.lock$''',
+    # Generated dist-info RECORD/METADATA inside Python venvs.
+    '''dist-info/RECORD$''',
+]
+
+regexes = [
+    # Common test/example placeholders — never real credentials.
+    '''(?i)example[_-]?(api|key|secret|token)''',
+    '''(?i)(your|my|test|fake|dummy|sample)[_-]?(key|secret|token|password)''',
+    '''(?i)changeme|placeholder|xxxxxxxx''',
+]
