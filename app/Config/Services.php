@@ -24,6 +24,7 @@ use App\Infrastructure\Bus\Middleware\AuditMiddleware;
 use App\Infrastructure\Bus\Middleware\LoggingMiddleware;
 use App\Infrastructure\Bus\Middleware\TransactionMiddleware;
 use App\Infrastructure\Bus\QueryBus;
+use App\Infrastructure\Outbox\EventOutboxWriter;
 use App\Infrastructure\Projections\ProjectionRegistry;
 use App\Infrastructure\Email\EmailService;
 use App\Infrastructure\I18n\LocaleResolver;
@@ -260,7 +261,10 @@ class Services extends BaseService
 
         return new CookieRepository(
             self::logger(),
-            config('Logging')
+            config('Logging'),
+            null,
+            null,
+            new EventOutboxWriter()
         );
     }
 

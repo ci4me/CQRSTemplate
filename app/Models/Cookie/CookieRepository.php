@@ -11,6 +11,7 @@ use App\Domain\Cookie\ValueObjects\CookieName;
 use App\Domain\Cookie\ValueObjects\CookiePrice;
 use App\Domain\Shared\Exceptions\DomainException;
 use App\Infrastructure\Bus\EventDispatcher;
+use App\Infrastructure\Outbox\EventOutboxWriter;
 use App\Models\Cookie\Traits\BusinessMetricsLogging;
 use App\Models\Cookie\Traits\RepositoryLogging;
 use CodeIgniter\Database\Exceptions\DatabaseException;
@@ -60,20 +61,29 @@ class CookieRepository implements CookieRepositoryInterface
     private Logging $loggingConfig;
 
     private ?EventDispatcher $eventDispatcher;
+    private ?EventOutboxWriter $outboxWriter;
 
     /**
      * Create a new CookieRepository.
+     *
+     * The optional EventOutboxWriter records every drained event in the
+     * `event_outbox` table inside the same DB transaction as the entity
+     * write (TransactionMiddleware wraps the whole command pipeline).
+     * That gives us a durable audit trail and a retry surface — the
+     * relay picks rows up out-of-band when synchronous dispatch failed.
      */
     public function __construct(
         LoggerInterface $logger,
         Logging $loggingConfig,
         ?CookieModel $model = null,
-        ?EventDispatcher $eventDispatcher = null
+        ?EventDispatcher $eventDispatcher = null,
+        ?EventOutboxWriter $outboxWriter = null
     ) {
         $this->model = $model ?? new CookieModel();
         $this->logger = $logger;
         $this->loggingConfig = $loggingConfig;
         $this->eventDispatcher = $eventDispatcher;
+        $this->outboxWriter = $outboxWriter;
     }
 
     /**
@@ -129,14 +139,29 @@ class CookieRepository implements CookieRepositoryInterface
 
     private function dispatchPendingEvents(Cookie $cookie): void
     {
-        if ($this->eventDispatcher === null) {
-            // The repository was instantiated without a dispatcher (e.g.
-            // in tests). Drain anyway so the buffer doesn't grow unbounded.
-            $cookie->pullEvents();
+        $events = $cookie->pullEvents();
+        if ($events === []) {
             return;
         }
 
-        foreach ($cookie->pullEvents() as $event) {
+        // Outbox FIRST so the event row commits with the entity write
+        // even if synchronous dispatch fails. The relay drains pending
+        // rows out-of-band and retries until a listener succeeds.
+        if ($this->outboxWriter !== null) {
+            $cookieId = $cookie->getId();
+            foreach ($events as $event) {
+                $this->outboxWriter->append($event, Cookie::class, $cookieId);
+            }
+        }
+
+        if ($this->eventDispatcher === null) {
+            // No dispatcher injected (typically in repository-only tests).
+            // The outbox writer above is enough — the relay will deliver
+            // the row when next drained. Drop on the floor here is safe.
+            return;
+        }
+
+        foreach ($events as $event) {
             $this->eventDispatcher->dispatch($event);
         }
     }

@@ -30,6 +30,20 @@ use App\Domain\Shared\Exceptions\ValidationException;
  * point for all operations on the cookie aggregate. All changes
  * to a cookie go through this entity's methods.
  *
+ * Event-emission convention:
+ * - The entity raises CookieStockChangedEvent / CookieUpdatedEvent /
+ *   CookieDeletedEvent / CookieRestoredEvent through the AggregateRoot
+ *   trait; the {@see \App\Models\Cookie\CookieRepository} drains them
+ *   after a successful save.
+ * - CookieCreatedEvent is dispatched by the create handler (NOT the
+ *   entity) because the event payload includes the freshly-allocated
+ *   primary key, which only exists after `$repository->save()` returns.
+ *   Moving it into the entity would require either an in-memory id
+ *   placeholder (fragile) or post-save mutation (clashes with the
+ *   immutability story). Keeping it in the handler is the simpler
+ *   trade-off and is explicitly documented here so it doesn't read as
+ *   an oversight.
+ *
  * Why Domain Entity vs Data Model:
  * - Contains business logic and invariants
  * - Uses Value Objects for validation
