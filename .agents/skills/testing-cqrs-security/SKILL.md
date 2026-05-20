@@ -1,6 +1,6 @@
 ---
 name: testing-cqrs-security
-description: Test CQRSTemplate security features end-to-end. Use when verifying session auth, CSRF, CSP, DTO rendering, role-based access, or logout behavior.
+description: Test CQRSTemplate security features end-to-end. Use when verifying session auth, CSRF, CSP, DTO rendering, role-based access, registration, or logout behavior.
 ---
 
 # Testing CQRSTemplate Security Features
@@ -12,6 +12,20 @@ description: Test CQRSTemplate security features end-to-end. Use when verifying 
 sudo systemctl start mysql
 # Database: ci4_cqrs, User: ci4user/ci4pass (created during initial setup)
 ```
+
+### Database Seeding
+Seed the database with test accounts and sample data:
+```bash
+cd /home/ubuntu/repos/CQRSTemplate
+php spark migrate
+php spark db:seed DatabaseSeeder
+```
+This creates:
+- `admin@example.com` / `password123` (admin role)
+- `customer@example.com` / `password123` (customer role)
+- Sample cookie records
+
+**Note**: Seeded accounts bypass password complexity validation since the seeder hashes passwords directly with Argon2id.
 
 ### JWT Secret Key
 The `JwtService` validates that `JWT_SECRET_KEY` is not weak. Use a strong hex key (48+ bytes):
@@ -32,11 +46,21 @@ php spark serve --port 8080
 ```
 
 ### User Registration
-**Known issue**: The register form (`/auth/register`) is missing a `name` field, but `RegisterUserCommand` requires one. Register users via curl instead:
+The register form at `/auth/register` has three fields: Full Name, Email, Password.
+
+**Password complexity requirements** (enforced by PasswordComplexity value object):
+- Minimum 12 characters
+- At least one uppercase letter
+- At least one digit
+- At least one special character
+
+Example valid password: `TestPass123!@`
+
+Alternatively, register users via curl:
 ```bash
 CSRF=$(curl -s -c /tmp/reg.txt http://localhost:8080/auth/register | grep -oP 'name="csrf_test_name" value="\K[^"]+') 
 curl -s -c /tmp/reg.txt -b /tmp/reg.txt -X POST http://localhost:8080/auth/register \
-  -d "name=Test+User&email=testuser@example.com&password=SecurePass123!&role=customer&csrf_test_name=${CSRF}"
+  -d "name=Test+User&email=testuser@example.com&password=TestPass123!@&csrf_test_name=${CSRF}"
 ```
 
 ## Key Test Flows
@@ -51,8 +75,9 @@ curl -s -c /tmp/reg.txt -b /tmp/reg.txt -X POST http://localhost:8080/auth/regis
 - Layout pages should have SRI `integrity` attributes on Bootstrap CDN links
 
 ### 3. Login and Session Regeneration (C-2)
-- Login with valid credentials
+- Login with valid credentials (use seeded accounts or register a new user)
 - **Expected**: Redirect to `/dashboard`, Bootstrap-styled layout renders correctly
+- Navbar should show: ERP Template, Dashboard, Cookies, Users links + Logout button on the right
 
 ### 4. Cookie CRUD with DTO Rendering (H-5)
 - Create a cookie via `/cookies/create`
@@ -62,11 +87,11 @@ curl -s -c /tmp/reg.txt -b /tmp/reg.txt -X POST http://localhost:8080/auth/regis
 ### 5. Role-Based Access (SessionRoleMiddleware)
 - Login as customer, navigate to `/admin/users`
 - **Expected**: Redirect to `/dashboard` with "You do not have permission to access this resource."
+- **Note**: The navbar shows "Users" link to all users, but the route is protected. Consider hiding it for non-admin users in a future update.
 
-### 6. Logout (C-3)
-- POST to `/auth/logout` with valid CSRF token
-- **Gotcha**: There's no logout button in the UI. Get CSRF token from a page with a form (e.g., `/cookies/create`), then POST to `/auth/logout`
-- **Expected**: 303 redirect to `/auth/login`. Old session returns 302 on protected routes.
+### 6. Logout
+- Click the **Logout** button in the navbar (right side, styled as `btn-outline-light btn-sm`)
+- **Expected**: Redirected to `/auth/login`. Attempting to access `/cookies` while logged out returns redirect to `/auth/login` with "Please log in to continue." flash message.
 
 ### 7. API 401/403 Response (H-10)
 - `curl http://localhost:8080/api/v1/users -H 'Accept: application/json'`
