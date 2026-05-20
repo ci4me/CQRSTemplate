@@ -10,8 +10,10 @@ use App\Domain\User\Commands\ChangeUserPassword\ChangeUserPasswordCommand;
 use App\Domain\User\Commands\CreateUser\CreateUserCommand;
 use App\Domain\User\Commands\DeleteUser\DeleteUserCommand;
 use App\Domain\User\Commands\UpdateUser\UpdateUserCommand;
+use App\Domain\User\DTOs\UserDTO;
 use App\Domain\User\Queries\GetAllUsers\GetAllUsersQuery;
 use App\Domain\User\Queries\GetUserById\GetUserByIdQuery;
+use App\Infrastructure\Http\ApiResponse;
 use CodeIgniter\HTTP\IncomingRequest;
 use CodeIgniter\HTTP\ResponseInterface;
 use CodeIgniter\RESTful\ResourceController;
@@ -98,34 +100,43 @@ final class UserController extends ResourceController
 
             $result = $queryBus->ask($query);
 
-            // Transform DTOs to API response format
-            $users = array_map(
-                static fn ($user) => [
-                    'id' => $user->id,
-                    'email' => $user->email,
-                    'role' => $user->role,
-                    'status' => $user->status,
-                    'failed_login_attempts' => $user->failedLoginAttempts,
-                    'locked_until' => $user->lockedUntil,
-                    'created_at' => $user->createdAt,
-                    'updated_at' => $user->updatedAt,
-                ],
+            // DTOs already carry the public surface — array_map flattens them
+            // to plain arrays for the JSON envelope. array_values rebuilds
+            // the array as a sequential list (PHPStan rejects associative
+            // arrays for ApiResponse::paginated's list<mixed> param).
+            $users = array_values(array_map(
+                static fn (UserDTO $user): array => self::userToArray($user),
                 $result['data']
-            );
+            ));
 
-            return $this->respond([
-                'success' => true,
-                'data' => $users,
-                'pagination' => [
-                    'total' => $result['total'],
-                    'page' => $result['page'],
-                    'perPage' => $result['perPage'],
-                    'lastPage' => $result['lastPage'],
-                ],
-            ]);
+            return ApiResponse::paginated(
+                data: $users,
+                page: $result['page'],
+                perPage: $result['perPage'],
+                total: $result['total'],
+                lastPage: $result['lastPage']
+            );
         } catch (\Throwable $e) {
-            return $this->failServerError('Failed to retrieve users: ' . $e->getMessage());
+            return ApiResponse::problem(500, 'Server Error', 'Failed to retrieve users: ' . $e->getMessage());
         }
+    }
+
+    /**
+     * @return array{id: ?int, name: string, email: string, role: string, status: string, failed_login_attempts: int, locked_until: ?string, created_at: string, updated_at: ?string}
+     */
+    private static function userToArray(UserDTO $user): array
+    {
+        return [
+            'id' => $user->id,
+            'name' => $user->name,
+            'email' => $user->email,
+            'role' => $user->role,
+            'status' => $user->status,
+            'failed_login_attempts' => $user->failedLoginAttempts,
+            'locked_until' => $user->lockedUntil,
+            'created_at' => $user->createdAt,
+            'updated_at' => $user->updatedAt,
+        ];
     }
 
     /**
@@ -156,24 +167,12 @@ final class UserController extends ResourceController
             $user = $queryBus->ask($query);
 
             if ($user === null) {
-                return $this->failNotFound('User not found');
+                return ApiResponse::notFound('User not found');
             }
 
-            return $this->respond([
-                'success' => true,
-                'data' => [
-                    'id' => $user->id,
-                    'email' => $user->email,
-                    'role' => $user->role,
-                    'status' => $user->status,
-                    'failed_login_attempts' => $user->failedLoginAttempts,
-                    'locked_until' => $user->lockedUntil,
-                    'created_at' => $user->createdAt,
-                    'updated_at' => $user->updatedAt,
-                ],
-            ]);
+            return ApiResponse::ok(self::userToArray($user));
         } catch (\Throwable $e) {
-            return $this->failServerError('Failed to retrieve user: ' . $e->getMessage());
+            return ApiResponse::problem(500, 'Server Error', 'Failed to retrieve user: ' . $e->getMessage());
         }
     }
 
@@ -223,17 +222,13 @@ final class UserController extends ResourceController
 
             $userId = $commandBus->dispatch($command);
 
-            return $this->respondCreated([
-                'success' => true,
-                'data' => ['user_id' => $userId],
-                'message' => 'User created successfully',
-            ]);
+            return ApiResponse::created(['user_id' => $userId]);
         } catch (ValidationException $e) {
-            return $this->fail($e->getMessage(), 422);
+            return ApiResponse::problem(422, 'Validation failed', $e->getMessage());
         } catch (DomainException $e) {
-            return $this->fail($e->getMessage(), 400);
+            return ApiResponse::problem(400, 'Bad Request', $e->getMessage());
         } catch (\Throwable $e) {
-            return $this->failServerError('Failed to create user: ' . $e->getMessage());
+            return ApiResponse::problem(500, 'Server Error', 'Failed to create user: ' . $e->getMessage());
         }
     }
 
@@ -285,16 +280,13 @@ final class UserController extends ResourceController
 
             $commandBus->dispatch($command);
 
-            return $this->respond([
-                'success' => true,
-                'message' => 'User updated successfully',
-            ]);
+            return ApiResponse::ok(['updated' => true]);
         } catch (ValidationException $e) {
-            return $this->fail($e->getMessage(), 422);
+            return ApiResponse::problem(422, 'Validation failed', $e->getMessage());
         } catch (DomainException $e) {
-            return $this->fail($e->getMessage(), 400);
+            return ApiResponse::problem(400, 'Bad Request', $e->getMessage());
         } catch (\Throwable $e) {
-            return $this->failServerError('Failed to update user: ' . $e->getMessage());
+            return ApiResponse::problem(500, 'Server Error', 'Failed to update user: ' . $e->getMessage());
         }
     }
 
@@ -328,14 +320,11 @@ final class UserController extends ResourceController
             );
             $commandBus->dispatch($command);
 
-            return $this->respond([
-                'success' => true,
-                'message' => 'User deleted successfully',
-            ]);
+            return ApiResponse::ok(['deleted' => true]);
         } catch (DomainException $e) {
-            return $this->failNotFound($e->getMessage());
+            return ApiResponse::notFound($e->getMessage());
         } catch (\Throwable $e) {
-            return $this->failServerError('Failed to delete user: ' . $e->getMessage());
+            return ApiResponse::problem(500, 'Server Error', 'Failed to delete user: ' . $e->getMessage());
         }
     }
 
@@ -381,16 +370,13 @@ final class UserController extends ResourceController
 
             $commandBus->dispatch($command);
 
-            return $this->respond([
-                'success' => true,
-                'message' => 'Password reset successfully',
-            ]);
+            return ApiResponse::ok(['password_reset' => true]);
         } catch (ValidationException $e) {
-            return $this->fail($e->getMessage(), 422);
+            return ApiResponse::problem(422, 'Validation failed', $e->getMessage());
         } catch (DomainException $e) {
-            return $this->fail($e->getMessage(), 400);
+            return ApiResponse::problem(400, 'Bad Request', $e->getMessage());
         } catch (\Throwable $e) {
-            return $this->failServerError('Failed to reset password: ' . $e->getMessage());
+            return ApiResponse::problem(500, 'Server Error', 'Failed to reset password: ' . $e->getMessage());
         }
     }
 }

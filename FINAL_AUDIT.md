@@ -63,7 +63,7 @@ What remains: a small set of architectural decisions on top of working code — 
 
 10. ~~**[HIGH]** `–watch` workers have no SIGTERM handling.~~ **CLOSED in p4-batch1** — RelayOutboxEvents and WorkJobs install pcntl SIGTERM/SIGINT handlers and exit gracefully between drains. Reap commands for already-orphaned rows still tracked as a follow-up.
 
-11. ~~**[HIGH]** `ApiResponse` envelope defined but used by zero controllers.~~ **PARTIALLY CLOSED in p4-batch1** — ApiResponse is documented as the canonical envelope for NEW controllers; UserController migration tracked as a Phase 5 follow-up (breaking change for clients consuming `{success}`).
+11. ~~**[HIGH]** `ApiResponse` envelope defined but used by zero controllers.~~ **FULLY CLOSED in p4-batch1 + p4-batch14** — ApiResponse now wraps every User API response: `{data, meta.correlation_id}` on success (200/201), RFC 7807 `{type, title, status, detail, errors, correlation_id}` on failure. Replaces all `$this->respond()` / `respondCreated()` / `failNotFound()` / `failServerError()` / `fail()` calls. **BREAKING for clients** reading the previous `{success, data, message}` shape — documented in ApiResponse docblock.
 
 12. ~~**[HIGH]** `CORS` filter alias defined, never wired.~~ **CLOSED in p4-batch1** — wired to `api/v1/*` (both before for OPTIONS preflight and after for response headers).
 
