@@ -16,7 +16,11 @@ if git diff --cached --name-only --diff-filter=ACM \
 fi
 
 # 1b. Content-level secret scan with gitleaks (real entropy + provider regexes).
-#    Skips silently if gitleaks isn't installed locally — CI catches it either way.
+#    Behaviour:
+#      - gitleaks installed → MUST pass; commit aborts on any finding.
+#      - gitleaks missing  → loud warning, commit allowed (CI re-runs it).
+#      - Set GITLEAKS_REQUIRED=1 (e.g. on CI, or for security-paranoid devs)
+#        to upgrade the missing-binary case to a hard failure.
 if command -v gitleaks >/dev/null 2>&1; then
     if ! gitleaks protect --staged --redact --no-banner --config .gitleaks.toml; then
         echo "${RED}✗ gitleaks detected secrets in staged changes.${RST}"
@@ -24,8 +28,14 @@ if command -v gitleaks >/dev/null 2>&1; then
         echo "  add it to .gitleaks.toml allowlist (don't suppress per-line)."
         exit 1
     fi
+elif [ "${GITLEAKS_REQUIRED:-0}" = "1" ]; then
+    echo "${RED}✗ gitleaks is required (GITLEAKS_REQUIRED=1) but not installed.${RST}"
+    echo "  Install: brew install gitleaks · apt install gitleaks"
+    exit 1
 else
-    echo "${DIM}gitleaks not installed — skipping content-level secret scan (CI will still run it).${RST}"
+    echo "${YLW}⚠ gitleaks not installed — content-level secret scan SKIPPED.${RST}"
+    echo "${DIM}  Install locally with 'brew install gitleaks' / 'apt install gitleaks',${RST}"
+    echo "${DIM}  or set GITLEAKS_REQUIRED=1 to fail when missing. CI re-runs it regardless.${RST}"
 fi
 
 # 2. Detect committing-to-main (warn, don't block — main may be intentional on this repo).
@@ -63,9 +73,13 @@ done
 #    the standards scope; isolated phpcs runs on those files surface
 #    pre-existing CodeIgniter-idiomatic code that the project's standards
 #    don't enforce.
+#
+#    `app/Infrastructure/Persistence/` USED to be excluded here, which let
+#    the repositories sneak past the gate. The exclusion is gone — keep
+#    this list in lock-step with phpcs.xml.
 mapfile -t phpcs_files < <(printf '%s\n' "${php_files[@]}" \
     | grep -E '^(app/(Domain|Infrastructure|Controllers)/|tests/)' \
-    | grep -v -E '^(app/Infrastructure/Persistence/|tests/_skipped/|tests/_support/|tests/session/|tests/database/|tests/unit/)' \
+    | grep -v -E '^(tests/_skipped/|tests/_support/|tests/session/|tests/database/|tests/unit/)' \
     || true)
 
 if [ -x vendor/bin/phpcs ] && [ ${#phpcs_files[@]} -gt 0 ]; then
@@ -91,12 +105,17 @@ fi
 #    are visible. Per-file isolation produces false positives on properties
 #    that are only read by traits/providers in sibling files.
 #    Skip entirely when no staged PHP file falls under phpstan.neon's paths.
+#
+#    Keep this case list in lock-step with the `paths:` block in phpstan.neon.
+#    A stale entry here (e.g. the old `app/Infrastructure/Persistence` skip)
+#    silently bypasses static analysis on the matching files.
 has_analysed_files=0
 for f in "${php_files[@]}"; do
     case "$f" in
-        app/Domain/*|app/Infrastructure/*|app/Libraries/*|app/Models/*|app/Controllers/*)
+        app/Domain/*|app/Infrastructure/*|app/Libraries/*|app/Models/*|app/Controllers/*|tests/*)
+            # Skip the CodeIgniter scaffolded test dirs (legacy lowercase).
             case "$f" in
-                app/Infrastructure/Persistence/*) ;; # excluded by phpstan.neon
+                tests/_support/*|tests/_skipped/*|tests/session/*|tests/database/*|tests/unit/*) ;;
                 *) has_analysed_files=1 ;;
             esac
             ;;
