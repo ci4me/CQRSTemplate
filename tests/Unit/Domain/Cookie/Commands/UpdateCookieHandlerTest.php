@@ -113,4 +113,56 @@ final class UpdateCookieHandlerTest extends UnitTestCase
 
         $this->handler->handle($command);
     }
+
+    public function test_expected_version_mismatch_aborts_before_value_object_parse(): void
+    {
+        // Cookie loaded from the repo has version=1; the client thinks it's
+        // still on version=0. The handler must abort BEFORE doing any
+        // value-object parse / name-uniqueness query.
+        $command = new UpdateCookieCommand(
+            id: 1,
+            name: 'New Name',
+            description: 'desc',
+            price: '2.99',
+            stock: 10,
+            isActive: true,
+            updatedBy: Actor::system('test'),
+            expectedVersion: 0
+        );
+
+        $existing = CookieFactory::createPersistedCookie(['id' => 1, 'version' => 1]);
+        $this->repository->method('findById')->willReturn($existing);
+        $this->repository->expects($this->never())->method('existsByNameExcludingId');
+        $this->repository->expects($this->never())->method('save');
+
+        $this->expectException(DomainException::class);
+        $this->expectExceptionMessage('modified by someone else');
+
+        $this->handler->handle($command);
+    }
+
+    public function test_expected_version_matches_proceeds_normally(): void
+    {
+        $command = new UpdateCookieCommand(
+            id: 1,
+            name: 'Same Name',
+            description: 'desc',
+            price: '2.99',
+            stock: 10,
+            isActive: true,
+            updatedBy: Actor::system('test'),
+            expectedVersion: 1
+        );
+
+        $existing = CookieFactory::createPersistedCookie([
+            'id' => 1,
+            'name' => 'Same Name',
+            'version' => 1,
+        ]);
+        $this->repository->method('findById')->willReturn($existing);
+        $this->repository->expects($this->once())->method('save');
+        $this->eventDispatcher->expects($this->once())->method('dispatch');
+
+        $this->handler->handle($command);
+    }
 }

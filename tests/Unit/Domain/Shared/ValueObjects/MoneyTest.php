@@ -172,4 +172,24 @@ final class MoneyTest extends UnitTestCase
         $this->assertSame('JPY', $decoded['currency']);
         $this->assertSame('1500', $decoded['formatted']);
     }
+
+    public function test_decimal_string_rejects_overflow(): void
+    {
+        // PHP_INT_MAX on 64-bit is 19 digits. 22 digits will always exceed.
+        $this->expectException(ValidationException::class);
+        Money::fromDecimalString('9999999999999999999999.99', Currency::usd());
+    }
+
+    public function test_float_rejects_overflow(): void
+    {
+        // 2e20 * 100 minor units = 2e22, well past PHP_INT_MAX (~9.2e18).
+        $this->expectException(ValidationException::class);
+        Money::fromFloat(2e20, Currency::usd());
+    }
+
+    public function test_float_rejects_negative_overflow(): void
+    {
+        $this->expectException(ValidationException::class);
+        Money::fromFloat(-2e20, Currency::usd());
+    }
 }

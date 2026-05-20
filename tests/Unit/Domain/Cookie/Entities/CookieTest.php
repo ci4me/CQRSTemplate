@@ -406,4 +406,69 @@ final class CookieTest extends UnitTestCase
 
         $this->assertFalse($cookie->isDeleted());
     }
+
+    // ==================== INVARIANT TESTS ====================
+
+    public function test_update_refuses_to_mutate_soft_deleted_cookie(): void
+    {
+        $cookie = Cookie::reconstitute(
+            id: 1,
+            name: CookieName::fromString('Trashed'),
+            description: null,
+            price: CookiePrice::fromString('1.00'),
+            stock: 0,
+            isActive: false,
+            createdAt: '2025-10-21 10:00:00',
+            updatedAt: '2025-10-21 10:00:00',
+            deletedAt: '2025-10-21 11:00:00',
+            version: 1
+        );
+
+        $this->expectException(DomainException::class);
+        $this->expectExceptionMessage('cannot mutate a soft-deleted cookie');
+
+        $cookie->update(
+            CookieName::fromString('New Name'),
+            'desc',
+            CookiePrice::fromString('2.00'),
+            5,
+            true
+        );
+    }
+
+    public function test_activate_refuses_soft_deleted_cookie(): void
+    {
+        $cookie = Cookie::reconstitute(
+            id: 1,
+            name: CookieName::fromString('Trashed'),
+            description: null,
+            price: CookiePrice::fromString('1.00'),
+            stock: 0,
+            isActive: false,
+            createdAt: '2025-10-21 10:00:00',
+            updatedAt: '2025-10-21 10:00:00',
+            deletedAt: '2025-10-21 11:00:00',
+            version: 1
+        );
+
+        $this->expectException(DomainException::class);
+        $cookie->activate();
+    }
+
+    public function test_stock_op_refuses_unpersisted_cookie(): void
+    {
+        // No assignId — entity stays in pre-save state with id === null.
+        $cookie = Cookie::create(
+            name: CookieName::fromString('Ghost'),
+            description: null,
+            price: CookiePrice::fromString('1.00'),
+            stock: 10,
+            isActive: true
+        );
+
+        $this->expectException(DomainException::class);
+        $this->expectExceptionMessage('requires a persisted entity');
+
+        $cookie->decreaseStock(1);
+    }
 }
