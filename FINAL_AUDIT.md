@@ -14,9 +14,9 @@ The template has closed 50+ critical issues across auth, security, concurrency, 
 
 What remains: a small set of architectural decisions on top of working code — full event-lifecycle consolidation in entities (the test contract has to flip), read-model projection wired and proven end-to-end, tenant runtime resolver (the schema columns + composite index are already there), and User-API controller migration to the ApiResponse envelope (deferred as a single-PR breaking change for clients).
 
-**Clone-readiness status:** ~80% of blockers closed; 20% remain. Estimated effort to "golden module": 1 focused sprint covering full event-lifecycle consolidation, tenant runtime, and the User-API ApiResponse migration.
+**Clone-readiness status:** ~88% of blockers closed; 12% remain. Estimated effort to "golden module": one focused sprint covering tenant runtime, the User-API ApiResponse migration, and the secondary controller/view/migration audits.
 
-**Updated 2026-05-20 after p4-batch1 through p4-batch7.**
+**Updated 2026-05-20 after p4-batch1 through p4-batch11.**
 
 ---
 
@@ -45,7 +45,7 @@ What remains: a small set of architectural decisions on top of working code — 
 
 1. ~~**[CRITICAL]** `EventDispatcher` swallows `\Throwable` to log only.~~ **CLOSED in p1-batch1** — EventDispatcher gained a per-instance `setRethrowOnListenerFailure(bool)` toggle (added to EventDispatcherInterface during the merge). TransactionMiddleware flips it via a lazy resolver so listener exceptions cancel the same unit of work as the entity write.
 
-2. **[CRITICAL]** Cookie lifecycle events split: `decreaseStock()`/`increaseStock()` raise via `AggregateRoot`, but `update()`/`activate()`/`deactivate()` silent; `create()` handler-raised. Consolidate all into entity **before** read-model projection wires. **r08:1.1** — move #19 (lifecycle events) before #23 (wire projection).
+2. ~~**[CRITICAL]** Cookie lifecycle events split.~~ **CLOSED in p4-batch11** — `Cookie::update()` now raises `CookieUpdatedEvent` via `raiseEvent()` with a structured before/after `snapshot()` diff. UpdateCookieHandler drains pending events instead of constructing the event by hand. `CookieCreatedEvent` stays handler-raised by design (needs post-save id; documented in entity docblock). `activate()`/`deactivate()` are pure invariant transitions covered by the next update's snapshot.
 
 3. ~~**[CRITICAL]** Read-model projection unwired.~~ **FULLY CLOSED across p2-batch1 + p4-batch9 + p4-batch10** — projection registered + subscribed to all 5 events; `CookieReadModelRepositoryInterface` + `CookieReadModelRepository` introduced; all three Cookie query handlers (GetCookieById / GetAllCookies / GetCookiesPaginated) now depend on the read port and return DTOs straight from `cookie_read_model` (no per-row entity reconstitution). CookieServiceProvider injects the read repo for queries; FeatureTestCase exposes `saveCookieAndProject()` so tests bypassing the command bus can populate the read model.
 

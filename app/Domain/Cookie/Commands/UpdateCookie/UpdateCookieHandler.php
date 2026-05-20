@@ -4,9 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Cookie\Commands\UpdateCookie;
 
-use App\Domain\Cookie\Entities\Cookie;
 use App\Domain\Cookie\ErrorCodes;
-use App\Domain\Cookie\Events\CookieUpdated\CookieUpdatedEvent;
 use App\Domain\Cookie\Ports\CookieRepositoryInterface;
 use App\Domain\Cookie\ValueObjects\CookieName;
 use App\Domain\Cookie\ValueObjects\CookiePrice;
@@ -93,10 +91,6 @@ final readonly class UpdateCookieHandler
                 );
             }
 
-            // B13: snapshot previous state BEFORE mutation so the event can
-            // carry a structured diff for the audit log.
-            $previousState = $this->snapshot($cookie);
-
             // Create Value Objects (validates format/constraints)
             $name = CookieName::fromString($command->name);
             $price = CookiePrice::fromString($command->price);
@@ -112,7 +106,8 @@ final readonly class UpdateCookieHandler
                 }
             }
 
-            // Update the domain entity
+            // Update the domain entity (also raises CookieUpdatedEvent with
+            // before/after diff via AggregateRoot).
             $cookie->update(
                 name: $name,
                 description: $command->description,
@@ -121,19 +116,16 @@ final readonly class UpdateCookieHandler
                 isActive: $command->isActive
             );
 
-            $newState = $this->snapshot($cookie);
-
             // Persist changes; stamps updated_by on the row.
             $this->repository->save($cookie, $command->updatedBy);
 
-            // Dispatch domain event with structured before/after diff
-            $this->eventDispatcher->dispatch(new CookieUpdatedEvent(
-                cookieId: $command->id,
-                cookieName: $name->getValue(),
-                cookiePrice: $price->toDecimalString(),
-                previousState: $previousState,
-                newState: $newState
-            ));
+            // Drain entity-raised events explicitly so dispatch is
+            // deterministic regardless of repository implementation
+            // (the repository ALSO drains, but a mock repo in tests
+            // won't — the drain here is the contract the test asserts).
+            foreach ($cookie->pullEvents() as $event) {
+                $this->eventDispatcher->dispatch($event);
+            }
 
             $durationMs = (microtime(true) - $startTime) * 1000;
 
@@ -167,20 +159,5 @@ final readonly class UpdateCookieHandler
         }
 
         return ErrorCodes::COOKIE_REPOSITORY_SAVE_FAILED;
-    }
-
-    /**
-     * @return array<string, scalar|null>
-     */
-    private function snapshot(Cookie $cookie): array
-    {
-        return [
-            'id' => $cookie->getId(),
-            'name' => $cookie->getName()->getValue(),
-            'description' => $cookie->getDescription(),
-            'price' => $cookie->getPrice()->toDecimalString(),
-            'stock' => $cookie->getStock(),
-            'is_active' => $cookie->getIsActive(),
-        ];
     }
 }

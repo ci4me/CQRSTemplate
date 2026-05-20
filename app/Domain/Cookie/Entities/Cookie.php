@@ -6,6 +6,7 @@ namespace App\Domain\Cookie\Entities;
 
 use App\Domain\Cookie\ErrorCodes;
 use App\Domain\Cookie\Events\CookieStockChanged\CookieStockChangedEvent;
+use App\Domain\Cookie\Events\CookieUpdated\CookieUpdatedEvent;
 use App\Domain\Cookie\ValueObjects\CookieName;
 use App\Domain\Cookie\ValueObjects\CookiePrice;
 use App\Domain\Shared\AggregateRoot;
@@ -220,11 +221,49 @@ final class Cookie
         // the lifecycle.
         $this->assertNotDeleted();
 
+        // Snapshot before mutation so the event payload carries a
+        // structured diff for the audit log. The handler used to do this
+        // by hand; raising on the entity keeps the diff close to the
+        // state transition and removes the "dispatch on success" coupling
+        // from the handler.
+        $previousState = $this->snapshot();
+
         $this->name = $name;
         $this->description = $description;
         $this->price = $price;
         $this->setStock($stock);
         $this->isActive = $isActive;
+
+        // Only enqueue an UpdatedEvent when the entity actually exists
+        // (a fresh entity that hasn't been saved yet should fire a
+        // CreatedEvent from the handler, not an UpdatedEvent). The
+        // repository will drain whatever lands in the buffer.
+        if ($this->id === null) {
+            return;
+        }
+
+        $this->raiseEvent(new CookieUpdatedEvent(
+            cookieId: $this->id,
+            cookieName: $name->getValue(),
+            cookiePrice: $price->toDecimalString(),
+            previousState: $previousState,
+            newState: $this->snapshot()
+        ));
+    }
+
+    /**
+     * @return array<string, scalar|null>
+     */
+    private function snapshot(): array
+    {
+        return [
+            'id' => $this->id,
+            'name' => $this->name->getValue(),
+            'description' => $this->description,
+            'price' => $this->price->toDecimalString(),
+            'stock' => $this->stock,
+            'is_active' => $this->isActive,
+        ];
     }
 
     private function assertNotDeleted(): void
