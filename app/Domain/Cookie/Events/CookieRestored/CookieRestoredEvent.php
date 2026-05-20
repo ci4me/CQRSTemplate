@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace App\Domain\Cookie\Events\CookieRestored;
 
+use App\Domain\Shared\Events\DomainEventInterface;
+
 /**
  * Dispatched after a soft-deleted cookie is brought back from the trash.
  */
-final readonly class CookieRestoredEvent
+final readonly class CookieRestoredEvent implements DomainEventInterface
 {
     public function __construct(
         public int $cookieId,

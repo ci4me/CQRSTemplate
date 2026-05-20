@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Domain\User\Events\UserDeleted;
 
+use App\Domain\Shared\Events\DomainEventInterface;
+
 /**
  * Event triggered when a user is soft deleted.
  *
@@ -20,7 +22,7 @@ namespace App\Domain\User\Events\UserDeleted;
  *
  * @package App\Domain\User\Events\UserDeleted
  */
-final readonly class UserDeletedEvent
+final readonly class UserDeletedEvent implements DomainEventInterface
 {
     /**
      * @param int $userId User ID that was deleted

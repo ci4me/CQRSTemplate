@@ -141,13 +141,19 @@ final class EventOutboxRelay
 
     private function claim(int $id): bool
     {
-        $affected = $this->connection()
-            ->table('event_outbox')
+        // CI4's update() returns `true` on success regardless of how many
+        // rows matched, so a second worker that issued the SAME UPDATE a
+        // millisecond later would also get `true` — admitting a double
+        // dispatch. The authoritative signal is the driver-level row count.
+        // We MUST gate on `affectedRows() === 1` and ignore the update()
+        // return value entirely.
+        $db = $this->connection();
+        $db->table('event_outbox')
             ->where('id', $id)
             ->where('status', 'pending')
             ->update(['status' => 'in_flight']);
 
-        return $affected === true || $this->connection()->affectedRows() === 1;
+        return $db->affectedRows() === 1;
     }
 
     private function rehydrate(string $eventClass, string $json): object
@@ -156,10 +162,20 @@ final class EventOutboxRelay
             throw new \RuntimeException(sprintf('Event class %s no longer exists', $eventClass));
         }
 
+        // SECURITY: only reflect over classes that explicitly mark
+        // themselves as domain events. Without this, a row with a
+        // hostile `event_class` (e.g. some installer/CLI class with a
+        // side-effecting constructor) would be instantiated by the relay.
+        $reflection = new \ReflectionClass($eventClass);
+        if (!$reflection->implementsInterface(\App\Domain\Shared\Events\DomainEventInterface::class)) {
+            throw new \RuntimeException(sprintf(
+                'Refusing to rehydrate %s — does not implement DomainEventInterface',
+                $eventClass
+            ));
+        }
+
         /** @var array<string, mixed> $payload */
         $payload = json_decode($json, true, 512, JSON_THROW_ON_ERROR);
-
-        $reflection = new \ReflectionClass($eventClass);
         $constructor = $reflection->getConstructor();
         if ($constructor === null) {
             return $reflection->newInstance();

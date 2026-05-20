@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Domain\Cookie\Events\CookieCreated;
 
+use App\Domain\Shared\Events\DomainEventInterface;
+
 /**
  * Event fired when a new Cookie is created.
  *
@@ -27,7 +29,7 @@ namespace App\Domain\Cookie\Events\CookieCreated;
  *
  * @package App\Domain\Cookie\Events\CookieCreated
  */
-final readonly class CookieCreatedEvent
+final readonly class CookieCreatedEvent implements DomainEventInterface
 {
     /**
      * Create a new CookieCreatedEvent.

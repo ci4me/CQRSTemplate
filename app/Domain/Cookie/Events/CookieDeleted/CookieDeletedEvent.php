@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Domain\Cookie\Events\CookieDeleted;
 
+use App\Domain\Shared\Events\DomainEventInterface;
+
 /**
  * Event fired when a Cookie is soft-deleted.
  *
@@ -12,7 +14,7 @@ namespace App\Domain\Cookie\Events\CookieDeleted;
  *
  * @package App\Domain\Cookie\Events\CookieDeleted
  */
-final readonly class CookieDeletedEvent
+final readonly class CookieDeletedEvent implements DomainEventInterface
 {
     /**
      * @param int $cookieId        ID of the deleted cookie

@@ -279,7 +279,8 @@ final class UserController extends ResourceController
                 name: $data['name'] ?? '',
                 email: $data['email'] ?? '',
                 role: $data['role'] ?? 'customer',
-                status: $data['status'] ?? 'active'
+                status: $data['status'] ?? 'active',
+                updatedBy: Services::actorResolver()->resolve($this->request)
             );
 
             $commandBus->dispatch($command);

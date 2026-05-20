@@ -103,7 +103,15 @@ class Services extends BaseService
         // transaction so the audit row commits/rolls back atomically with
         // the business change (D2).
         $bus->pushMiddleware(new LoggingMiddleware(LoggerFactory::create('infrastructure.command_bus')));
-        $bus->pushMiddleware(new TransactionMiddleware(LoggerFactory::create('infrastructure.command_bus')));
+        // Pass a lazy resolver for the shared EventDispatcher so the bus
+        // can flip dispatch to strict-rethrow inside the transaction. The
+        // resolver runs at handle() time — NOT now — to avoid recursing
+        // through ensureProvidersRegistered() before the bus is cached.
+        $bus->pushMiddleware(new TransactionMiddleware(
+            LoggerFactory::create('infrastructure.command_bus'),
+            null,
+            static fn (): EventDispatcher => self::eventDispatcher()
+        ));
         $bus->pushMiddleware(new AuditMiddleware(
             LoggerFactory::create('infrastructure.audit'),
             self::actorResolver()

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Domain\User\Events\UserUpdated;
 
+use App\Domain\Shared\Events\DomainEventInterface;
+
 /**
  * Event triggered when a user's information is updated.
  *
@@ -20,7 +22,7 @@ namespace App\Domain\User\Events\UserUpdated;
  *
  * @package App\Domain\User\Events\UserUpdated
  */
-final readonly class UserUpdatedEvent
+final readonly class UserUpdatedEvent implements DomainEventInterface
 {
     /**
      * @param int $userId User ID that was updated

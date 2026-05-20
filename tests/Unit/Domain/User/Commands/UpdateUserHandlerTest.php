@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Domain\User\Commands;
 
+use App\Domain\Shared\ValueObjects\Actor;
 use App\Domain\User\Commands\UpdateUser\UpdateUserCommand;
 use App\Domain\User\Commands\UpdateUser\UpdateUserHandler;
 use App\Domain\User\ErrorCodes;
@@ -49,7 +50,8 @@ final class UpdateUserHandlerTest extends UnitTestCase
             name: 'Jane Doe',
             email: 'jane.doe@example.com',
             role: 'customer',
-            status: 'active'
+            status: 'active',
+            updatedBy: Actor::system('test')
         );
 
         $existingUser = UserFactory::createPersistedUser(['id' => 1]);
@@ -84,7 +86,8 @@ final class UpdateUserHandlerTest extends UnitTestCase
             name: 'Test User',
             email: 'test@example.com',
             role: 'customer',
-            status: 'active'
+            status: 'active',
+            updatedBy: Actor::system('test')
         );
 
         $this->repository
@@ -111,7 +114,8 @@ final class UpdateUserHandlerTest extends UnitTestCase
             name: 'Jane Doe',
             email: 'existing@example.com',
             role: 'customer',
-            status: 'active'
+            status: 'active',
+            updatedBy: Actor::system('test')
         );
 
         $existingUser = UserFactory::createPersistedUser([
@@ -147,7 +151,8 @@ final class UpdateUserHandlerTest extends UnitTestCase
             name: 'Updated Name',
             email: 'john.doe@example.com', // Same email as existing
             role: 'customer',
-            status: 'active'
+            status: 'active',
+            updatedBy: Actor::system('test')
         );
 
         $existingUser = UserFactory::createPersistedUser([
@@ -182,7 +187,8 @@ final class UpdateUserHandlerTest extends UnitTestCase
             name: 'Updated Name',
             email: 'john.doe@example.com',
             role: 'customer',
-            status: 'active'
+            status: 'active',
+            updatedBy: Actor::system('test')
         );
 
         $existingUser = UserFactory::createPersistedUser([
@@ -214,7 +220,8 @@ final class UpdateUserHandlerTest extends UnitTestCase
             name: 'John Doe',
             email: 'new.email@example.com',
             role: 'customer',
-            status: 'active'
+            status: 'active',
+            updatedBy: Actor::system('test')
         );
 
         $existingUser = UserFactory::createPersistedUser([
@@ -247,7 +254,8 @@ final class UpdateUserHandlerTest extends UnitTestCase
             name: 'John Doe',
             email: 'john.doe@example.com',
             role: 'admin',
-            status: 'active'
+            status: 'active',
+            updatedBy: Actor::system('test')
         );
 
         $existingUser = UserFactory::createPersistedUser([
@@ -279,7 +287,8 @@ final class UpdateUserHandlerTest extends UnitTestCase
             name: 'John Doe',
             email: 'john.doe@example.com',
             role: 'customer',
-            status: 'inactive'
+            status: 'inactive',
+            updatedBy: Actor::system('test')
         );
 
         $existingUser = UserFactory::createPersistedUser([
@@ -311,7 +320,8 @@ final class UpdateUserHandlerTest extends UnitTestCase
             name: 'Updated Name',
             email: 'updated@example.com',
             role: 'admin',
-            status: 'inactive'
+            status: 'inactive',
+            updatedBy: Actor::system('test')
         );
 
         $existingUser = UserFactory::createPersistedUser([
@@ -348,7 +358,8 @@ final class UpdateUserHandlerTest extends UnitTestCase
             name: 'John Doe',
             email: 'john.doe@example.com',
             role: 'customer',
-            status: 'active'
+            status: 'active',
+            updatedBy: Actor::system('test')
         );
 
         $existingUser = UserFactory::createPersistedUser([
@@ -381,7 +392,8 @@ final class UpdateUserHandlerTest extends UnitTestCase
             name: 'A', // Too short (min 2 chars)
             email: 'john.doe@example.com',
             role: 'customer',
-            status: 'active'
+            status: 'active',
+            updatedBy: Actor::system('test')
         );
 
         $existingUser = UserFactory::createPersistedUser(['id' => 1]);
@@ -400,7 +412,8 @@ final class UpdateUserHandlerTest extends UnitTestCase
             name: 'John Doe',
             email: 'invalid-email', // Invalid format
             role: 'customer',
-            status: 'active'
+            status: 'active',
+            updatedBy: Actor::system('test')
         );
 
         $existingUser = UserFactory::createPersistedUser(['id' => 1]);
@@ -410,5 +423,117 @@ final class UpdateUserHandlerTest extends UnitTestCase
         $this->expectException(\Exception::class);
 
         $this->handler->handle($command);
+    }
+
+    public function test_non_admin_actor_cannot_change_role(): void
+    {
+        $permissions = $this->createMock(\App\Infrastructure\Auth\Services\PermissionService::class);
+        $permissions->method('allows')->willReturn(false);
+
+        $handler = new UpdateUserHandler(
+            $this->repository,
+            $this->eventDispatcher,
+            LoggerFactory::create('test.user.commands'),
+            $permissions
+        );
+
+        $command = new UpdateUserCommand(
+            userId: 1,
+            name: 'John Doe',
+            email: 'john.doe@example.com',
+            role: 'admin', // attempted privilege escalation
+            status: 'active',
+            updatedBy: Actor::user(42)
+        );
+
+        $existingUser = UserFactory::createPersistedUser([
+            'id' => 1,
+            'name' => 'John Doe',
+            'email' => 'john.doe@example.com',
+            'role' => 'customer',
+            'status' => 'active',
+        ]);
+
+        $this->repository->method('findById')->willReturn($existingUser);
+        $this->repository->expects($this->never())->method('update');
+        $this->eventDispatcher->expects($this->never())->method('dispatch');
+
+        $this->expectException(\App\Domain\Shared\Exceptions\DomainException::class);
+
+        $handler->handle($command);
+    }
+
+    public function test_non_admin_actor_cannot_change_status(): void
+    {
+        $permissions = $this->createMock(\App\Infrastructure\Auth\Services\PermissionService::class);
+        $permissions->method('allows')->willReturn(false);
+
+        $handler = new UpdateUserHandler(
+            $this->repository,
+            $this->eventDispatcher,
+            LoggerFactory::create('test.user.commands'),
+            $permissions
+        );
+
+        $command = new UpdateUserCommand(
+            userId: 1,
+            name: 'John Doe',
+            email: 'john.doe@example.com',
+            role: 'customer',
+            status: 'inactive', // attempted lockout
+            updatedBy: Actor::user(42)
+        );
+
+        $existingUser = UserFactory::createPersistedUser([
+            'id' => 1,
+            'name' => 'John Doe',
+            'email' => 'john.doe@example.com',
+            'role' => 'customer',
+            'status' => 'active',
+        ]);
+
+        $this->repository->method('findById')->willReturn($existingUser);
+        $this->repository->expects($this->never())->method('update');
+        $this->eventDispatcher->expects($this->never())->method('dispatch');
+
+        $this->expectException(\App\Domain\Shared\Exceptions\DomainException::class);
+
+        $handler->handle($command);
+    }
+
+    public function test_admin_actor_can_change_role(): void
+    {
+        $permissions = $this->createMock(\App\Infrastructure\Auth\Services\PermissionService::class);
+        $permissions->method('allows')->willReturn(true);
+
+        $handler = new UpdateUserHandler(
+            $this->repository,
+            $this->eventDispatcher,
+            LoggerFactory::create('test.user.commands'),
+            $permissions
+        );
+
+        $command = new UpdateUserCommand(
+            userId: 1,
+            name: 'John Doe',
+            email: 'john.doe@example.com',
+            role: 'admin',
+            status: 'active',
+            updatedBy: Actor::user(7)
+        );
+
+        $existingUser = UserFactory::createPersistedUser([
+            'id' => 1,
+            'name' => 'John Doe',
+            'email' => 'john.doe@example.com',
+            'role' => 'customer',
+            'status' => 'active',
+        ]);
+
+        $this->repository->method('findById')->willReturn($existingUser);
+        $this->repository->expects($this->once())->method('update');
+        $this->eventDispatcher->expects($this->once())->method('dispatch');
+
+        $handler->handle($command);
     }
 }

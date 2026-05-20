@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Domain\Cookie\Events\CookieStockChanged;
 
+use App\Domain\Shared\Events\DomainEventInterface;
+
 /**
  * Raised when a cookie's stock level changes via a domain operation
  * (decrease/increase). Allows downstream consumers — inventory dashboards,
@@ -13,7 +15,7 @@ namespace App\Domain\Cookie\Events\CookieStockChanged;
  * already emits CookieUpdatedEvent with previous/new state, which is the
  * higher-resolution signal.
  */
-final readonly class CookieStockChangedEvent
+final readonly class CookieStockChangedEvent implements DomainEventInterface
 {
     public function __construct(
         public ?int $cookieId,

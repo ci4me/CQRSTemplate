@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Domain\User\Events\PasswordChanged;
 
+use App\Domain\Shared\Events\DomainEventInterface;
+
 /**
  * Event triggered when a user's password is changed by an admin.
  *
@@ -26,7 +28,7 @@ namespace App\Domain\User\Events\PasswordChanged;
  *
  * @package App\Domain\User\Events\PasswordChanged
  */
-final readonly class PasswordChangedEvent
+final readonly class PasswordChangedEvent implements DomainEventInterface
 {
     /**
      * @param int $userId User ID whose password was changed

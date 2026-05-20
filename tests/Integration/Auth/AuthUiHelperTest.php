@@ -23,10 +23,11 @@ final class AuthUiHelperTest extends IntegrationTestCase
 
     public function test_can_returns_false_when_no_actor_lacks_permission(): void
     {
-        // System actor (no auth) is always allowed by PermissionService —
-        // see Sprint 2 spec. So can() returns true here for any valid name.
-        // We exercise the *permission shape validation* path instead.
-        $this->assertTrue(can('cookies.update'));
+        // SECURITY: with no session, the resolved actor is the system actor.
+        // PermissionService now denies the system actor by default (the
+        // bypass for legitimate system-side operations is opt-in at the
+        // call site, not implicit in authz), so can() returns false.
+        $this->assertFalse(can('cookies.update'));
     }
 
     public function test_can_returns_true_for_admin_user_via_legacy_shim(): void

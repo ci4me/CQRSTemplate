@@ -56,6 +56,13 @@ final class CorrelationIdMiddleware implements FilterInterface
     {
         $response->setHeader(self::HEADER, CorrelationIdService::get());
 
+        // OBSERVABILITY: clear the per-request id AFTER echoing it back, so
+        // the next iteration of a long-lived process (queue worker, CLI loop,
+        // persistent FPM child) starts with a fresh slate. Without this, the
+        // first request's id leaks into every subsequent request handled by
+        // the same worker.
+        CorrelationIdService::clear();
+
         return $response;
     }
 

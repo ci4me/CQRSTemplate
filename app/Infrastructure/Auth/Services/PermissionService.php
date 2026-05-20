@@ -24,7 +24,10 @@ use Config\Database;
  * change mid-request. Callers that fan out many checks should batch via the
  * future `allowed(list<Permission>)` API (TODO).
  */
-final readonly class PermissionService
+// NOT `final`: PHPUnit's mock generator cannot double a final class and
+// several handlers depend on this service. Extending in production code
+// is still discouraged — prefer composition.
+readonly class PermissionService
 {
     /**
      * @param BaseConnection<object|resource|false, object|resource|false>|null $db
@@ -35,9 +38,14 @@ final readonly class PermissionService
 
     public function allows(Actor $actor, Permission $permission): bool
     {
+        // SECURITY: do NOT auto-grant the system actor. ActorResolver is
+        // fail-closed for HTTP requests, but a buggy code path that
+        // resolves an actor to Actor::system() (e.g. CLI-style invocation
+        // inside an HTTP context) must not silently bypass authz. The
+        // system actor is granted access only by explicit command-handler
+        // bypass (e.g. migrations) — not here.
         if ($actor->isSystem()) {
-            // System actor (cron, migrations) bypasses checks by design.
-            return true;
+            return false;
         }
 
         if ($this->legacyAdminCheck($actor)) {

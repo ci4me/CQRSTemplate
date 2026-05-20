@@ -219,7 +219,8 @@ final class UserController extends BaseController
                 name: $name,
                 email: $email,
                 role: $role,
-                status: $status
+                status: $status,
+                updatedBy: Services::actorResolver()->resolve($this->request)
             );
 
             $commandBus->dispatch($command);

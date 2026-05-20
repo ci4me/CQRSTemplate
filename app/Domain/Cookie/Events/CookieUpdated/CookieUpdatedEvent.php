@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Domain\Cookie\Events\CookieUpdated;
 
+use App\Domain\Shared\Events\DomainEventInterface;
+
 /**
  * Event fired when a Cookie is updated.
  *
@@ -13,7 +15,7 @@ namespace App\Domain\Cookie\Events\CookieUpdated;
  *
  * @package App\Domain\Cookie\Events\CookieUpdated
  */
-final readonly class CookieUpdatedEvent
+final readonly class CookieUpdatedEvent implements DomainEventInterface
 {
     /**
      * @param int $cookieId           ID of the updated cookie

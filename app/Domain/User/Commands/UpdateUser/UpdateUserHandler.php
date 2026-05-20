@@ -4,12 +4,14 @@ declare(strict_types=1);
 
 namespace App\Domain\User\Commands\UpdateUser;
 
+use App\Domain\Shared\Exceptions\DomainException;
 use App\Domain\User\ErrorCodes;
 use App\Domain\User\Events\UserUpdated\UserUpdatedEvent;
 use App\Domain\User\ValueObjects\Email;
 use App\Domain\User\ValueObjects\UserName;
 use App\Domain\User\ValueObjects\UserRole;
 use App\Domain\User\ValueObjects\UserStatus;
+use App\Infrastructure\Auth\Services\PermissionService;
 use App\Infrastructure\Bus\EventDispatcher;
 use App\Infrastructure\Persistence\Repositories\UserRepositoryInterface;
 use Psr\Log\LoggerInterface;
@@ -38,7 +40,8 @@ final readonly class UpdateUserHandler
     public function __construct(
         private UserRepositoryInterface $repository,
         private EventDispatcher $eventDispatcher,
-        private LoggerInterface $logger
+        private LoggerInterface $logger,
+        private ?PermissionService $permissions = null
     ) {
     }
 
@@ -49,6 +52,7 @@ final readonly class UpdateUserHandler
             'domain' => 'User',
             'command' => 'UpdateUserCommand',
             'user_id' => $command->userId,
+            'actor_id' => $command->updatedBy->id,
         ]);
 
         try {
@@ -84,6 +88,14 @@ final readonly class UpdateUserHandler
                     );
                 }
             }
+
+            // SECURITY: reject mass-assignment of role/status by non-admins.
+            // The command always carries `role` and `status` (to keep the
+            // contract simple and explicit) but only an admin may *change*
+            // them. Non-admin callers MUST forward the persisted value
+            // verbatim; anything else is treated as a privilege-escalation
+            // attempt and refused.
+            $this->assertRoleAndStatusChangesAllowed($command, $user);
 
             // Track changed fields
             $name = UserName::fromString($command->name);
@@ -136,5 +148,69 @@ final readonly class UpdateUserHandler
             ]);
             throw $e;
         }
+    }
+
+    /**
+     * Refuse role/status changes when the actor is not an admin.
+     *
+     * A non-admin "Update profile" call MUST be a no-op for privileged
+     * fields. We don't allow the command to omit them (so the protocol
+     * stays explicit), but we DO require that the values match what is
+     * already in the database.
+     */
+    private function assertRoleAndStatusChangesAllowed(
+        UpdateUserCommand $command,
+        \App\Domain\User\Entities\User $user
+    ): void {
+        $roleChanged = $command->role !== $user->getRole()->value;
+        $statusChanged = $command->status !== $user->getStatus()->value;
+
+        if (!$roleChanged && !$statusChanged) {
+            return;
+        }
+
+        if ($this->actorIsAdmin($command)) {
+            return;
+        }
+
+        $this->logger->warning('Refused mass-assignment of privileged fields', [
+            'domain' => 'User',
+            'command' => 'UpdateUserCommand',
+            'user_id' => $command->userId,
+            'actor_id' => $command->updatedBy->id,
+            'role_change_attempted' => $roleChanged,
+            'status_change_attempted' => $statusChanged,
+            'error_code' => ErrorCodes::USER_BUSINESS_RULE_LOCKED,
+            'security' => 'CRITICAL',
+        ]);
+
+        throw DomainException::businessRuleViolation(
+            'Only administrators can change role or status.',
+            sprintf('actor=%d target=%d', $command->updatedBy->id, $command->userId),
+            ErrorCodes::USER_BUSINESS_RULE_LOCKED
+        );
+    }
+
+    private function actorIsAdmin(UpdateUserCommand $command): bool
+    {
+        $actor = $command->updatedBy;
+
+        // System actor (background jobs, migrations) is trusted to change
+        // anything; gating that is the responsibility of whatever queued
+        // the command. This is intentionally separate from the request
+        // path: ActorResolver is fail-closed so a system actor never
+        // shows up for an HTTP request.
+        if ($actor->isSystem()) {
+            return true;
+        }
+
+        if ($this->permissions === null) {
+            return false;
+        }
+
+        return $this->permissions->allows(
+            $actor,
+            \App\Domain\Shared\ValueObjects\Permission::fromString('user.manage')
+        );
     }
 }

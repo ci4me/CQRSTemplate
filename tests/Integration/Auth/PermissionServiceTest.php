@@ -12,11 +12,16 @@ use Tests\Support\IntegrationTestCase;
 
 final class PermissionServiceTest extends IntegrationTestCase
 {
-    public function test_system_actor_is_always_allowed(): void
+    public function test_system_actor_is_denied_by_default(): void
     {
+        // SECURITY: the system actor must NOT be auto-allowed by PermissionService.
+        // Bypass for legitimate system operations (migrations, seeds, jobs) is
+        // explicit at the call site (see Actor::isSystem() checks in handlers),
+        // not implicit in the authz layer.
         $service = new PermissionService();
 
-        $this->assertTrue($service->allows(Actor::system(), Permission::fromString('cookies.create')));
+        $this->assertFalse($service->allows(Actor::system(), Permission::fromString('cookies.create')));
+        $this->assertTrue($service->denies(Actor::system(), Permission::fromString('cookies.create')));
     }
 
     public function test_user_with_admin_role_is_allowed_via_legacy_shim(): void

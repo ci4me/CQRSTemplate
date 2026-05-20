@@ -45,7 +45,10 @@ $routes->group('auth', ['namespace' => 'App\Controllers\Domain\Auth'], static fu
  * User Management Routes - Web (Protected)
  * --------------------------------------------------------------------
  */
-$routes->group('admin/users', ['namespace' => 'App\Controllers\Domain\User'], static function ($routes) {
+// SECURITY: admin/users is sensitive — gate the entire group behind the
+// session auth filter (web_auth) AND the role filter (role:admin) so a
+// logged-in non-admin can't even reach the controller.
+$routes->group('admin/users', ['namespace' => 'App\Controllers\Domain\User', 'filter' => 'role:admin'], static function ($routes) {
     $routes->get('', 'UserController::index');                              // List all users
     $routes->get('create', 'UserController::create');                       // Show create form
     $routes->post('', 'UserController::store');                             // Create user

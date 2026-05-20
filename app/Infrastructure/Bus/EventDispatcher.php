@@ -45,12 +45,37 @@ class EventDispatcher
 
     private LoggerInterface $logger;
 
+    /**
+     * When true, the first listener exception is rethrown after logging so
+     * the surrounding unit-of-work (TransactionMiddleware) can roll back.
+     *
+     * Default false preserves the original "log-and-continue" contract used
+     * outside a transaction (CLI scripts, tests, isolated dispatchers).
+     */
+    private bool $rethrowOnListenerFailure = false;
+
     public function __construct(?LoggerInterface $logger = null)
     {
         // Allow zero-arg construction (existing call sites) by falling back
         // to a dedicated dispatcher channel. Production code should inject a
         // shared logger so correlation/redaction processors are consistent.
         $this->logger = $logger ?? LoggerFactory::create('infrastructure.event_dispatcher');
+    }
+
+    /**
+     * Toggle "rethrow on listener failure" mode and return the previous value.
+     *
+     * TransactionMiddleware enables this just before invoking the handler so
+     * that synchronous-listener failures fail the whole command (rolling back
+     * the entity write in the same transaction). The previous value is
+     * returned so the caller can restore it in a `finally` block — required
+     * for nested command dispatches and for not leaking state into tests.
+     */
+    public function setRethrowOnListenerFailure(bool $rethrow): bool
+    {
+        $previous = $this->rethrowOnListenerFailure;
+        $this->rethrowOnListenerFailure = $rethrow;
+        return $previous;
     }
 
     /**
@@ -100,6 +125,14 @@ class EventDispatcher
                     'exception_class' => $e::class,
                     'correlation_id' => CorrelationIdService::get(),
                 ]);
+
+                if ($this->rethrowOnListenerFailure) {
+                    // Stop fanning-out: inside a transactional unit of work
+                    // we want the first failure to propagate so the whole
+                    // command rolls back. The remaining listeners can run
+                    // again when the command is retried.
+                    throw $e;
+                }
             }
         }
     }
