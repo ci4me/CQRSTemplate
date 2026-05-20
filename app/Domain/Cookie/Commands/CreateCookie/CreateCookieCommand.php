@@ -17,6 +17,17 @@ use App\Domain\Shared\ValueObjects\Actor;
  */
 final readonly class CreateCookieCommand
 {
+    /**
+     * __construct.
+     *
+     * @param string      $name
+     * @param string|null $description
+     * @param string      $price
+     * @param int         $stock
+     * @param Actor       $createdBy
+     * @param bool        $isActive
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function __construct(
         public string $name,
         public ?string $description,

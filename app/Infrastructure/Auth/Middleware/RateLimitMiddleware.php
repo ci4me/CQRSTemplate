@@ -30,9 +30,18 @@ use Psr\Log\LoggerInterface;
  */
 final readonly class RateLimitMiddleware implements FilterInterface
 {
+    /** @var RateLimitInterface */
     private RateLimitInterface $rateLimitService;
+    /** @var LoggerInterface */
     private LoggerInterface $logger;
 
+    /**
+     * __construct.
+     *
+     * @param RateLimitInterface|null $rateLimitService
+     * @param LoggerInterface|null    $logger
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function __construct(
         ?RateLimitInterface $rateLimitService = null,
         ?LoggerInterface $logger = null
@@ -44,8 +53,9 @@ final readonly class RateLimitMiddleware implements FilterInterface
     /**
      * Process request before controller execution.
      *
-     * @param RequestInterface $request Current request
-     * @param mixed $arguments Filter arguments [maxAttempts, windowSeconds]
+     * @param RequestInterface $request   Current request
+     * @param mixed            $arguments Filter arguments [maxAttempts, windowSeconds]
+     * @return RequestInterface|ResponseInterface|null
      */
     public function before(RequestInterface $request, mixed $arguments = null): RequestInterface|ResponseInterface|null
     {
@@ -77,11 +87,12 @@ final readonly class RateLimitMiddleware implements FilterInterface
      *
      * No action needed - rate limiting is applied before execution.
      *
-     * @param RequestInterface $request Current request
-     * @param ResponseInterface $response Current response
-     * @param mixed $arguments Filter arguments
+     * @param RequestInterface  $request   Current request
+     * @param ResponseInterface $response  Current response
+     * @param mixed             $arguments Filter arguments
+     * @return ResponseInterface|null
+     * @phpcsSuppress SlevomatCodingStandard.Functions.UnusedParameter.UnusedParameter
      */
-    // phpcs:ignore SlevomatCodingStandard.Functions.UnusedParameter.UnusedParameter
     public function after(RequestInterface $request, ResponseInterface $response, mixed $arguments = null): ResponseInterface|null
     {
         return null;
@@ -134,9 +145,10 @@ final readonly class RateLimitMiddleware implements FilterInterface
     /**
      * Log rate limit violation.
      *
-     * @param string $identifier Request identifier
-     * @param RequestInterface $request Current request
-     * @param \App\Domain\Shared\ValueObjects\RateLimitResult $result Rate limit result
+     * @param string                                          $identifier Request identifier
+     * @param RequestInterface                                $request    Current request
+     * @param \App\Domain\Shared\ValueObjects\RateLimitResult $result     Rate limit result
+     * @return void
      */
     private function logViolation(string $identifier, RequestInterface $request, \App\Domain\Shared\ValueObjects\RateLimitResult $result): void
     {
@@ -158,7 +170,9 @@ final readonly class RateLimitMiddleware implements FilterInterface
     /**
      * Create 429 Too Many Requests response.
      *
-     * @param \App\Domain\Shared\ValueObjects\RateLimitResult $result Rate limit result
+     * @param \App\Domain\Shared\ValueObjects\RateLimitResult $result      Rate limit result
+     * @param int                                             $maxAttempts
+     * @return ResponseInterface
      */
     private function createRateLimitResponse(
         \App\Domain\Shared\ValueObjects\RateLimitResult $result,

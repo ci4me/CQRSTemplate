@@ -26,8 +26,16 @@ use Psr\Log\LoggerInterface;
  */
 final readonly class ResetPasswordHandler
 {
+    /** @var LoggerInterface */
     private LoggerInterface $logger;
 
+    /**
+     * __construct.
+     *
+     * @param UserRepository            $userRepository
+     * @param PasswordHistoryRepository $passwordHistory
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function __construct(
         private UserRepository $userRepository,
         private PasswordHistoryRepository $passwordHistory
@@ -35,6 +43,14 @@ final readonly class ResetPasswordHandler
         $this->logger = LoggerFactory::create('auth.password-reset');
     }
 
+    /**
+     * handle.
+     *
+     * @param ResetPasswordCommand $command
+     * @return void
+     * @throws \RuntimeException
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function handle(ResetPasswordCommand $command): void
     {
         $this->logger->info('Password reset attempt', [
@@ -119,6 +135,7 @@ final readonly class ResetPasswordHandler
     }
 
     /**
+     * @param string $tokenHash
      * @return array<string, mixed>|null
      */
     private function findResetToken(string $tokenHash): ?array
@@ -138,6 +155,13 @@ final readonly class ResetPasswordHandler
         return $result ?? null;
     }
 
+    /**
+     * deleteResetToken.
+     *
+     * @param int $tokenId
+     * @return void
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     private function deleteResetToken(int $tokenId): void
     {
         $db = \Config\Database::connect();
@@ -147,6 +171,13 @@ final readonly class ResetPasswordHandler
             ->delete();
     }
 
+    /**
+     * revokeAllUserTokens.
+     *
+     * @param int $userId
+     * @return void
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     private function revokeAllUserTokens(int $userId): void
     {
         $db = \Config\Database::connect();

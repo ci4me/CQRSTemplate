@@ -31,8 +31,8 @@ use App\Domain\Shared\Events\DomainEventInterface;
 final readonly class PasswordChangedEvent implements DomainEventInterface
 {
     /**
-     * @param int $userId User ID whose password was changed
-     * @param int $changedBy Admin user ID who changed password
+     * @param int    $userId    User ID whose password was changed
+     * @param int    $changedBy Admin user ID who changed password
      * @param string $changedAt ISO 8601 timestamp of password change
      */
     public function __construct(

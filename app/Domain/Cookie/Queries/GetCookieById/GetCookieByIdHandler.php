@@ -34,9 +34,9 @@ final readonly class GetCookieByIdHandler
     /**
      * Create a new GetCookieByIdHandler.
      *
-     * @param CookieReadModelRepositoryInterface $repository For data retrieval
-     * @param LoggerInterface $logger For query logging
-     * @param Logging $loggingConfig For logging configuration
+     * @param CookieReadModelRepositoryInterface $repository    For data retrieval
+     * @param LoggerInterface                    $logger        For query logging
+     * @param Logging                            $loggingConfig For logging configuration
      */
     public function __construct(
         private CookieReadModelRepositoryInterface $repository,
@@ -67,9 +67,10 @@ final readonly class GetCookieByIdHandler
     /**
      * Log query execution based on configured logging level.
      *
-     * @param int $cookieId The cookie ID being queried
-     * @param CookieDTO|null $result The query result
-     * @param float $durationMs Execution duration in milliseconds
+     * @param int            $cookieId   The cookie ID being queried
+     * @param CookieDTO|null $result     The query result
+     * @param float          $durationMs Execution duration in milliseconds
+     * @return void
      */
     private function logQueryExecution(int $cookieId, ?CookieDTO $result, float $durationMs): void
     {
@@ -98,10 +99,11 @@ final readonly class GetCookieByIdHandler
     /**
      * Log query details with context.
      *
-     * @param int $cookieId The cookie ID being queried
-     * @param CookieDTO|null $result The query result
-     * @param float $durationMs Execution duration in milliseconds
-     * @param bool $isSlowQuery Whether this is a slow query
+     * @param int            $cookieId    The cookie ID being queried
+     * @param CookieDTO|null $result      The query result
+     * @param float          $durationMs  Execution duration in milliseconds
+     * @param bool           $isSlowQuery Whether this is a slow query
+     * @return void
      */
     private function logQuery(int $cookieId, ?CookieDTO $result, float $durationMs, bool $isSlowQuery): void
     {

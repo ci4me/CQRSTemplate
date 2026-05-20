@@ -27,6 +27,14 @@ use Psr\Log\LoggerInterface;
  */
 final readonly class CreateUserHandler
 {
+    /**
+     * __construct.
+     *
+     * @param UserRepository           $repository
+     * @param EventDispatcherInterface $eventDispatcher
+     * @param LoggerInterface          $logger
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function __construct(
         private UserRepository $repository,
         private EventDispatcherInterface $eventDispatcher,
@@ -34,6 +42,13 @@ final readonly class CreateUserHandler
     ) {
     }
 
+    /**
+     * handle.
+     *
+     * @param CreateUserCommand $command
+     * @return int
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function handle(CreateUserCommand $command): int
     {
         $startTime = microtime(true);
@@ -86,6 +101,14 @@ final readonly class CreateUserHandler
         }
     }
 
+    /**
+     * checkEmailUniqueness.
+     *
+     * @param Email $email
+     * @return void
+     * @throws DomainException
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     private function checkEmailUniqueness(Email $email): void
     {
         $existing = $this->repository->findByEmail($email);

@@ -43,9 +43,17 @@ final readonly class DateTimeValue
 
     /**
      * The immutable datetime instance, always in UTC.
+     *
+     * @var DateTimeImmutable
      */
     private DateTimeImmutable $value;
 
+    /**
+     * __construct.
+     *
+     * @param DateTimeImmutable $dateTime
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     private function __construct(DateTimeImmutable $dateTime)
     {
         $this->value = $dateTime->setTimezone(new DateTimeZone(self::STORAGE_TIMEZONE));
@@ -53,6 +61,8 @@ final readonly class DateTimeValue
 
     /**
      * Create from current time (UTC).
+     *
+     * @return self
      */
     public static function now(): self
     {
@@ -68,6 +78,7 @@ final readonly class DateTimeValue
      * is normalised to UTC.
      *
      * @param string $datetime The datetime string (e.g., "2025-01-01 10:30:00" or "2025-01-01T10:30:00+02:00")
+     * @return self
      * @throws ValidationException If format is invalid
      */
     public static function fromString(string $datetime): self
@@ -94,6 +105,7 @@ final readonly class DateTimeValue
      * Create from DateTimeInterface (normalised to UTC).
      *
      * @param DateTimeInterface $datetime The datetime instance
+     * @return self
      */
     public static function fromDateTime(DateTimeInterface $datetime): self
     {
@@ -107,6 +119,7 @@ final readonly class DateTimeValue
     /**
      * Get the underlying DateTimeImmutable.
      *
+     * @return DateTimeImmutable
      */
     public function getValue(): DateTimeImmutable
     {
@@ -132,6 +145,7 @@ final readonly class DateTimeValue
      * value-object equality the rest of the domain expects.
      *
      * @param DateTimeValue $other The other datetime to compare
+     * @return bool
      */
     public function equals(DateTimeValue $other): bool
     {
@@ -163,6 +177,7 @@ final readonly class DateTimeValue
     /**
      * Convert to string.
      *
+     * @return string
      */
     public function __toString(): string
     {

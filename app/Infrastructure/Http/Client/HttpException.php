@@ -12,6 +12,15 @@ namespace App\Infrastructure\Http\Client;
  */
 final class HttpException extends \RuntimeException
 {
+    /**
+     * __construct.
+     *
+     * @param string            $message
+     * @param HttpResponse|null $lastResponse
+     * @param int               $attempts
+     * @param \Throwable|null   $previous
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function __construct(
         string $message,
         public readonly ?HttpResponse $lastResponse = null,

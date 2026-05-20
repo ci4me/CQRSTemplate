@@ -38,15 +38,16 @@ class ValidationException extends InvalidArgumentException
      */
     private array $errors = [];
 
+    /** @var int */
     private int $errorCode = 0;
 
     /**
      * Create a new validation exception.
      *
-     * @param string $message Human-readable error message
-     * @param array<string, array<string>> $errors Associative array of field errors
-     * @param int $errorCode Domain-specific error code (separate from HTTP status)
-     * @param int $code PHP exception code (default: 0)
+     * @param string                       $message   Human-readable error message
+     * @param array<string, array<string>> $errors    Associative array of field errors
+     * @param int                          $errorCode Domain-specific error code (separate from HTTP status)
+     * @param int                          $code      PHP exception code (default: 0)
      */
     public function __construct(string $message, array $errors = [], int $errorCode = 0, int $code = 0)
     {
@@ -89,7 +90,8 @@ class ValidationException extends InvalidArgumentException
      * Create exception for required field missing.
      *
      * @param string $fieldName Name of the required field
-     * @param int $errorCode Domain-specific error code
+     * @param int    $errorCode Domain-specific error code
+     * @return self
      */
     public static function required(string $fieldName, int $errorCode = 0): self
     {
@@ -103,10 +105,11 @@ class ValidationException extends InvalidArgumentException
     /**
      * Create exception for field value too short.
      *
-     * @param string $fieldName Name of the field
-     * @param int $minLength Minimum required length
-     * @param int $actualLength Actual length provided
-     * @param int $errorCode Domain-specific error code
+     * @param string $fieldName    Name of the field
+     * @param int    $minLength    Minimum required length
+     * @param int    $actualLength Actual length provided
+     * @param int    $errorCode    Domain-specific error code
+     * @return self
      */
     public static function fieldTooShort(string $fieldName, int $minLength, int $actualLength, int $errorCode = 0): self
     {
@@ -120,10 +123,11 @@ class ValidationException extends InvalidArgumentException
     /**
      * Create exception for field value too long.
      *
-     * @param string $fieldName Name of the field
-     * @param int $maxLength Maximum allowed length
-     * @param int $actualLength Actual length provided
-     * @param int $errorCode Domain-specific error code
+     * @param string $fieldName    Name of the field
+     * @param int    $maxLength    Maximum allowed length
+     * @param int    $actualLength Actual length provided
+     * @param int    $errorCode    Domain-specific error code
+     * @return self
      */
     public static function fieldTooLong(string $fieldName, int $maxLength, int $actualLength, int $errorCode = 0): self
     {
@@ -137,11 +141,12 @@ class ValidationException extends InvalidArgumentException
     /**
      * Create exception for invalid numeric range.
      *
-     * @param string $fieldName Name of the field
-     * @param float|int $min Minimum allowed value
-     * @param float|int $max Maximum allowed value
-     * @param float|int $actual Actual value provided
-     * @param int $errorCode Domain-specific error code
+     * @param string    $fieldName Name of the field
+     * @param float|int $min       Minimum allowed value
+     * @param float|int $max       Maximum allowed value
+     * @param float|int $actual    Actual value provided
+     * @param int       $errorCode Domain-specific error code
+     * @return self
      */
     public static function outOfRange(string $fieldName, float|int $min, float|int $max, float|int $actual, int $errorCode = 0): self
     {
@@ -155,10 +160,11 @@ class ValidationException extends InvalidArgumentException
     /**
      * Create exception for value below minimum.
      *
-     * @param string $fieldName Name of the field
-     * @param float|int $min Minimum allowed value
-     * @param float|int $actual Actual value provided
-     * @param int $errorCode Domain-specific error code
+     * @param string    $fieldName Name of the field
+     * @param float|int $min       Minimum allowed value
+     * @param float|int $actual    Actual value provided
+     * @param int       $errorCode Domain-specific error code
+     * @return self
      */
     public static function tooSmall(string $fieldName, float|int $min, float|int $actual, int $errorCode = 0): self
     {
@@ -172,9 +178,10 @@ class ValidationException extends InvalidArgumentException
     /**
      * Create exception for invalid format.
      *
-     * @param string $fieldName Name of the field
+     * @param string $fieldName      Name of the field
      * @param string $expectedFormat Description of expected format
-     * @param int $errorCode Domain-specific error code
+     * @param int    $errorCode      Domain-specific error code
+     * @return self
      */
     public static function invalidFormat(string $fieldName, string $expectedFormat, int $errorCode = 0): self
     {
@@ -188,8 +195,9 @@ class ValidationException extends InvalidArgumentException
     /**
      * Create exception with multiple field errors.
      *
-     * @param array<string, array<string>> $errors Errors grouped by field name
-     * @param int $errorCode Domain-specific error code
+     * @param array<string, array<string>> $errors    Errors grouped by field name
+     * @param int                          $errorCode Domain-specific error code
+     * @return self
      */
     public static function withErrors(array $errors, int $errorCode = 0): self
     {

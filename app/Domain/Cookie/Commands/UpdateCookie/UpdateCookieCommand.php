@@ -26,6 +26,19 @@ use App\Domain\Shared\ValueObjects\Actor;
  */
 final readonly class UpdateCookieCommand
 {
+    /**
+     * __construct.
+     *
+     * @param int         $id
+     * @param string      $name
+     * @param string|null $description
+     * @param string      $price
+     * @param int         $stock
+     * @param bool        $isActive
+     * @param Actor       $updatedBy
+     * @param int|null    $expectedVersion
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function __construct(
         public int $id,
         public string $name,

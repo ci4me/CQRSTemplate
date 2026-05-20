@@ -37,7 +37,7 @@ readonly class PasswordHistoryRepository
      *
      * Automatically prunes old entries to maintain MAX_HISTORY_COUNT.
      *
-     * @param int $userId User ID
+     * @param int    $userId       User ID
      * @param string $passwordHash Argon2ID hashed password
      * @return int Insert ID
      */
@@ -64,7 +64,7 @@ readonly class PasswordHistoryRepository
      * Returns most recent hashes in descending order (newest first).
      *
      * @param int $userId User ID
-     * @param int $count Number of hashes to retrieve (default: MAX_HISTORY_COUNT)
+     * @param int $count  Number of hashes to retrieve (default: MAX_HISTORY_COUNT)
      * @return array<string> Array of password hashes
      */
     public function getLastNHashes(int $userId, int $count = self::MAX_HISTORY_COUNT): array
@@ -92,7 +92,7 @@ readonly class PasswordHistoryRepository
      *
      * Uses constant-time comparison to prevent timing attacks.
      *
-     * @param int $userId User ID
+     * @param int    $userId       User ID
      * @param string $passwordHash Password hash to check
      * @return bool True if hash found in history
      */
@@ -120,7 +120,7 @@ readonly class PasswordHistoryRepository
      * Uses password_verify() for proper Argon2id comparison since
      * each hash has a unique salt, making direct hash comparison impossible.
      *
-     * @param int $userId User ID
+     * @param int    $userId            User ID
      * @param string $plaintextPassword Plaintext password to check
      * @return bool True if password found in history
      */
@@ -146,6 +146,7 @@ readonly class PasswordHistoryRepository
      * Keeps only the last MAX_HISTORY_COUNT entries per user.
      *
      * @param int $userId User ID
+     * @return void
      */
     private function pruneOldEntries(int $userId): void
     {

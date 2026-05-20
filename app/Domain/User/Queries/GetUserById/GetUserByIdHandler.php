@@ -10,8 +10,21 @@ use App\Infrastructure\Persistence\Repositories\UserRepository;
 use Config\Logging;
 use Psr\Log\LoggerInterface;
 
+/**
+ * GetUserByIdHandler.
+ *
+ * @todo Auto-generated docblock — review and replace this description.
+ */
 final readonly class GetUserByIdHandler
 {
+    /**
+     * __construct.
+     *
+     * @param UserRepository  $repository
+     * @param LoggerInterface $logger
+     * @param Logging         $loggingConfig
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function __construct(
         private UserRepository $repository,
         private LoggerInterface $logger,
@@ -19,6 +32,13 @@ final readonly class GetUserByIdHandler
     ) {
     }
 
+    /**
+     * handle.
+     *
+     * @param GetUserByIdQuery $query
+     * @return UserDTO|null
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function handle(GetUserByIdQuery $query): ?UserDTO
     {
         $startTime = microtime(true);
@@ -30,6 +50,15 @@ final readonly class GetUserByIdHandler
         return $user !== null ? UserDTO::fromEntity($user) : null;
     }
 
+    /**
+     * logQueryExecution.
+     *
+     * @param int       $id
+     * @param User|null $result
+     * @param float     $durationMs
+     * @return void
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     private function logQueryExecution(int $id, ?User $result, float $durationMs): void
     {
         $isSlowQuery = $durationMs > $this->loggingConfig->slowQueryThresholdMs;
@@ -54,6 +83,16 @@ final readonly class GetUserByIdHandler
         $this->logQuery($id, $result, $durationMs, false);
     }
 
+    /**
+     * logQuery.
+     *
+     * @param int       $id
+     * @param User|null $result
+     * @param float     $durationMs
+     * @param bool      $isSlowQuery
+     * @return void
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     private function logQuery(int $id, ?User $result, float $durationMs, bool $isSlowQuery): void
     {
         $context = [

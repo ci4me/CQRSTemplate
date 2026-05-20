@@ -17,6 +17,15 @@ use App\Domain\Shared\Events\DomainEventInterface;
  */
 final readonly class CookieStockChangedEvent implements DomainEventInterface
 {
+    /**
+     * __construct.
+     *
+     * @param int|null $cookieId
+     * @param int      $previousStock
+     * @param int      $newStock
+     * @param string   $reason
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function __construct(
         public ?int $cookieId,
         public int $previousStock,

@@ -41,6 +41,8 @@ final readonly class CookieName
 
     /**
      * The validated and normalized cookie name.
+     *
+     * @var string
      */
     private string $value;
 
@@ -75,6 +77,7 @@ final readonly class CookieName
      * Create CookieName from string.
      *
      * @param string $name The cookie name
+     * @return self
      * @throws ValidationException If validation fails
      */
     public static function fromString(string $name): self
@@ -129,6 +132,7 @@ final readonly class CookieName
     /**
      * Convert to string automatically.
      *
+     * @return string
      */
     public function __toString(): string
     {

@@ -11,14 +11,30 @@ use Firebase\JWT\JWT;
 use Firebase\JWT\Key;
 use Psr\Log\LoggerInterface;
 
+/**
+ * JwtService.
+ *
+ * @todo Auto-generated docblock — review and replace this description.
+ */
 final readonly class JwtService implements TokenGeneratorInterface
 {
+    /** @var string */
     private string $secretKey;
+    /** @var string|null */
     private ?string $oldSecretKey;
+    /** @var int */
     private int $accessTokenTtl;
+    /** @var int */
     private int $refreshTokenTtl;
+    /** @var LoggerInterface */
     private LoggerInterface $logger;
 
+    /**
+     * __construct.
+     *
+     * @throws \RuntimeException
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function __construct()
     {
         $jwtSecret = getenv('JWT_SECRET_KEY');
@@ -62,6 +78,9 @@ final readonly class JwtService implements TokenGeneratorInterface
      * - Publicly known strings
      * - Less than 32 characters (256 bits recommended)
      * - Common patterns or dictionary words
+     *
+     * @param string $secret
+     * @return bool
      */
     private function isWeakSecret(string $secret): bool
     {
@@ -108,6 +127,13 @@ final readonly class JwtService implements TokenGeneratorInterface
         return bin2hex(random_bytes(16));
     }
 
+    /**
+     * generateAccessToken.
+     *
+     * @param User $user
+     * @return string
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function generateAccessToken(User $user): string
     {
         $now = time();
@@ -124,6 +150,13 @@ final readonly class JwtService implements TokenGeneratorInterface
         return JWT::encode($payload, $this->secretKey, 'HS256');
     }
 
+    /**
+     * generateRefreshToken.
+     *
+     * @param User $user
+     * @return string
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function generateRefreshToken(User $user): string
     {
         $now = time();
@@ -157,7 +190,7 @@ final readonly class JwtService implements TokenGeneratorInterface
      * - Old tokens validated with old secret (fallback)
      * - Warning logged when old secret used (monitoring/alerting)
      *
-     * @param string $token JWT token
+     * @param string      $token        JWT token
      * @param string|null $expectedType Expected token type ('access' or 'refresh')
      * @return array<string, mixed> Decoded token payload
      * @throws \Firebase\JWT\SignatureInvalidException When signature invalid
@@ -222,6 +255,7 @@ final readonly class JwtService implements TokenGeneratorInterface
      *
      * @param string $token JWT token
      * @return array<string, mixed> Token payload
+     * @throws \InvalidArgumentException
      */
     public function getTokenPayload(string $token): array
     {

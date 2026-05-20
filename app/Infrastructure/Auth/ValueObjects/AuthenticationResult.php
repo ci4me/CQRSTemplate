@@ -19,6 +19,15 @@ use App\Domain\User\Entities\User;
  */
 final readonly class AuthenticationResult
 {
+    /**
+     * __construct.
+     *
+     * @param User   $user
+     * @param string $accessToken
+     * @param string $refreshToken
+     * @param int    $expiresAt
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     private function __construct(
         private User $user,
         private string $accessToken,
@@ -30,10 +39,11 @@ final readonly class AuthenticationResult
     /**
      * Create authentication result from successful login.
      *
-     * @param User $user Authenticated user
-     * @param string $accessToken JWT access token
+     * @param User   $user         Authenticated user
+     * @param string $accessToken  JWT access token
      * @param string $refreshToken JWT refresh token
-     * @param int $expiresAt Unix timestamp when token expires
+     * @param int    $expiresAt    Unix timestamp when token expires
+     * @return self
      */
     public static function create(
         User $user,
@@ -44,21 +54,45 @@ final readonly class AuthenticationResult
         return new self($user, $accessToken, $refreshToken, $expiresAt);
     }
 
+    /**
+     * getUser.
+     *
+     * @return User
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function getUser(): User
     {
         return $this->user;
     }
 
+    /**
+     * getAccessToken.
+     *
+     * @return string
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function getAccessToken(): string
     {
         return $this->accessToken;
     }
 
+    /**
+     * getRefreshToken.
+     *
+     * @return string
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function getRefreshToken(): string
     {
         return $this->refreshToken;
     }
 
+    /**
+     * getExpiresAt.
+     *
+     * @return int
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function getExpiresAt(): int
     {
         return $this->expiresAt;

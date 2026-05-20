@@ -21,7 +21,9 @@ use CodeIgniter\Session\Session;
 final class SessionRoleMiddleware implements FilterInterface
 {
     /**
-     * @param array<string>|null $arguments
+     * @param RequestInterface $request
+     * @param mixed            $arguments
+     * @return RequestInterface|ResponseInterface|null
      * @phpcsSuppress SlevomatCodingStandard.Functions.UnusedParameter.UnusedParameter
      */
     public function before(RequestInterface $request, mixed $arguments = null): RequestInterface|ResponseInterface|null
@@ -46,6 +48,10 @@ final class SessionRoleMiddleware implements FilterInterface
 
     /**
      * @phpcsSuppress SlevomatCodingStandard.Functions.UnusedParameter.UnusedParameter
+     * @param RequestInterface  $request
+     * @param ResponseInterface $response
+     * @param mixed             $arguments
+     * @return ResponseInterface|null
      */
     public function after(RequestInterface $request, ResponseInterface $response, mixed $arguments = null): ResponseInterface|null
     {

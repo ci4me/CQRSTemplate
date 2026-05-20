@@ -30,6 +30,12 @@ use Config\Database;
  */
 final class HealthController extends BaseController
 {
+    /**
+     * index.
+     *
+     * @return ResponseInterface
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function index(): ResponseInterface
     {
         $checks = [

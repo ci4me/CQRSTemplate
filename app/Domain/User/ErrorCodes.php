@@ -59,6 +59,11 @@ final class ErrorCodes
     public const int USER_AUTH_TOKEN_BLACKLISTED = 504;
     public const int USER_AUTH_INSUFFICIENT_PERMISSIONS = 505;
 
+    /**
+     * __construct.
+     *
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     private function __construct()
     {
     }

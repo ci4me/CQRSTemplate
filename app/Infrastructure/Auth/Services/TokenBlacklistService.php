@@ -32,14 +32,28 @@ final class TokenBlacklistService implements TokenBlacklistInterface
     private const string COUNTER_KEY = 'token_blacklist_counter';
     private const string PREFIX = 'token_blacklist_';
 
+    /** @var LoggerInterface */
     private LoggerInterface $logger;
 
+    /**
+     * __construct.
+     *
+     * @param CacheInterface $cache
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function __construct(
         private CacheInterface $cache
     ) {
         $this->logger = LoggerFactory::create('auth.token.blacklist');
     }
 
+    /**
+     * blacklist.
+     *
+     * @param string $token
+     * @return void
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function blacklist(string $token): void
     {
         $this->cleanupIfNeeded();
@@ -55,6 +69,13 @@ final class TokenBlacklistService implements TokenBlacklistInterface
         $this->checkCapacityWarning();
     }
 
+    /**
+     * isBlacklisted.
+     *
+     * @param string $token
+     * @return bool
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function isBlacklisted(string $token): bool
     {
         $hash = hash('sha256', $token);
@@ -66,7 +87,7 @@ final class TokenBlacklistService implements TokenBlacklistInterface
     /**
      * Get blacklist statistics.
      *
-     * @return BlacklistStats Array containing:
+     * @return array<mixed> Array containing:
      *                        - total_entries: Current number of blacklisted tokens
      *                        - estimated_memory_mb: Approximate memory usage in megabytes
      *                        - capacity_percentage: Percentage of max capacity used (0.0-100.0)
@@ -96,6 +117,8 @@ final class TokenBlacklistService implements TokenBlacklistInterface
      *
      * This method is automatically called when capacity reaches 90%,
      * but can be manually invoked for maintenance purposes.
+     *
+     * @return int
      */
     public function cleanup(): int
     {
@@ -111,6 +134,12 @@ final class TokenBlacklistService implements TokenBlacklistInterface
         return $previousCount;
     }
 
+    /**
+     * cleanupIfNeeded.
+     *
+     * @return void
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     private function cleanupIfNeeded(): void
     {
         $count = $this->getCounter();
@@ -132,6 +161,12 @@ final class TokenBlacklistService implements TokenBlacklistInterface
         $this->cache->delete(self::COUNTER_KEY);
     }
 
+    /**
+     * checkCapacityWarning.
+     *
+     * @return void
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     private function checkCapacityWarning(): void
     {
         $count = $this->getCounter();
@@ -152,12 +187,24 @@ final class TokenBlacklistService implements TokenBlacklistInterface
         ]);
     }
 
+    /**
+     * getCounter.
+     *
+     * @return int
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     private function getCounter(): int
     {
         $count = $this->cache->get(self::COUNTER_KEY);
         return is_int($count) ? $count : 0;
     }
 
+    /**
+     * incrementCounter.
+     *
+     * @return void
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     private function incrementCounter(): void
     {
         $count = $this->getCounter();

@@ -17,10 +17,10 @@ use App\Domain\Shared\Events\DomainEventInterface;
 final readonly class CookieDeletedEvent implements DomainEventInterface
 {
     /**
-     * @param int $cookieId        ID of the deleted cookie
-     * @param string $cookieName   Denormalised name for log readability
-     * @param array<string, scalar|null> $snapshot Final state at time of delete
-     * @param int $deletedBy       Actor id (0 for system)
+     * @param int                        $cookieId   ID of the deleted cookie
+     * @param string                     $cookieName Denormalised name for log readability
+     * @param array<string, scalar|null> $snapshot   Final state at time of delete
+     * @param int                        $deletedBy  Actor id (0 for system)
      */
     public function __construct(
         public int $cookieId,

@@ -30,10 +30,21 @@ use Psr\Log\LoggerInterface;
  */
 final class PermissionMiddleware implements FilterInterface
 {
+    /** @var ActorResolver */
     private ActorResolver $actorResolver;
+    /** @var PermissionService */
     private PermissionService $permissions;
+    /** @var LoggerInterface */
     private LoggerInterface $logger;
 
+    /**
+     * __construct.
+     *
+     * @param ActorResolver|null     $actorResolver
+     * @param PermissionService|null $permissions
+     * @param LoggerInterface|null   $logger
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function __construct(
         ?ActorResolver $actorResolver = null,
         ?PermissionService $permissions = null,
@@ -44,6 +55,14 @@ final class PermissionMiddleware implements FilterInterface
         $this->logger = $logger ?? \Config\Services::logger();
     }
 
+    /**
+     * before.
+     *
+     * @param RequestInterface $request
+     * @param mixed            $arguments
+     * @return RequestInterface|ResponseInterface
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function before(RequestInterface $request, mixed $arguments = null): RequestInterface|ResponseInterface
     {
         $required = $this->parseArgument($arguments);
@@ -78,12 +97,23 @@ final class PermissionMiddleware implements FilterInterface
 
     /**
      * @phpcsSuppress SlevomatCodingStandard.Functions.UnusedParameter.UnusedParameter
+     * @param RequestInterface  $request
+     * @param ResponseInterface $response
+     * @param mixed             $arguments
+     * @return ResponseInterface
      */
     public function after(RequestInterface $request, ResponseInterface $response, mixed $arguments = null): ResponseInterface
     {
         return $response;
     }
 
+    /**
+     * parseArgument.
+     *
+     * @param mixed $arguments
+     * @return Permission|null
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     private function parseArgument(mixed $arguments): ?Permission
     {
         if (is_array($arguments) && count($arguments) > 0) {
@@ -108,6 +138,13 @@ final class PermissionMiddleware implements FilterInterface
         return null;
     }
 
+    /**
+     * forbidden.
+     *
+     * @param string $detail
+     * @return ResponseInterface
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     private function forbidden(string $detail): ResponseInterface
     {
         return ApiResponse::problem(403, 'Forbidden', $detail);

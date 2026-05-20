@@ -11,8 +11,21 @@ use App\Infrastructure\Persistence\Repositories\UserRepository;
 use Config\Logging;
 use Psr\Log\LoggerInterface;
 
+/**
+ * GetUserByEmailHandler.
+ *
+ * @todo Auto-generated docblock — review and replace this description.
+ */
 final readonly class GetUserByEmailHandler
 {
+    /**
+     * __construct.
+     *
+     * @param UserRepository  $repository
+     * @param LoggerInterface $logger
+     * @param Logging         $loggingConfig
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function __construct(
         private UserRepository $repository,
         private LoggerInterface $logger,
@@ -20,6 +33,13 @@ final readonly class GetUserByEmailHandler
     ) {
     }
 
+    /**
+     * handle.
+     *
+     * @param GetUserByEmailQuery $query
+     * @return UserDTO|null
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function handle(GetUserByEmailQuery $query): ?UserDTO
     {
         $startTime = microtime(true);
@@ -33,6 +53,15 @@ final readonly class GetUserByEmailHandler
         return $user !== null ? UserDTO::fromEntity($user) : null;
     }
 
+    /**
+     * logQueryExecution.
+     *
+     * @param string    $email
+     * @param User|null $result
+     * @param float     $durationMs
+     * @return void
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     private function logQueryExecution(string $email, ?User $result, float $durationMs): void
     {
         $isSlowQuery = $durationMs > $this->loggingConfig->slowQueryThresholdMs;
@@ -57,6 +86,16 @@ final readonly class GetUserByEmailHandler
         $this->logQuery($email, $result, $durationMs, false);
     }
 
+    /**
+     * logQuery.
+     *
+     * @param string    $email
+     * @param User|null $result
+     * @param float     $durationMs
+     * @param bool      $isSlowQuery
+     * @return void
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     private function logQuery(string $email, ?User $result, float $durationMs, bool $isSlowQuery): void
     {
         $context = [

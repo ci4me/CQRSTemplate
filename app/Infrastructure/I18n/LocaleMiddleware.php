@@ -25,10 +25,24 @@ use Config\Services;
  */
 final class LocaleMiddleware implements FilterInterface
 {
+    /**
+     * __construct.
+     *
+     * @param LocaleResolver|null $resolver
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function __construct(private readonly ?LocaleResolver $resolver = null)
     {
     }
 
+    /**
+     * before.
+     *
+     * @param RequestInterface $request
+     * @param mixed            $arguments
+     * @return RequestInterface
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function before(RequestInterface $request, mixed $arguments = null): RequestInterface
     {
         // phpcs:ignore SlevomatCodingStandard.Functions.UnusedParameter.UnusedParameter
@@ -55,6 +69,15 @@ final class LocaleMiddleware implements FilterInterface
         return $request;
     }
 
+    /**
+     * after.
+     *
+     * @param RequestInterface  $request
+     * @param ResponseInterface $response
+     * @param mixed             $arguments
+     * @return ResponseInterface
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function after(RequestInterface $request, ResponseInterface $response, mixed $arguments = null): ResponseInterface
     {
         // phpcs:ignore SlevomatCodingStandard.Functions.UnusedParameter.UnusedParameter

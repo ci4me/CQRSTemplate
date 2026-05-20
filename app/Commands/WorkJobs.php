@@ -48,6 +48,7 @@ final class WorkJobs extends BaseCommand
 
     /**
      * @param array<int|string, mixed> $params
+     * @return int
      */
     public function run(array $params): int
     {

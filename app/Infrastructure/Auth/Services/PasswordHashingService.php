@@ -6,13 +6,33 @@ namespace App\Infrastructure\Auth\Services;
 
 use App\Domain\User\Ports\PasswordHasherInterface;
 
+/**
+ * PasswordHashingService.
+ *
+ * @todo Auto-generated docblock — review and replace this description.
+ */
 final readonly class PasswordHashingService implements PasswordHasherInterface
 {
+    /**
+     * hash.
+     *
+     * @param string $plaintext
+     * @return string
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function hash(string $plaintext): string
     {
         return password_hash($plaintext, PASSWORD_ARGON2ID);
     }
 
+    /**
+     * verify.
+     *
+     * @param string $plaintext
+     * @param string $hash
+     * @return bool
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function verify(string $plaintext, string $hash): bool
     {
         return password_verify($plaintext, $hash);

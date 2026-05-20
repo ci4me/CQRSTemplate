@@ -44,6 +44,7 @@ class CookieController extends BaseController
      *
      * GET /cookies
      *
+     * @return string
      */
     public function index(): string
     {
@@ -75,6 +76,8 @@ class CookieController extends BaseController
      *
      * GET /cookies/{id}
      *
+     * @param int $id
+     * @return string|RedirectResponse
      */
     public function show(int $id): string|RedirectResponse
     {
@@ -96,6 +99,7 @@ class CookieController extends BaseController
      *
      * GET /cookies/create
      *
+     * @return string
      */
     public function create(): string
     {
@@ -107,6 +111,7 @@ class CookieController extends BaseController
      *
      * POST /cookies
      *
+     * @return RedirectResponse
      */
     public function store(): RedirectResponse
     {
@@ -158,6 +163,8 @@ class CookieController extends BaseController
      *
      * GET /cookies/{id}/edit
      *
+     * @param int $id
+     * @return string|RedirectResponse
      */
     public function edit(int $id): string|RedirectResponse
     {
@@ -179,6 +186,8 @@ class CookieController extends BaseController
      *
      * POST /cookies/{id}
      *
+     * @param int $id
+     * @return RedirectResponse
      */
     public function update(int $id): RedirectResponse
     {
@@ -231,6 +240,8 @@ class CookieController extends BaseController
      *
      * POST /cookies/{id}/delete
      *
+     * @param int $id
+     * @return RedirectResponse
      */
     public function delete(int $id): RedirectResponse
     {

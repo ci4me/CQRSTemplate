@@ -16,12 +16,27 @@ final readonly class Actor
 {
     public const int SYSTEM_ID = 0;
 
+    /**
+     * __construct.
+     *
+     * @param int    $id
+     * @param string $label
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     private function __construct(
         public int $id,
         public string $label
     ) {
     }
 
+    /**
+     * user.
+     *
+     * @param int $userId
+     * @return self
+     * @throws \InvalidArgumentException
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public static function user(int $userId): self
     {
         if ($userId <= 0) {
@@ -33,11 +48,24 @@ final readonly class Actor
         return new self($userId, sprintf('user:%d', $userId));
     }
 
+    /**
+     * system.
+     *
+     * @param string $label
+     * @return self
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public static function system(string $label = 'system'): self
     {
         return new self(self::SYSTEM_ID, $label);
     }
 
+    /**
+     * isSystem.
+     *
+     * @return bool
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function isSystem(): bool
     {
         return $this->id === self::SYSTEM_ID;

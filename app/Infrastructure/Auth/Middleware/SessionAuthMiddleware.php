@@ -29,9 +29,18 @@ use Psr\Log\LoggerInterface;
  */
 final class SessionAuthMiddleware implements FilterInterface
 {
+    /** @var UserRepository */
     private UserRepository $userRepository;
+    /** @var LoggerInterface */
     private LoggerInterface $logger;
 
+    /**
+     * __construct.
+     *
+     * @param UserRepository|null  $userRepository
+     * @param LoggerInterface|null $logger
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function __construct(
         ?UserRepository $userRepository = null,
         ?LoggerInterface $logger = null
@@ -42,6 +51,9 @@ final class SessionAuthMiddleware implements FilterInterface
 
     /**
      * @phpcsSuppress SlevomatCodingStandard.Functions.UnusedParameter.UnusedParameter
+     * @param RequestInterface $request
+     * @param mixed            $arguments
+     * @return RequestInterface|ResponseInterface
      */
     public function before(RequestInterface $request, mixed $arguments = null): RequestInterface|ResponseInterface
     {
@@ -74,12 +86,25 @@ final class SessionAuthMiddleware implements FilterInterface
 
     /**
      * @phpcsSuppress SlevomatCodingStandard.Functions.UnusedParameter.UnusedParameter
+     * @param RequestInterface  $request
+     * @param ResponseInterface $response
+     * @param mixed             $arguments
+     * @return ResponseInterface
      */
     public function after(RequestInterface $request, ResponseInterface $response, mixed $arguments = null): ResponseInterface
     {
         return $response;
     }
 
+    /**
+     * redirectToLogin.
+     *
+     * @param Session          $session
+     * @param RequestInterface $request
+     * @param string           $reason
+     * @return ResponseInterface
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     private function redirectToLogin(Session $session, RequestInterface $request, string $reason): ResponseInterface
     {
         $this->logger->info('Session auth redirect to login', [

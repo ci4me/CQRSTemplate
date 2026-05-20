@@ -29,6 +29,12 @@ final class AuthController extends ResourceController
      */
     protected $format = 'json';
 
+    /**
+     * register.
+     *
+     * @return ResponseInterface
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function register(): ResponseInterface
     {
         $commandBus = service('commandBus');
@@ -61,6 +67,12 @@ final class AuthController extends ResourceController
         }
     }
 
+    /**
+     * login.
+     *
+     * @return ResponseInterface
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function login(): ResponseInterface
     {
         $commandBus = service('commandBus');
@@ -103,6 +115,12 @@ final class AuthController extends ResourceController
         }
     }
 
+    /**
+     * logout.
+     *
+     * @return ResponseInterface
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function logout(): ResponseInterface
     {
         $commandBus = service('commandBus');
@@ -145,6 +163,12 @@ final class AuthController extends ResourceController
         }
     }
 
+    /**
+     * refresh.
+     *
+     * @return ResponseInterface
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function refresh(): ResponseInterface
     {
         $commandBus = service('commandBus');
@@ -173,6 +197,12 @@ final class AuthController extends ResourceController
         }
     }
 
+    /**
+     * requestPasswordReset.
+     *
+     * @return ResponseInterface
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function requestPasswordReset(): ResponseInterface
     {
         $commandBus = service('commandBus');
@@ -205,6 +235,12 @@ final class AuthController extends ResourceController
         }
     }
 
+    /**
+     * resetPassword.
+     *
+     * @return ResponseInterface
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function resetPassword(): ResponseInterface
     {
         $commandBus = service('commandBus');
@@ -233,6 +269,12 @@ final class AuthController extends ResourceController
         }
     }
 
+    /**
+     * me.
+     *
+     * @return ResponseInterface
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function me(): ResponseInterface
     {
         assert($this->request instanceof IncomingRequest);
@@ -259,6 +301,7 @@ final class AuthController extends ResourceController
     /**
      * List active sessions for authenticated user.
      *
+     * @return ResponseInterface
      */
     public function listSessions(): ResponseInterface
     {
@@ -289,6 +332,7 @@ final class AuthController extends ResourceController
      * Revoke specific session for authenticated user.
      *
      * @param int $sessionId Session ID to revoke
+     * @return ResponseInterface
      */
     public function revokeSession(int $sessionId): ResponseInterface
     {
@@ -318,6 +362,7 @@ final class AuthController extends ResourceController
     /**
      * Revoke all sessions for authenticated user (force logout from all devices).
      *
+     * @return ResponseInterface
      */
     public function revokeAllSessions(): ResponseInterface
     {

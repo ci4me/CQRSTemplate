@@ -24,6 +24,9 @@ interface CommandHandlerInterface
     /**
      * Execute the command. Concrete handlers narrow the parameter to
      * their specific command class.
+     *
+     * @param object $command
+     * @return mixed
      */
     public function handle(object $command): mixed;
 }

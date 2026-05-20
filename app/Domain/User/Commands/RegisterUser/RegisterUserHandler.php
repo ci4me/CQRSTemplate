@@ -16,8 +16,21 @@ use App\Infrastructure\Bus\EventDispatcherInterface;
 use App\Infrastructure\Persistence\Repositories\UserRepository;
 use Psr\Log\LoggerInterface;
 
+/**
+ * RegisterUserHandler.
+ *
+ * @todo Auto-generated docblock — review and replace this description.
+ */
 final readonly class RegisterUserHandler
 {
+    /**
+     * __construct.
+     *
+     * @param UserRepository           $repository
+     * @param EventDispatcherInterface $eventDispatcher
+     * @param LoggerInterface          $logger
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function __construct(
         private UserRepository $repository,
         private EventDispatcherInterface $eventDispatcher,
@@ -25,6 +38,14 @@ final readonly class RegisterUserHandler
     ) {
     }
 
+    /**
+     * handle.
+     *
+     * @param RegisterUserCommand $command
+     * @return int
+     * @throws DomainException
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function handle(RegisterUserCommand $command): int
     {
         $startTime = microtime(true);
@@ -88,6 +109,14 @@ final readonly class RegisterUserHandler
         }
     }
 
+    /**
+     * checkEmailUniqueness.
+     *
+     * @param Email $email
+     * @return void
+     * @throws DomainException
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     private function checkEmailUniqueness(Email $email): void
     {
         $existing = $this->repository->findByEmail($email);

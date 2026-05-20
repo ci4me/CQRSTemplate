@@ -49,6 +49,7 @@ final class CleanupPasswordResetTokens extends BaseCommand
      * Execute command.
      *
      * @param array<int|string, mixed> $params Command parameters
+     * @return void
      */
     public function run(array $params): void
     {

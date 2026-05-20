@@ -30,9 +30,18 @@ use App\Domain\Shared\Exceptions\ValidationException;
  */
 final readonly class Money implements \JsonSerializable
 {
+    /** @var Currency */
     public Currency $currency;
+    /** @var int */
     private int $amountMinor;
 
+    /**
+     * __construct.
+     *
+     * @param int      $amountMinor
+     * @param Currency $currency
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     private function __construct(int $amountMinor, Currency $currency)
     {
         $this->amountMinor = $amountMinor;
@@ -46,6 +55,10 @@ final readonly class Money implements \JsonSerializable
      * USD default would silently convert "1500 yen" into "$15.00" when a
      * caller forgot to specify the currency. Pass {@see Currency::usd()}
      * explicitly when USD is intended.
+     *
+     * @param int      $amountMinor
+     * @param Currency $currency
+     * @return self
      */
     public static function fromMinorUnits(int $amountMinor, Currency $currency): self
     {
@@ -57,6 +70,11 @@ final readonly class Money implements \JsonSerializable
      * precision against the currency's decimal count and rejects values
      * with too many fractional digits — silent rounding is never
      * acceptable for money.
+     *
+     * @param string   $value
+     * @param Currency $currency
+     * @return self
+     * @throws ValidationException
      */
     public static function fromDecimalString(string $value, Currency $currency): self
     {
@@ -114,6 +132,11 @@ final readonly class Money implements \JsonSerializable
      * Throws on overflow rather than silently saturating: a multiplication
      * that exceeds PHP_INT_MAX would otherwise wrap into a small negative
      * value and silently corrupt downstream totals.
+     *
+     * @param float    $value
+     * @param Currency $currency
+     * @return self
+     * @throws ValidationException
      */
     public static function fromFloat(float $value, Currency $currency): self
     {
@@ -133,11 +156,23 @@ final readonly class Money implements \JsonSerializable
         return new self((int) round($scaled), $currency);
     }
 
+    /**
+     * amountMinor.
+     *
+     * @return int
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function amountMinor(): int
     {
         return $this->amountMinor;
     }
 
+    /**
+     * toDecimalString.
+     *
+     * @return string
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function toDecimalString(): string
     {
         if ($this->currency->decimals === 0) {
@@ -148,6 +183,12 @@ final readonly class Money implements \JsonSerializable
         return number_format($value, $this->currency->decimals, '.', '');
     }
 
+    /**
+     * format.
+     *
+     * @return string
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function format(): string
     {
         $absStr = $this->absoluteDecimal();
@@ -155,6 +196,12 @@ final readonly class Money implements \JsonSerializable
         return $sign . $this->currency->symbol . $absStr;
     }
 
+    /**
+     * __toString.
+     *
+     * @return string
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function __toString(): string
     {
         return $this->toDecimalString();
@@ -177,51 +224,111 @@ final readonly class Money implements \JsonSerializable
         ];
     }
 
+    /**
+     * isZero.
+     *
+     * @return bool
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function isZero(): bool
     {
         return $this->amountMinor === 0;
     }
 
+    /**
+     * isNegative.
+     *
+     * @return bool
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function isNegative(): bool
     {
         return $this->amountMinor < 0;
     }
 
+    /**
+     * equals.
+     *
+     * @param self $other
+     * @return bool
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function equals(self $other): bool
     {
         return $this->currency->equals($other->currency)
             && $this->amountMinor === $other->amountMinor;
     }
 
+    /**
+     * greaterThan.
+     *
+     * @param self $other
+     * @return bool
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function greaterThan(self $other): bool
     {
         $this->assertSameCurrency($other);
         return $this->amountMinor > $other->amountMinor;
     }
 
+    /**
+     * lessThan.
+     *
+     * @param self $other
+     * @return bool
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function lessThan(self $other): bool
     {
         $this->assertSameCurrency($other);
         return $this->amountMinor < $other->amountMinor;
     }
 
+    /**
+     * add.
+     *
+     * @param self $other
+     * @return self
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function add(self $other): self
     {
         $this->assertSameCurrency($other);
         return new self($this->amountMinor + $other->amountMinor, $this->currency);
     }
 
+    /**
+     * subtract.
+     *
+     * @param self $other
+     * @return self
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function subtract(self $other): self
     {
         $this->assertSameCurrency($other);
         return new self($this->amountMinor - $other->amountMinor, $this->currency);
     }
 
+    /**
+     * multiply.
+     *
+     * @param int $multiplier
+     * @return self
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function multiply(int $multiplier): self
     {
         return new self($this->amountMinor * $multiplier, $this->currency);
     }
 
+    /**
+     * absoluteDecimal.
+     *
+     * @return string
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     private function absoluteDecimal(): string
     {
         $decimals = $this->currency->decimals;
@@ -233,6 +340,14 @@ final readonly class Money implements \JsonSerializable
         return number_format($abs / $factor, $decimals, '.', '');
     }
 
+    /**
+     * assertSameCurrency.
+     *
+     * @param self $other
+     * @return void
+     * @throws \InvalidArgumentException
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     private function assertSameCurrency(self $other): void
     {
         if ($this->currency->equals($other->currency)) {
@@ -245,6 +360,14 @@ final readonly class Money implements \JsonSerializable
         ));
     }
 
+    /**
+     * cleanDecimalInput.
+     *
+     * @param string $value
+     * @return string
+     * @throws ValidationException
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     private static function cleanDecimalInput(string $value): string
     {
         $trimmed = trim($value);

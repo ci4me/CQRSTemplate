@@ -21,11 +21,11 @@ namespace App\Domain\User\Queries\SearchUsers;
 final readonly class SearchUsersQuery
 {
     /**
-     * @param string|null $email Email filter (partial match)
-     * @param string|null $role Role filter (exact match: admin, customer)
-     * @param string|null $status Status filter (exact match: active, inactive)
-     * @param int $page Current page number (default: 1)
-     * @param int $perPage Users per page (default: 20)
+     * @param string|null $email   Email filter (partial match)
+     * @param string|null $role    Role filter (exact match: admin, customer)
+     * @param string|null $status  Status filter (exact match: active, inactive)
+     * @param int         $page    Current page number (default: 1)
+     * @param int         $perPage Users per page (default: 20)
      */
     public function __construct(
         public ?string $email = null,

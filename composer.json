@@ -62,20 +62,26 @@
         "phpcs": "phpcs",
         "phpcbf": "phpcbf",
         "gitleaks": "@php -r \"passthru('command -v gitleaks >/dev/null 2>&1 && gitleaks detect --no-banner --redact --staged || echo gitleaks-not-installed-skipping');\"",
+        "docblocks:generate": "@php bin/docblocks-generate app/",
+        "docblocks:audit": "@php bin/docblocks-audit",
         "check": [
             "@phpstan",
             "@phpcs",
-            "@test"
+            "@test",
+            "@docblocks:audit"
         ],
         "ci": [
             "@phpstan",
             "@phpcs",
-            "@test:clover"
+            "@test:clover",
+            "@docblocks:audit"
         ]
     },
     "scripts-descriptions": {
         "setup-hooks": "Wire .githooks/ as core.hooksPath (idempotent; runs automatically on install/update).",
-        "check": "Run PHPStan + PHPCS + PHPUnit locally before pushing.",
-        "ci": "CI variant of check (with Clover coverage output)."
+        "check": "Run PHPStan + PHPCS + PHPUnit + docblocks audit locally before pushing.",
+        "ci": "CI variant of check (with Clover coverage output).",
+        "docblocks:generate": "Walk app/ and insert PHPDoc stubs on every class/method/property that lacks one. Reuses the AST so existing docblocks are preserved.",
+        "docblocks:audit": "Fail the build if any auto-generated docblock markers remain. AI agents and developers must replace each placeholder with a real description before committing."
     }
 }

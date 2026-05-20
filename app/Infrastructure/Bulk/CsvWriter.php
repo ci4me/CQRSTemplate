@@ -27,14 +27,18 @@ final class CsvWriter
 {
     /** @var resource */
     private $handle;
+    /** @var bool */
     private bool $ownsHandle;
 
     /**
-     * @param resource    $handle
+     * @param mixed        $handle
      * @param list<string> $header
+     * @param string       $delimiter
+     * @param string       $enclosure
+     * @param bool         $ownsHandle
      */
     private function __construct(
-        $handle,
+        mixed $handle,
         private readonly array $header,
         private readonly string $delimiter,
         private readonly string $enclosure,
@@ -51,6 +55,10 @@ final class CsvWriter
 
     /**
      * @param list<string> $header
+     * @param string       $delimiter
+     * @param string       $enclosure
+     * @return self
+     * @throws \RuntimeException
      */
     public static function toString(array $header, string $delimiter = ',', string $enclosure = '"'): self
     {
@@ -62,7 +70,12 @@ final class CsvWriter
     }
 
     /**
+     * @param string       $path
      * @param list<string> $header
+     * @param string       $delimiter
+     * @param string       $enclosure
+     * @return self
+     * @throws \RuntimeException
      */
     public static function toFile(string $path, array $header, string $delimiter = ',', string $enclosure = '"'): self
     {
@@ -75,6 +88,7 @@ final class CsvWriter
 
     /**
      * @param array<string, scalar|null> $row
+     * @return void
      */
     public function writeRow(array $row): void
     {
@@ -86,6 +100,12 @@ final class CsvWriter
         $this->putRow($line);
     }
 
+    /**
+     * contents.
+     *
+     * @return string
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function contents(): string
     {
         rewind($this->handle);
@@ -93,6 +113,12 @@ final class CsvWriter
         return $out === false ? '' : $out;
     }
 
+    /**
+     * close.
+     *
+     * @return void
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function close(): void
     {
         if (!$this->ownsHandle) {
@@ -102,6 +128,13 @@ final class CsvWriter
         $this->ownsHandle = false;
     }
 
+    /**
+     * stringify.
+     *
+     * @param mixed $value
+     * @return string
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     private function stringify(mixed $value): string
     {
         if ($value === null) {
@@ -115,6 +148,8 @@ final class CsvWriter
 
     /**
      * @param list<string> $row
+     * @return void
+     * @throws \RuntimeException
      */
     private function putRow(array $row): void
     {
@@ -124,6 +159,11 @@ final class CsvWriter
         }
     }
 
+    /**
+     * __destruct.
+     *
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function __destruct()
     {
         $this->close();

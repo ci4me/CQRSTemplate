@@ -32,9 +32,9 @@ final readonly class GetAllCookiesHandler
     /**
      * Create a new GetAllCookiesHandler.
      *
-     * @param CookieReadModelRepositoryInterface $repository For data retrieval
-     * @param LoggerInterface $logger For query logging
-     * @param Logging $loggingConfig For logging configuration
+     * @param CookieReadModelRepositoryInterface $repository    For data retrieval
+     * @param LoggerInterface                    $logger        For query logging
+     * @param Logging                            $loggingConfig For logging configuration
      */
     public function __construct(
         private CookieReadModelRepositoryInterface $repository,
@@ -65,9 +65,10 @@ final readonly class GetAllCookiesHandler
     /**
      * Log query execution based on configured logging level.
      *
-     * @param bool $includeInactive Whether inactive cookies were included
-     * @param int $resultCount Number of cookies returned
-     * @param float $durationMs Execution duration in milliseconds
+     * @param bool  $includeInactive Whether inactive cookies were included
+     * @param int   $resultCount     Number of cookies returned
+     * @param float $durationMs      Execution duration in milliseconds
+     * @return void
      */
     private function logQueryExecution(bool $includeInactive, int $resultCount, float $durationMs): void
     {
@@ -104,10 +105,11 @@ final readonly class GetAllCookiesHandler
     /**
      * Log query details with context.
      *
-     * @param bool $includeInactive Whether inactive cookies were included
-     * @param int $resultCount Number of cookies returned
-     * @param float $durationMs Execution duration in milliseconds
-     * @param bool $isSlowQuery Whether this is a slow query
+     * @param bool  $includeInactive Whether inactive cookies were included
+     * @param int   $resultCount     Number of cookies returned
+     * @param float $durationMs      Execution duration in milliseconds
+     * @param bool  $isSlowQuery     Whether this is a slow query
+     * @return void
      */
     private function logQuery(bool $includeInactive, int $resultCount, float $durationMs, bool $isSlowQuery): void
     {

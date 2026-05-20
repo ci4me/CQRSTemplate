@@ -35,6 +35,7 @@ use Config\Database;
 final class AttachmentService
 {
     /**
+     * @param StorageInterface                                                  $storage
      * @param BaseConnection<object|resource|false, object|resource|false>|null $db
      */
     public function __construct(
@@ -43,6 +44,20 @@ final class AttachmentService
     ) {
     }
 
+    /**
+     * attachTo.
+     *
+     * @param string   $attachableType
+     * @param string   $attachableId
+     * @param string   $contents
+     * @param string   $originalName
+     * @param string   $mimeType
+     * @param Actor    $actor
+     * @param int|null $tenantId
+     * @return AttachmentRef
+     * @throws \InvalidArgumentException
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function attachTo(
         string $attachableType,
         string $attachableId,
@@ -98,6 +113,10 @@ final class AttachmentService
     /**
      * Read the raw bytes for a previously-attached file. Caller is expected
      * to authorise the read at the controller layer (e.g. via PermissionMiddleware).
+     *
+     * @param int $id
+     * @return string
+     * @throws StorageException
      */
     public function read(int $id): string
     {
@@ -111,6 +130,9 @@ final class AttachmentService
     /**
      * Soft-delete (sets deleted_at + deletes underlying bytes). The row is
      * preserved for audit; the file goes away to reclaim space.
+     *
+     * @param int $id
+     * @return void
      */
     public function delete(int $id): void
     {
@@ -131,6 +153,8 @@ final class AttachmentService
     }
 
     /**
+     * @param string $attachableType
+     * @param string $attachableId
      * @return list<AttachmentRef>
      */
     public function listFor(string $attachableType, string $attachableId): array
@@ -155,6 +179,7 @@ final class AttachmentService
 
     /**
      * @param array<string, mixed> $row
+     * @return AttachmentRef
      */
     private function hydrate(array $row): AttachmentRef
     {
@@ -170,6 +195,15 @@ final class AttachmentService
         );
     }
 
+    /**
+     * buildKey.
+     *
+     * @param string $type
+     * @param string $id
+     * @param string $name
+     * @return string
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     private function buildKey(string $type, string $id, string $name): string
     {
         $typeSlug = preg_replace('/[^a-z0-9]+/i', '-', strtolower($type)) ?? 'attach';
@@ -186,6 +220,13 @@ final class AttachmentService
         return sprintf('%s/%s/%s-%s', $typeSlug, $idSlug, $uuid, $safeName);
     }
 
+    /**
+     * safeName.
+     *
+     * @param string $name
+     * @return string
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     private function safeName(string $name): string
     {
         $name = basename($name);
@@ -194,6 +235,7 @@ final class AttachmentService
     }
 
     /**
+     * @param int $id
      * @return array<string, mixed>|null
      */
     private function fetchRow(int $id): ?array

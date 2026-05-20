@@ -15,8 +15,8 @@ use App\Domain\Shared\Events\DomainEventInterface;
 final readonly class UserRegisteredEvent implements DomainEventInterface
 {
     /**
-     * @param int $userId The ID of the newly registered user
-     * @param string $email The email address of the registered user
+     * @param int                $userId       The ID of the newly registered user
+     * @param string             $email        The email address of the registered user
      * @param \DateTimeImmutable $registeredAt When the user was registered
      */
     public function __construct(

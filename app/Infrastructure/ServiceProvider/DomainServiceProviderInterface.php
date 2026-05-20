@@ -61,6 +61,7 @@ interface DomainServiceProviderInterface
      * Register all command handlers for this domain.
      *
      * @param CommandBus $commandBus The command bus instance
+     * @return void
      */
     public function registerCommands(CommandBus $commandBus): void;
 
@@ -68,6 +69,7 @@ interface DomainServiceProviderInterface
      * Register all query handlers for this domain.
      *
      * @param QueryBus $queryBus The query bus instance
+     * @return void
      */
     public function registerQueries(QueryBus $queryBus): void;
 
@@ -75,6 +77,7 @@ interface DomainServiceProviderInterface
      * Register all event listeners/handlers for this domain.
      *
      * @param EventDispatcher $dispatcher The event dispatcher instance
+     * @return void
      */
     public function registerEvents(EventDispatcher $dispatcher): void;
 
@@ -84,7 +87,7 @@ interface DomainServiceProviderInterface
      * These names correspond to methods in Services.php (e.g., 'cookieRepository').
      * The ServiceProviderRegistry will resolve these and inject them.
      *
-     * @return string[] Array of repository service names
+     * @return array<mixed> Array of repository service names
      */
     public function getRepositories(): array;
 
@@ -94,6 +97,7 @@ interface DomainServiceProviderInterface
      * Called by ServiceProviderRegistry to inject dependencies.
      *
      * @param array<string, object> $repositories Map of repository name => instance
+     * @return void
      */
     public function setRepositories(array $repositories): void;
 }

@@ -20,6 +20,7 @@ interface JobHandlerInterface
 {
     /**
      * @param array<string, mixed> $payload
+     * @return void
      */
     public function handle(array $payload): void;
 }

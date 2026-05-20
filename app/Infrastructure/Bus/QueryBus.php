@@ -50,7 +50,8 @@ final class QueryBus
      * Register a query handler.
      *
      * @param string $queryClass Fully qualified query class name
-     * @param object $handler The handler instance with handle() method
+     * @param object $handler    The handler instance with handle() method
+     * @return void
      * @throws RuntimeException If handler is already registered for this query
      */
     public function register(string $queryClass, object $handler): void

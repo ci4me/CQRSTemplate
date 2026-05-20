@@ -1,0 +1,1184 @@
+#!/usr/bin/env php
+<?php
+
+declare(strict_types=1);
+
+/**
+ * Docblock stub generator.
+ *
+ * Walks PHP files in the given path(s) and inserts a /** ... *\/ stub
+ * BEFORE any class/interface/trait/method/function/property that lacks one.
+ * The stub carries @param/@return/@var lines derived from the native
+ * signature so PHPCS (Squiz.Commenting.*) and Intelephense both have what
+ * they need.
+ *
+ * What this script does NOT do:
+ *   - Invent prose descriptions. Class/method docblocks get a one-line
+ *     placeholder ("ClassName.") — the type information is the real
+ *     documentation. A human editor can fill in the prose later; the
+ *     IDE autocomplete only cares about the structured tags.
+ *   - Touch existing docblocks. If a node already has a Doc, it's left alone.
+ *   - Reformat the file. We do byte-precise insertions via the AST's
+ *     start file positions; everything else stays exactly as the user wrote it.
+ *
+ * Usage:
+ *   php temp/generate-docblocks.php app/Domain/Cookie [more paths...]
+ *   php temp/generate-docblocks.php --dry-run app/Domain/Cookie
+ */
+
+require_once __DIR__ . '/../vendor/autoload.php';
+
+/**
+ * Marker phrase embedded in every brand-new docblock the script creates.
+ *
+ * `composer docblocks:audit` greps for this string and warns developers /
+ * agents to write a real description before committing. Keep this phrase
+ * stable — it is the contract between the generator and the audit script.
+ */
+const AUTO_GENERATED_MARKER = '@todo Auto-generated docblock — review and replace this description.';
+
+use PhpParser\Node;
+use PhpParser\Node\Stmt;
+use PhpParser\NodeTraverser;
+use PhpParser\NodeVisitorAbstract;
+use PhpParser\ParserFactory;
+
+$args = array_slice($argv, 1);
+$dryRun = false;
+if ($args !== [] && $args[0] === '--dry-run') {
+    $dryRun = true;
+    array_shift($args);
+}
+
+if ($args === []) {
+    fwrite(STDERR, "Usage: php temp/generate-docblocks.php [--dry-run] <path> [<path> ...]\n");
+    exit(1);
+}
+
+$files = collectPhpFiles($args);
+if ($files === []) {
+    fwrite(STDERR, "No .php files found in: " . implode(' ', $args) . "\n");
+    exit(1);
+}
+
+$totalInserted = 0;
+$filesTouched = 0;
+
+foreach ($files as $file) {
+    // Run up to 3 iterations per file. The pre-passes (wrong-style upgrade,
+    // line-comment merge) and the AST passes (insert/amend) are interdependent:
+    //   * the AST pass can introduce a brand-new docblock that the merge
+    //     pre-pass then needs to fold orphaned // comments into;
+    //   * the merge pre-pass can shift token positions that the AST pass
+    //     should re-read.
+    // Iterating until stable converges in 1-2 rounds for normal cases.
+    $fileTotal = 0;
+    for ($iter = 0; $iter < 3; $iter++) {
+        $inserted = processFile($file, $dryRun);
+        if ($inserted === 0) {
+            break;
+        }
+        $fileTotal += $inserted;
+    }
+    if ($fileTotal > 0) {
+        $totalInserted += $fileTotal;
+        $filesTouched++;
+        printf("%s  +%d docblocks%s\n", $file, $fileTotal, $dryRun ? ' (dry-run)' : '');
+    }
+}
+
+printf("\n%s%d docblocks inserted across %d files.\n", $dryRun ? '[dry-run] would insert ' : '', $totalInserted, $filesTouched);
+
+// ----------------------------------------------------------------------
+// File walking
+// ----------------------------------------------------------------------
+
+/**
+ * @param list<string> $paths
+ * @return list<string>
+ */
+function collectPhpFiles(array $paths): array
+{
+    // Paths the project's own PHPCS config excludes — keep in lock-step so
+    // the script doesn't introduce docblocks for files PHPCS won't check
+    // anyway (and that often have framework-driven inheritance that breaks
+    // when overlaid with synthetic docblocks).
+    $excludePatterns = [
+        '#(^|/)Database/Migrations/#',
+        '#(^|/)Database/Seeds/#',
+        '#(^|/)Views/#',
+        '#(^|/)Config/#',
+        '#(^|/)vendor/#',
+        '#(^|/)writable/#',
+        '#(^|/)app/Models/#',
+        '#(^|/)app/Infrastructure/Persistence/Models/#',
+        '#(^|/)app/Libraries/AbiSageIntacct/#',
+    ];
+
+    $found = [];
+    foreach ($paths as $path) {
+        if (is_file($path) && str_ends_with($path, '.php')) {
+            $found[] = $path;
+            continue;
+        }
+        if (is_dir($path)) {
+            $it = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($path));
+            foreach ($it as $f) {
+                if (!$f instanceof SplFileInfo || !$f->isFile() || $f->getExtension() !== 'php') {
+                    continue;
+                }
+                $abs = $f->getPathname();
+                $skip = false;
+                foreach ($excludePatterns as $pat) {
+                    if (preg_match($pat, $abs) === 1) {
+                        $skip = true;
+                        break;
+                    }
+                }
+                if (!$skip) {
+                    $found[] = $abs;
+                }
+            }
+        }
+    }
+    sort($found);
+    return $found;
+}
+
+// ----------------------------------------------------------------------
+// One file
+// ----------------------------------------------------------------------
+
+function processFile(string $path, bool $dryRun): int
+{
+    $source = file_get_contents($path);
+    if ($source === false) {
+        return 0;
+    }
+
+    // Pre-pass 1: convert wrong-style `/* ... */` declaration comments to `/** ... */`.
+    // Squiz.Commenting.{Function,Class,Variable}Comment.WrongStyle fires when a
+    // declaration is preceded by a single-asterisk block. We detect those via
+    // token_get_all() instead of regex so we don't false-positive on inline
+    // comments elsewhere in the file.
+    $source = upgradeWrongStyleComments($source);
+
+    // Pre-pass 2: when a /** docblock is followed by single-line `//` comments
+    // and THEN the declaration, Squiz considers the docblock detached and
+    // demands a fresh one. Fold the intervening line-comments into the
+    // docblock so the attachment is restored.
+    $source = mergeInterveningLineComments($source);
+
+    $parser = (new ParserFactory())->createForHostVersion();
+    try {
+        $ast = $parser->parse($source);
+    } catch (\Throwable $e) {
+        fwrite(STDERR, sprintf("SKIP %s: %s\n", $path, $e->getMessage()));
+        return 0;
+    }
+    if ($ast === null) {
+        return 0;
+    }
+
+    $visitor = new class extends NodeVisitorAbstract {
+        /** @var list<array{int, string}> */
+        public array $insertions = [];
+
+        /** @var list<array{int, int, string}> */
+        public array $amendments = [];
+
+        public function enterNode(Node $node): null
+        {
+            // Brand-new docblock: insert before the declaration.
+            if ($node instanceof Stmt\ClassLike && $node->getDocComment() === null) {
+                if ($node instanceof Stmt\Class_ && $node->name === null) {
+                    return null; // anonymous class
+                }
+                $this->insertions[] = [
+                    $node->getStartFilePos(),
+                    'class' . "\x1f" . ($node->name?->toString() ?? '?'),
+                ];
+                return null;
+            }
+            if (($node instanceof Stmt\ClassMethod || $node instanceof Stmt\Function_)
+                && $node->getDocComment() === null
+            ) {
+                $this->insertions[] = [
+                    $node->getStartFilePos(),
+                    'function' . "\x1f" . describeFunction($node),
+                ];
+                return null;
+            }
+            if ($node instanceof Stmt\Property && $node->getDocComment() === null) {
+                $this->insertions[] = [
+                    $node->getStartFilePos(),
+                    'property' . "\x1f" . describeProperty($node),
+                ];
+                return null;
+            }
+
+            // Existing docblock — see if it's missing @param/@return/@throws and
+            // surgically append the missing tags before the closing `*/`.
+            if ($node instanceof Stmt\ClassMethod || $node instanceof Stmt\Function_) {
+                $doc = $node->getDocComment();
+                if ($doc === null) {
+                    return null;
+                }
+                $docText = $doc->getText();
+
+                // Strategy: if the existing @param/@return/@throws tags don't
+                // perfectly match the signature (wrong names, wrong order,
+                // missing, stale), regenerate ALL tag lines from the signature.
+                // This is destructive of any human-written @param descriptions,
+                // but it's the only way to guarantee a clean PHPCS pass when
+                // running the script.
+                $rewritten = rewriteTagsIfMisaligned($node, $docText);
+                if ($rewritten !== null) {
+                    $this->amendments[] = [
+                        $doc->getStartFilePos(),
+                        $doc->getEndFilePos(),
+                        'REPLACE' . "\x1f" . $rewritten,
+                    ];
+                    return null;
+                }
+                return null;
+            }
+
+            // Existing property docblock: only amend when @var is MISSING.
+            // If a @var already exists (even one more specific than the
+            // signature type), leave it alone — PHPStan-friendly types like
+            // `list<X>` and `array<string, Foo>` would otherwise get clobbered.
+            if ($node instanceof Stmt\Property) {
+                $doc = $node->getDocComment();
+                if ($doc === null) {
+                    return null;
+                }
+                $docText = $doc->getText();
+                if (preg_match('/@var\b/m', $docText) === 1) {
+                    return null;
+                }
+                $this->amendments[] = [
+                    $doc->getStartFilePos(),
+                    $doc->getEndFilePos(),
+                    '@var ' . describeProperty($node),
+                ];
+            }
+            return null;
+        }
+    };
+
+    $traverser = new NodeTraverser();
+    $traverser->addVisitor($visitor);
+    $traverser->traverse($ast);
+
+    if ($visitor->insertions === [] && $visitor->amendments === []) {
+        // The AST pass had no work, but the wrong-style pre-pass might have
+        // already rewritten /* to /** in the source. Persist that change.
+        if ($source !== file_get_contents($path) && !$dryRun) {
+            file_put_contents($path, $source);
+            return 1;
+        }
+        return 0;
+    }
+
+    // Combine inserts + amendments, applying LAST FIRST so earlier offsets stay valid.
+    $ops = [];
+    foreach ($visitor->insertions as [$pos, $marker]) {
+        $ops[] = ['insert', $pos, $marker];
+    }
+    foreach ($visitor->amendments as [$start, $end, $marker]) {
+        $ops[] = ['amend', $start, $end, $marker];
+    }
+    usort($ops, static fn(array $a, array $b): int => $b[1] <=> $a[1]);
+
+    $out = $source;
+    foreach ($ops as $op) {
+        if ($op[0] === 'insert') {
+            $pos = $op[1];
+            $indent = computeIndent($out, $pos);
+            $doc = buildDocblock($op[2], $indent);
+            $out = substr($out, 0, $pos) . $doc . substr($out, $pos);
+            continue;
+        }
+        // amend: replace the docblock with the amended one.
+        [, $start, $end, $marker] = $op;
+        $indent = computeIndent($out, $start);
+        $original = substr($out, $start, $end - $start + 1);
+        $amended = amendDocblock($original, $marker, $indent);
+        $out = substr($out, 0, $start) . $amended . substr($out, $end + 1);
+    }
+
+    $changes = count($visitor->insertions) + count($visitor->amendments);
+
+    if ($dryRun) {
+        return $changes;
+    }
+
+    file_put_contents($path, $out);
+    return $changes;
+}
+
+// ----------------------------------------------------------------------
+// Signature description (returns ready-to-emit lines joined by \x1e)
+// ----------------------------------------------------------------------
+
+/**
+ * Returns the function description as: name + RS + param-line + RS + param-line ... + RS + return-line
+ * RS = \x1e (ASCII 30, "record separator") - guaranteed not to appear in PHP source.
+ */
+function describeFunction(Stmt\ClassMethod|Stmt\Function_ $node): string
+{
+    $name = $node->name->toString();
+    $parts = [$name];
+
+    foreach ($node->params as $p) {
+        $pname = $p->var instanceof Node\Expr\Variable && is_string($p->var->name) ? $p->var->name : '?';
+        $type = $p->type !== null ? renderType($p->type) : 'mixed';
+        if ($p->variadic) {
+            $parts[] = '@param ' . $type . ' ...$' . $pname;
+            continue;
+        }
+        $parts[] = '@param ' . $type . ' $' . $pname;
+    }
+
+    $return = $node->returnType !== null ? renderType($node->returnType) : null;
+    if ($return !== null) {
+        // Always emit @return when the function declares a return type, including
+        // void/never. Squiz.Commenting.FunctionComment.MissingReturn fires
+        // otherwise; Slevomat's "useless annotation" check is already silenced
+        // in phpcs.xml for this exact case.
+        $parts[] = '@return ' . $return;
+    }
+
+    foreach (collectThrowClasses($node) as $exClass) {
+        $parts[] = '@throws ' . $exClass;
+    }
+
+    return implode("\x1e", $parts);
+}
+
+/**
+ * Walk the function body looking for `throw new X(...)` expressions; collect
+ * the class names so we can emit @throws tags. Conservative: anything we can't
+ * resolve to a class name is skipped (no \Throwable fallback) because lying
+ * about which exceptions a method throws is worse than missing a tag.
+ *
+ * @return list<string>
+ */
+function collectThrowClasses(Stmt\ClassMethod|Stmt\Function_ $node): array
+{
+    if ($node->stmts === null) {
+        return [];
+    }
+
+    $visitor = new class extends NodeVisitorAbstract {
+        /** @var array<string, true> */
+        public array $classes = [];
+
+        public function enterNode(Node $sub): null
+        {
+            // In php-parser v5, `throw` is always an Expr\Throw_ (statement or expression).
+            if (!$sub instanceof Node\Expr\Throw_) {
+                return null;
+            }
+            $expr = $sub->expr;
+
+            if ($expr instanceof Node\Expr\New_ && $expr->class instanceof Node\Name) {
+                $this->classes[$expr->class->toCodeString()] = true;
+            }
+            // Static factories on exception classes (DomainException::invalidState(...))
+            if ($expr instanceof Node\Expr\StaticCall && $expr->class instanceof Node\Name) {
+                $this->classes[$expr->class->toCodeString()] = true;
+            }
+            return null;
+        }
+    };
+
+    $sub = new NodeTraverser();
+    $sub->addVisitor($visitor);
+    $sub->traverse($node->stmts);
+
+    return array_keys($visitor->classes);
+}
+
+
+function describeProperty(Stmt\Property $node): string
+{
+    $type = $node->type !== null ? renderType($node->type) : 'mixed';
+    return $type;
+}
+
+/**
+ * Pull the TYPE portion out of an `@param TYPE $name ...` or `@return TYPE ...`
+ * line. Bracket-aware: walks `<>`, `{}`, `()`, `[]`, and quoted strings so
+ * `array{data: array<int, X>, total: int}` is captured intact even though it
+ * contains whitespace.
+ *
+ * Returns null when the line doesn't match the expected shape.
+ */
+function extractTagType(string $line, string $tag): ?string
+{
+    if (preg_match('/^\s*\*\s*@' . preg_quote($tag, '/') . '\b\s+(.*)$/', $line, $m) !== 1) {
+        return null;
+    }
+    $rest = $m[1];
+
+    $depth = 0;
+    $end = strlen($rest);
+    for ($i = 0; $i < strlen($rest); $i++) {
+        $c = $rest[$i];
+        if ($c === '<' || $c === '{' || $c === '(' || $c === '[') {
+            $depth++;
+            continue;
+        }
+        if ($c === '>' || $c === '}' || $c === ')' || $c === ']') {
+            if ($depth > 0) {
+                $depth--;
+            }
+            continue;
+        }
+        if ($depth === 0 && ($c === ' ' || $c === "\t")) {
+            $end = $i;
+            break;
+        }
+    }
+    $type = substr($rest, 0, $end);
+    return $type === '' ? null : $type;
+}
+
+/**
+ * Heuristic: is the existing docblock type a strictly more specific form of
+ * the signature-rendered type? If so, preserve it. Catches cases like:
+ *  - signature `array` rendered as `array<mixed>`, doc has `list<Foo>`
+ *  - signature `BaseConnection` (bare class), doc has `BaseConnection<X, Y>`
+ *  - signature `iterable` rendered as `iterable<mixed>`, doc has `Generator<X>`
+ */
+function existingTypeIsMoreSpecific(string $existing, string $signature): bool
+{
+    // Normalize: strip trailing |null on both sides for comparison.
+    $exBase = preg_replace('/(\\|null|\\?)/', '', $existing) ?? $existing;
+    $sigBase = preg_replace('/(\\|null|\\?)/', '', $signature) ?? $signature;
+
+    if ($exBase === $sigBase) {
+        return false;
+    }
+
+    // Container generics: signature is `array<mixed>` (we render bare array
+    // that way) and existing names a narrower iterable shape. The
+    // `array{key: type, ...}` form is PHPStan's array shape — strictly more
+    // specific than any array<KEY, VALUE>.
+    if ($sigBase === 'array<mixed>'
+        && preg_match('/^(array<|list<|non-empty-array<|non-empty-list<|array\{)/', $exBase) === 1
+    ) {
+        return true;
+    }
+    if ($sigBase === 'iterable<mixed>'
+        && preg_match('/^(iterable<|array<|list<|array\{|Generator<|Traversable<|Iterator<)/', $exBase) === 1
+    ) {
+        return true;
+    }
+
+    // Generic specialization: signature is `Cls` (bare), existing is `Cls<...>`.
+    if (preg_match('/^\\\\?[A-Z][A-Za-z0-9_\\\\]*$/', $sigBase) === 1) {
+        $exTrim = ltrim($exBase, '\\');
+        $sigTrim = ltrim($sigBase, '\\');
+        if (str_starts_with($exTrim, $sigTrim . '<')) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+function renderType(Node $type): string
+{
+    if ($type instanceof Node\NullableType) {
+        return renderType($type->type) . '|null';
+    }
+    if ($type instanceof Node\UnionType) {
+        return implode('|', array_map(renderType(...), $type->types));
+    }
+    if ($type instanceof Node\IntersectionType) {
+        return implode('&', array_map(renderType(...), $type->types));
+    }
+    if ($type instanceof Node\Identifier) {
+        // For bare iterable types, emit a generic so Slevomat's
+        // MissingTraversableTypeHintSpecification is satisfied. `mixed` keeps
+        // the annotation honest — the script doesn't know what's inside.
+        return match ($type->name) {
+            'array' => 'array<mixed>',
+            'iterable' => 'iterable<mixed>',
+            default => $type->name,
+        };
+    }
+    if ($type instanceof Node\Name) {
+        // Preserve leading backslash for FQCN refs.
+        return $type->toCodeString();
+    }
+    return 'mixed';
+}
+
+// ----------------------------------------------------------------------
+// Docblock construction
+// ----------------------------------------------------------------------
+
+function buildDocblock(string $marker, string $indent): string
+{
+    [$kind, $payload] = explode("\x1f", $marker, 2);
+
+    if ($kind === 'class') {
+        return sprintf(
+            "/**\n%s * %s.\n%s *\n%s * %s\n%s */\n%s",
+            $indent,
+            $payload,
+            $indent,
+            $indent,
+            AUTO_GENERATED_MARKER,
+            $indent,
+            $indent
+        );
+    }
+
+    if ($kind === 'property') {
+        // Properties get a one-liner @var. They are too small for a TODO
+        // marker to be worth the visual noise; the @var TYPE is itself the
+        // documentation a reviewer needs to look at.
+        return sprintf("/** @var %s */\n%s", $payload, $indent);
+    }
+
+    // function: first part is the name, rest are pre-formatted @tag lines.
+    $parts = explode("\x1e", $payload);
+    $name = array_shift($parts);
+    $tagLines = array_map(static fn(string $l): string => ' * ' . $l, $parts);
+
+    if ($tagLines === []) {
+        // No params and void/no return. Emit a minimal block with the marker
+        // so the audit script still flags it for description backfill.
+        return sprintf(
+            "/**\n%s * %s.\n%s *\n%s * %s\n%s */\n%s",
+            $indent,
+            $name,
+            $indent,
+            $indent,
+            AUTO_GENERATED_MARKER,
+            $indent,
+            $indent
+        );
+    }
+
+    $body = implode("\n" . $indent, $tagLines);
+    return sprintf(
+        "/**\n%s * %s.\n%s *\n%s%s\n%s *\n%s * %s\n%s */\n%s",
+        $indent,
+        $name,
+        $indent,
+        $indent,
+        $body,
+        $indent,
+        $indent,
+        AUTO_GENERATED_MARKER,
+        $indent,
+        $indent
+    );
+}
+
+function computeIndent(string $source, int $pos): string
+{
+    $lineStart = strrpos(substr($source, 0, $pos), "\n");
+    $lineStart = $lineStart === false ? 0 : $lineStart + 1;
+    $prefix = substr($source, $lineStart, $pos - $lineStart);
+    return preg_replace('/\S.*$/', '', $prefix) ?? '';
+}
+
+/**
+ * Convert `/* ... *\/` comment blocks that immediately precede a class/
+ * function/property declaration into `/** ... *\/` docblocks. Leaves all
+ * other comments (inline notes, file-level banners, license headers)
+ * untouched.
+ *
+ * Detection logic (token-level): walk the token stream; for each T_COMMENT
+ * token whose text starts with `/*` (single asterisk), look at the next
+ * non-whitespace, non-attribute token. If it's one of T_CLASS, T_INTERFACE,
+ * T_TRAIT, T_ENUM, T_FUNCTION, T_PUBLIC, T_PROTECTED, T_PRIVATE, T_READONLY,
+ * T_STATIC, T_FINAL, T_ABSTRACT — replace the comment's opening `/*` with `/**`.
+ */
+function upgradeWrongStyleComments(string $source): string
+{
+    $tokens = token_get_all($source);
+    /** @var list<array{int, int}> $rewrites tuple of (offsetIntoSource, length) */
+    $rewrites = [];
+
+    $count = count($tokens);
+    $offset = 0;
+
+    foreach ($tokens as $i => $token) {
+        if (!is_array($token)) {
+            $offset += strlen($token);
+            continue;
+        }
+        [$id, $text] = $token;
+        $tokenLen = strlen($text);
+
+        if ($id === T_COMMENT && str_starts_with($text, '/*') && !str_starts_with($text, '/**')) {
+            // Look ahead for the next declaration-related token.
+            $isDeclaration = false;
+            for ($j = $i + 1; $j < $count; $j++) {
+                $next = $tokens[$j];
+                if (is_array($next)) {
+                    if ($next[0] === T_WHITESPACE || $next[0] === T_DOC_COMMENT || $next[0] === T_COMMENT || $next[0] === T_ATTRIBUTE) {
+                        continue;
+                    }
+                    $declTokens = [
+                        T_CLASS, T_INTERFACE, T_TRAIT, T_ENUM, T_FUNCTION,
+                        T_PUBLIC, T_PROTECTED, T_PRIVATE, T_READONLY,
+                        T_STATIC, T_FINAL, T_ABSTRACT, T_VAR,
+                    ];
+                    if (in_array($next[0], $declTokens, true)) {
+                        $isDeclaration = true;
+                    }
+                    break;
+                }
+                // Non-array token (punctuation) before a declaration keyword
+                // means this isn't a leading declaration comment.
+                break;
+            }
+
+            if ($isDeclaration) {
+                $rewrites[] = [$offset, $tokenLen];
+            }
+        }
+
+        $offset += $tokenLen;
+    }
+
+    if ($rewrites === []) {
+        return $source;
+    }
+
+    // Apply rewrites last-first so offsets stay valid.
+    usort($rewrites, static fn(array $a, array $b): int => $b[0] <=> $a[0]);
+    foreach ($rewrites as [$pos, $len]) {
+        $original = substr($source, $pos, $len);
+        // Replace the leading "/*" with "/**" — keep everything after that.
+        $patched = '/**' . substr($original, 2);
+        $source = substr($source, 0, $pos) . $patched . substr($source, $pos + $len);
+    }
+
+    return $source;
+}
+
+/**
+ * Fold single-line `//` comments that sit BETWEEN a docblock and the
+ * declaration into the docblock body. Otherwise Squiz considers the docblock
+ * detached and demands a fresh one ("Function/Class comment wrong style" or
+ * "Missing doc comment for function ...").
+ *
+ * Transformation:
+ *
+ *   /\**
+ *    * Existing description.
+ *    *\/
+ *   // SECURITY: this is the warning line
+ *   // SECURITY: ... and another line.
+ *   public function foo(): void
+ *
+ * becomes:
+ *
+ *   /\**
+ *    * Existing description.
+ *    *
+ *    * SECURITY: this is the warning line
+ *    * SECURITY: ... and another line.
+ *    *\/
+ *   public function foo(): void
+ *
+ * The line-comment payload is preserved verbatim, just relocated inside the
+ * existing docblock as a separate prose paragraph.
+ */
+function mergeInterveningLineComments(string $source): string
+{
+    $tokens = token_get_all($source);
+    $count = count($tokens);
+
+    // Build offset table so we can slice the source by byte range.
+    /** @var list<array{0:int,1:string,2:int,3:int}> $records (id, text, startOffset, endOffset) */
+    $records = [];
+    $offset = 0;
+    foreach ($tokens as $t) {
+        if (is_array($t)) {
+            $records[] = [$t[0], $t[1], $offset, $offset + strlen($t[1])];
+            $offset += strlen($t[1]);
+        } else {
+            $records[] = [-1, $t, $offset, $offset + strlen($t)];
+            $offset += strlen($t);
+        }
+    }
+
+    /** @var list<array{startOffset:int, endOffset:int, replacement:string}> $edits */
+    $edits = [];
+
+    for ($i = 0; $i < $count; $i++) {
+        [$id, $text, $startOff, $endOff] = $records[$i];
+        if ($id !== T_DOC_COMMENT) {
+            continue;
+        }
+
+        // PRECEDING line-comments: walk BACKWARDS over whitespace/T_COMMENT;
+        // collect any phpcs:ignore / phpcs:disable / phpstan-ignore directives
+        // so we can fold them into the docblock as @phpcsSuppress / @phpstan-ignore.
+        $precedingDirectives = [];
+        $absorbStart = $startOff;
+        for ($k = $i - 1; $k >= 0; $k--) {
+            [$kid, $ktext, $kstart] = $records[$k];
+            if ($kid === T_WHITESPACE) {
+                $absorbStart = $kstart;
+                continue;
+            }
+            if ($kid === T_COMMENT && (str_starts_with($ktext, '//') || str_starts_with($ktext, '#'))) {
+                $stripped = ltrim(substr($ktext, str_starts_with($ktext, '//') ? 2 : 1));
+                if (preg_match('/^phpcs:(ignore|disable)\s+(\S+)/', $stripped, $m) === 1) {
+                    array_unshift($precedingDirectives, '@phpcsSuppress ' . $m[2]);
+                    $absorbStart = $kstart;
+                    continue;
+                }
+                if (preg_match('/^phpstan-ignore(-next-line)?\s+(\S+)/', $stripped, $m) === 1) {
+                    array_unshift($precedingDirectives, '@phpstan-ignore ' . $m[2]);
+                    $absorbStart = $kstart;
+                    continue;
+                }
+            }
+            break;
+        }
+
+        // Scan forward over whitespace/T_COMMENT/T_ATTRIBUTE until we hit a
+        // declaration keyword (good case) or anything else (skip).
+        $lineComments = [];
+        $absorbEnd = $endOff;
+        $declarationFound = false;
+
+        for ($j = $i + 1; $j < $count; $j++) {
+            [$jid, $jtext, , $jend] = $records[$j];
+            if ($jid === T_WHITESPACE) {
+                $absorbEnd = $jend;
+                continue;
+            }
+            if ($jid === T_COMMENT && (str_starts_with($jtext, '//') || str_starts_with($jtext, '#'))) {
+                $stripped = ltrim(substr($jtext, str_starts_with($jtext, '//') ? 2 : 1));
+                // PHPCS suppression directives translate to docblock-level
+                // @phpcsSuppress annotations when folded inside. That keeps
+                // the suppression effective AND lets Squiz attach the
+                // docblock to the declaration. Same trick for phpstan-ignore.
+                if (preg_match('/^phpcs:(ignore|disable)\s+(\S+)/', $stripped, $m) === 1) {
+                    $lineComments[] = '@phpcsSuppress ' . $m[2];
+                    $absorbEnd = $jend;
+                    continue;
+                }
+                if (preg_match('/^phpstan-ignore(-next-line)?\s+(\S+)/', $stripped, $m) === 1) {
+                    $lineComments[] = '@phpstan-ignore ' . $m[2];
+                    $absorbEnd = $jend;
+                    continue;
+                }
+                // Other psalm/phpstan/etc. metadata that's neither ignore nor
+                // suppress — leave it where it is and stop merging this chain.
+                if (preg_match('/^(phpcs:|phpstan-|psalm-)/', $stripped) === 1) {
+                    $lineComments = [];
+                    break;
+                }
+                $lineComments[] = rtrim(substr($jtext, str_starts_with($jtext, '//') ? 2 : 1), "\r\n");
+                $absorbEnd = $jend;
+                continue;
+            }
+            if ($jid === T_ATTRIBUTE) {
+                // Attributes after a docblock are fine — Squiz still attaches.
+                // Stop merging here.
+                break;
+            }
+            $declTokens = [
+                T_CLASS, T_INTERFACE, T_TRAIT, T_ENUM, T_FUNCTION,
+                T_PUBLIC, T_PROTECTED, T_PRIVATE, T_READONLY,
+                T_STATIC, T_FINAL, T_ABSTRACT, T_VAR,
+            ];
+            if (is_array($tokens[$j]) && in_array($jid, $declTokens, true)) {
+                $declarationFound = true;
+            }
+            break;
+        }
+
+        $allAbsorbed = array_merge($precedingDirectives, $lineComments);
+        if (!$declarationFound || $allAbsorbed === []) {
+            continue;
+        }
+
+        // Build the merged docblock: keep the existing body, add a blank
+        // ` *` separator, then one ` * <comment>` line per absorbed comment.
+        $indent = '';
+        $bolPos = strrpos(substr($source, 0, $startOff), "\n");
+        if ($bolPos !== false) {
+            $prefix = substr($source, $bolPos + 1, $startOff - $bolPos - 1);
+            if (preg_match('/^(\s*)/', $prefix, $m) === 1) {
+                $indent = $m[1];
+            }
+        }
+
+        $closePos = strrpos($text, '*/');
+        if ($closePos === false) {
+            continue;
+        }
+        $body = rtrim(substr($text, 0, $closePos));
+
+        $insert = "\n" . $indent . ' *';
+        foreach ($allAbsorbed as $c) {
+            $stripped = ltrim($c);
+            $insert .= "\n" . $indent . ' * ' . ($stripped === '' ? '' : $stripped);
+        }
+        $insert .= "\n" . $indent . ' ';
+
+        $merged = $body . $insert . '*/';
+
+        // If we absorbed preceding directives, replace from $absorbStart so
+        // those go away too. Otherwise only the trailing comments are absorbed.
+        $editStart = $precedingDirectives !== [] ? $absorbStart : $startOff;
+
+        // When we absorb preceding lines, the replacement must restore a
+        // blank line between the previous declaration's close-brace and the
+        // new docblock. Otherwise we collapse `}/**` together.
+        $leading = $precedingDirectives !== [] ? "\n\n" . $indent : '';
+
+        $edits[] = [
+            'startOffset' => $editStart,
+            'endOffset' => $absorbEnd,
+            'replacement' => $leading . $merged . "\n" . $indent,
+        ];
+
+        // Skip the absorbed tokens.
+        $i = $j - 1;
+    }
+
+    if ($edits === []) {
+        return $source;
+    }
+
+    // Apply LAST FIRST so offsets stay valid.
+    usort($edits, static fn(array $a, array $b): int => $b['startOffset'] <=> $a['startOffset']);
+    foreach ($edits as $e) {
+        $source = substr($source, 0, $e['startOffset']) . $e['replacement'] . substr($source, $e['endOffset']);
+    }
+
+    return $source;
+}
+
+/**
+ * Compare the docblock's @param/@return/@throws tags against the signature
+ * and the body. If anything is wrong (wrong order, wrong names, stale entries,
+ * missing entries, type drift on @return), return a rewritten docblock with a
+ * corrected tag block. Prose lines and unrelated tags (@see, @phpstan-ignore,
+ * @internal, etc.) are preserved verbatim.
+ *
+ * Returns null when the docblock is already perfectly aligned.
+ */
+function rewriteTagsIfMisaligned(Stmt\ClassMethod|Stmt\Function_ $node, string $docText): ?string
+{
+    $lines = explode("\n", $docText);
+
+    // ----------------------------------------------------------------
+    // 1. Categorize every line of the docblock.
+    // ----------------------------------------------------------------
+    /** @var list<array{kind: string, text: string, name?: string}> $cat */
+    $cat = [];
+    foreach ($lines as $line) {
+        if (preg_match('/^\s*\*\s*@param\b[^\$\n]*\$(\w+)/', $line, $m) === 1) {
+            $cat[] = ['kind' => 'param', 'text' => $line, 'name' => $m[1]];
+            continue;
+        }
+        if (preg_match('/^\s*\*\s*@return\b/', $line) === 1) {
+            $cat[] = ['kind' => 'return', 'text' => $line];
+            continue;
+        }
+        if (preg_match('/^\s*\*\s*@throws\b\s+(\S+)/', $line, $m) === 1) {
+            $cat[] = ['kind' => 'throws', 'text' => $line, 'name' => $m[1]];
+            continue;
+        }
+        $cat[] = ['kind' => 'other', 'text' => $line];
+    }
+
+    // ----------------------------------------------------------------
+    // 2. Compute the *ideal* tag set from signature + body.
+    // ----------------------------------------------------------------
+    $sigParams = [];
+    foreach ($node->params as $p) {
+        if ($p->var instanceof Node\Expr\Variable && is_string($p->var->name)) {
+            $type = $p->type !== null ? renderType($p->type) : 'mixed';
+            $sigParams[$p->var->name] = ['type' => $type, 'variadic' => $p->variadic];
+        }
+    }
+    $sigReturn = $node->returnType !== null ? renderType($node->returnType) : null;
+    $bodyThrows = collectThrowClasses($node);
+
+    // ----------------------------------------------------------------
+    // 3. Existing tags grouped for diff.
+    // ----------------------------------------------------------------
+    $existingParamByName = [];
+    foreach ($cat as $row) {
+        if ($row['kind'] === 'param' && isset($row['name'])) {
+            $existingParamByName[$row['name']] = $row['text'];
+        }
+    }
+    $existingThrows = [];
+    foreach ($cat as $row) {
+        if ($row['kind'] === 'throws' && isset($row['name'])) {
+            $existingThrows[ltrim($row['name'], '\\')] = $row['text'];
+        }
+    }
+    $existingReturnLine = null;
+    foreach ($cat as $row) {
+        if ($row['kind'] === 'return') {
+            $existingReturnLine = $row['text'];
+            break;
+        }
+    }
+
+    // ----------------------------------------------------------------
+    // 4. Decide whether we even need to rewrite.
+    // ----------------------------------------------------------------
+    $needs = false;
+
+    // 4a. @param: names must match signature exactly AND be in signature order.
+    $docParamOrder = [];
+    foreach ($cat as $row) {
+        if ($row['kind'] === 'param' && isset($row['name'])) {
+            $docParamOrder[] = $row['name'];
+        }
+    }
+    if ($docParamOrder !== array_keys($sigParams)) {
+        $needs = true;
+    }
+
+    // 4a-bis. For each @param, the type must match the signature-rendered type
+    // — unless the existing docblock type is MORE SPECIFIC (carries generics or
+    // is a narrower subtype). Those are preserved.
+    foreach ($cat as $row) {
+        if ($row['kind'] !== 'param' || !isset($row['name'])) {
+            continue;
+        }
+        if (!isset($sigParams[$row['name']])) {
+            continue;
+        }
+        $expected = $sigParams[$row['name']]['type'];
+        $existingType = extractTagType($row['text'], 'param');
+        if ($existingType === null) {
+            $needs = true;
+            break;
+        }
+        if ($existingType !== $expected && !existingTypeIsMoreSpecific($existingType, $expected)) {
+            $needs = true;
+            break;
+        }
+    }
+
+    // 4b. @return: present iff signature has return type.
+    if ($sigReturn !== null && $existingReturnLine === null) {
+        $needs = true;
+    }
+    // 4b-bis. @return type must match signature unless existing is more specific.
+    if ($sigReturn !== null && $existingReturnLine !== null) {
+        $existingReturnType = extractTagType($existingReturnLine, 'return');
+        if ($existingReturnType !== null
+            && $existingReturnType !== $sigReturn
+            && !existingTypeIsMoreSpecific($existingReturnType, $sigReturn)
+        ) {
+            $needs = true;
+        }
+    }
+    if ($sigReturn === null && $existingReturnLine !== null) {
+        // Function returns nothing but doc has @return — leave alone; Squiz
+        // doesn't flag spurious @return when there's no signature return type
+        // (would be a different rule). Skip rewrite for that case.
+    }
+
+    // 4c. @throws: every body-detected exception must appear in the doc.
+    foreach ($bodyThrows as $bt) {
+        $bare = ltrim($bt, '\\');
+        if (!isset($existingThrows[$bare])) {
+            $needs = true;
+            break;
+        }
+    }
+
+    if (!$needs) {
+        return null;
+    }
+
+    // ----------------------------------------------------------------
+    // 5. Build the corrected @param/@return/@throws block, preserving the
+    //    original indent + descriptions where possible.
+    // ----------------------------------------------------------------
+    // Find any line's prefix so the new lines line up. Default to " * ".
+    $tagPrefix = ' * ';
+    foreach ($cat as $row) {
+        if (preg_match('/^(\s*\*\s)/', $row['text'], $m) === 1) {
+            $tagPrefix = $m[1];
+            break;
+        }
+    }
+
+    $newTagLines = [];
+
+    foreach ($sigParams as $pname => $info) {
+        if (isset($existingParamByName[$pname])) {
+            $existing = $existingParamByName[$pname];
+
+            // If the existing type is more specific than the signature-rendered
+            // type (e.g. carries generics, narrower subtype), preserve the
+            // existing line verbatim. Otherwise rewrite the type while keeping
+            // any human description that followed.
+            $existingType = extractTagType($existing, 'param');
+            if ($existingType !== null && existingTypeIsMoreSpecific($existingType, $info['type'])) {
+                $newTagLines[] = $existing;
+                continue;
+            }
+
+            $tail = preg_replace(
+                '/^(\s*\*\s*@param)\s+\S+\s+(\.{3})?\$' . preg_quote($pname, '/') . '\b/',
+                '',
+                $existing,
+                1
+            ) ?? '';
+            $prefix = ($info['variadic'] ? '@param ' . $info['type'] . ' ...$' : '@param ' . $info['type'] . ' $') . $pname;
+            $newTagLines[] = $tagPrefix . $prefix . $tail;
+            continue;
+        }
+        $newTagLines[] = $tagPrefix . ($info['variadic']
+            ? '@param ' . $info['type'] . ' ...$' . $pname
+            : '@param ' . $info['type'] . ' $' . $pname);
+    }
+
+    if ($sigReturn !== null) {
+        if ($existingReturnLine !== null) {
+            $existingReturnType = extractTagType($existingReturnLine, 'return');
+            if ($existingReturnType !== null && existingTypeIsMoreSpecific($existingReturnType, $sigReturn)) {
+                $newTagLines[] = $existingReturnLine;
+            } else {
+                // Rewrite the type but keep any description after it.
+                $tail = preg_replace('/^(\s*\*\s*@return)\s+\S+/', '', $existingReturnLine, 1) ?? '';
+                $newTagLines[] = $tagPrefix . '@return ' . $sigReturn . $tail;
+            }
+        } else {
+            $newTagLines[] = $tagPrefix . '@return ' . $sigReturn;
+        }
+    } elseif ($existingReturnLine !== null) {
+        // Keep existing @return if the function is void/no-return; documented
+        // for some reason (often \never methods).
+        $newTagLines[] = $existingReturnLine;
+    }
+
+    // Merge body-detected throws with existing throws (dedupe by bare name).
+    $emittedThrows = [];
+    foreach ($bodyThrows as $bt) {
+        $bare = ltrim($bt, '\\');
+        if (isset($emittedThrows[$bare])) {
+            continue;
+        }
+        if (isset($existingThrows[$bare])) {
+            $newTagLines[] = $existingThrows[$bare];
+        } else {
+            $newTagLines[] = $tagPrefix . '@throws ' . $bt;
+        }
+        $emittedThrows[$bare] = true;
+    }
+    // Preserve any existing @throws lines for classes we couldn't detect in
+    // the body (e.g., re-throws or conditional throws via method calls).
+    foreach ($existingThrows as $bare => $line) {
+        if (isset($emittedThrows[$bare])) {
+            continue;
+        }
+        $newTagLines[] = $line;
+        $emittedThrows[$bare] = true;
+    }
+
+    // ----------------------------------------------------------------
+    // 6. Splice the new tag lines into the docblock at the position of the
+    //    first existing tag line; remove all the old @param/@return/@throws.
+    // ----------------------------------------------------------------
+    $firstTagIndex = null;
+    $survivors = [];
+    foreach ($cat as $i => $row) {
+        if (in_array($row['kind'], ['param', 'return', 'throws'], true)) {
+            if ($firstTagIndex === null) {
+                $firstTagIndex = count($survivors);
+            }
+            continue;
+        }
+        $survivors[] = $row['text'];
+    }
+    if ($firstTagIndex === null) {
+        // No existing tags — append before the closing `*/`. Find the line
+        // containing `*/` and insert before it; add a `*` separator if the
+        // previous content has prose.
+        $closeAt = null;
+        foreach ($survivors as $i => $s) {
+            if (str_contains($s, '*/')) {
+                $closeAt = $i;
+                break;
+            }
+        }
+        if ($closeAt === null) {
+            return null;
+        }
+        // If the line immediately before `*/` has content beyond `* `, add a
+        // blank `*` separator first.
+        $needsBlank = false;
+        if ($closeAt > 0) {
+            $prev = $survivors[$closeAt - 1];
+            if (preg_match('/^\s*\*\s*$/', $prev) !== 1) {
+                $needsBlank = true;
+            }
+        }
+        $insertion = $newTagLines;
+        if ($needsBlank) {
+            array_unshift($insertion, rtrim($tagPrefix));
+        }
+        array_splice($survivors, $closeAt, 0, $insertion);
+    } else {
+        array_splice($survivors, $firstTagIndex, 0, $newTagLines);
+    }
+
+    return implode("\n", $survivors);
+}
+
+/**
+ * Apply an amendment to an existing docblock.
+ *
+ * Two marker styles:
+ *   "REPLACE<RS>....."  — the trailing payload is the complete new docblock text;
+ *                         return it verbatim. Used by rewriteTagsIfMisaligned().
+ *   "@param X $a<RS>@param Y $b..." — record-separator-joined lines to APPEND
+ *                         before the closing `*\/`. Used when adding a single
+ *                         @var tag to a property docblock.
+ */
+function amendDocblock(string $original, string $marker, string $indent): string
+{
+    if (str_starts_with($marker, 'REPLACE' . "\x1f")) {
+        return substr($marker, strlen('REPLACE' . "\x1f"));
+    }
+
+    $newLines = explode("\x1e", $marker);
+
+    $closePos = strrpos($original, '*/');
+    if ($closePos === false) {
+        return $original;
+    }
+
+    $body = rtrim(substr($original, 0, $closePos));
+    $needsSeparator = preg_match('/@\w+\s/', $body) !== 1;
+
+    $insert = '';
+    if ($needsSeparator) {
+        $insert .= "\n" . $indent . ' *';
+    }
+    foreach ($newLines as $line) {
+        $insert .= "\n" . $indent . ' * ' . $line;
+    }
+    $insert .= "\n" . $indent . ' ';
+
+    return $body . $insert . '*/';
+}

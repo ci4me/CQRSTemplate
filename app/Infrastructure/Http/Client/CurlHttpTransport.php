@@ -15,7 +15,13 @@ namespace App\Infrastructure\Http\Client;
 final class CurlHttpTransport implements HttpTransportInterface
 {
     /**
+     * @param string                $method
+     * @param string                $url
      * @param array<string, string> $headers
+     * @param string                $body
+     * @param float                 $timeoutSeconds
+     * @return HttpResponse
+     * @throws HttpException
      */
     public function send(string $method, string $url, array $headers, string $body, float $timeoutSeconds): HttpResponse
     {
@@ -103,6 +109,7 @@ final class CurlHttpTransport implements HttpTransportInterface
     }
 
     /**
+     * @param string $raw
      * @return array<string, string>
      */
     private function parseHeaders(string $raw): array

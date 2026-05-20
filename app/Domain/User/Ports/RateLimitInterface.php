@@ -16,9 +16,9 @@ interface RateLimitInterface
     /**
      * Check if request is within rate limit.
      *
-     * @param string $identifier Unique identifier (IP address, user ID, etc.)
-     * @param int $maxAttempts Maximum number of attempts allowed
-     * @param int $windowSeconds Time window in seconds
+     * @param string $identifier    Unique identifier (IP address, user ID, etc.)
+     * @param int    $maxAttempts   Maximum number of attempts allowed
+     * @param int    $windowSeconds Time window in seconds
      * @return RateLimitResult Result containing allowed status and metadata
      */
     public function checkLimit(string $identifier, int $maxAttempts, int $windowSeconds): RateLimitResult;
@@ -27,6 +27,7 @@ interface RateLimitInterface
      * Reset rate limit for a specific identifier.
      *
      * @param string $identifier Unique identifier to reset
+     * @return void
      */
     public function reset(string $identifier): void;
 }

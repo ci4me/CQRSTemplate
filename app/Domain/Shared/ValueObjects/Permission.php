@@ -15,6 +15,14 @@ namespace App\Domain\Shared\ValueObjects;
  */
 final readonly class Permission
 {
+    /**
+     * __construct.
+     *
+     * @param string $module
+     * @param string $action
+     * @param string $name
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     private function __construct(
         public string $module,
         public string $action,
@@ -22,6 +30,14 @@ final readonly class Permission
     ) {
     }
 
+    /**
+     * fromString.
+     *
+     * @param string $value
+     * @return self
+     * @throws \InvalidArgumentException
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public static function fromString(string $value): self
     {
         $value = strtolower(trim($value));
@@ -36,11 +52,24 @@ final readonly class Permission
         return new self($module, $action, $value);
     }
 
+    /**
+     * equals.
+     *
+     * @param self $other
+     * @return bool
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function equals(self $other): bool
     {
         return $this->name === $other->name;
     }
 
+    /**
+     * __toString.
+     *
+     * @return string
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function __toString(): string
     {
         return $this->name;

@@ -26,10 +26,25 @@ use Psr\Log\NullLogger;
  */
 final class BulkImportRunner
 {
+    /**
+     * __construct.
+     *
+     * @param LoggerInterface $logger
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function __construct(private readonly LoggerInterface $logger = new NullLogger())
     {
     }
 
+    /**
+     * run.
+     *
+     * @param BulkImportInterface $importer
+     * @param CsvReader           $reader
+     * @param bool                $dryRun
+     * @return ImportSummary
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function run(BulkImportInterface $importer, CsvReader $reader, bool $dryRun = false): ImportSummary
     {
         $iterator = $reader->rows();
@@ -85,7 +100,10 @@ final class BulkImportRunner
      * deferring to the original.
      */
     /**
+     * @param BulkImportInterface                    $importer
      * @param \Generator<int, array<string, string>> $iterator
+     * @return void
+     * @throws \InvalidArgumentException
      */
     private function validateHeaderOrThrow(BulkImportInterface $importer, \Generator &$iterator): void
     {

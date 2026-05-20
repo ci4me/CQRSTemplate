@@ -45,6 +45,8 @@ final class UserController extends BaseController
      * GET /admin/users
      *
      * View: admin/users/index.php
+     *
+     * @return string
      */
     public function index(): string
     {
@@ -78,6 +80,9 @@ final class UserController extends BaseController
      * GET /admin/users/{id}
      *
      * View: admin/users/show.php
+     *
+     * @param int $id
+     * @return string|RedirectResponse
      */
     public function show(int $id): string|RedirectResponse
     {
@@ -105,6 +110,8 @@ final class UserController extends BaseController
      * GET /admin/users/create
      *
      * View: admin/users/create.php
+     *
+     * @return string
      */
     public function create(): string
     {
@@ -117,6 +124,8 @@ final class UserController extends BaseController
      * POST /admin/users
      *
      * Redirects to: /admin/users (on success) or back (on error)
+     *
+     * @return RedirectResponse
      */
     public function store(): RedirectResponse
     {
@@ -167,6 +176,9 @@ final class UserController extends BaseController
      * GET /admin/users/{id}/edit
      *
      * View: admin/users/edit.php
+     *
+     * @param int $id
+     * @return string|RedirectResponse
      */
     public function edit(int $id): string|RedirectResponse
     {
@@ -194,6 +206,9 @@ final class UserController extends BaseController
      * POST /admin/users/{id}
      *
      * Redirects to: /admin/users/{id} (on success) or back (on error)
+     *
+     * @param int $id
+     * @return RedirectResponse
      */
     public function update(int $id): RedirectResponse
     {
@@ -246,6 +261,9 @@ final class UserController extends BaseController
      * POST /admin/users/{id}/delete
      *
      * Redirects to: /admin/users (on success) or back (on error)
+     *
+     * @param int $id
+     * @return RedirectResponse
      */
     public function delete(int $id): RedirectResponse
     {
@@ -277,6 +295,9 @@ final class UserController extends BaseController
      * GET /admin/users/{id}/reset-password
      *
      * View: admin/users/reset_password.php
+     *
+     * @param int $id
+     * @return string|RedirectResponse
      */
     public function resetPassword(int $id): string|RedirectResponse
     {
@@ -304,6 +325,9 @@ final class UserController extends BaseController
      * POST /admin/users/{id}/reset-password
      *
      * Redirects to: /admin/users/{id} (on success) or back (on error)
+     *
+     * @param int $id
+     * @return RedirectResponse
      */
     public function storePassword(int $id): RedirectResponse
     {

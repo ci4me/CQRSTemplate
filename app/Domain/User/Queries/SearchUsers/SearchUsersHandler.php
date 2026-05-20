@@ -31,6 +31,14 @@ use Psr\Log\LoggerInterface;
  */
 final readonly class SearchUsersHandler
 {
+    /**
+     * __construct.
+     *
+     * @param UserRepositoryInterface $repository
+     * @param LoggerInterface         $logger
+     * @param Logging                 $loggingConfig
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function __construct(
         private UserRepositoryInterface $repository,
         private LoggerInterface $logger,
@@ -39,6 +47,7 @@ final readonly class SearchUsersHandler
     }
 
     /**
+     * @param SearchUsersQuery $query
      * @return array{data: array<UserDTO>, total: int, page: int, perPage: int, lastPage: int}
      */
     public function handle(SearchUsersQuery $query): array

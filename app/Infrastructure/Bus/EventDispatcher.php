@@ -33,10 +33,11 @@ use Psr\Log\LoggerInterface;
  * production.
  *
  * @package App\Infrastructure\Bus
+ *
+ * NOT `final`: PHPUnit's mock generator cannot double a final class and
+ * our integration tests subclass to inject failing listeners. Production
+ * callers should depend on {@see EventDispatcherInterface} where possible.
  */
-// NOT `final`: PHPUnit's mock generator cannot double a final class and
-// our integration tests subclass to inject failing listeners. Production
-// callers should depend on {@see EventDispatcherInterface} where possible.
 class EventDispatcher implements EventDispatcherInterface
 {
     /**
@@ -46,6 +47,7 @@ class EventDispatcher implements EventDispatcherInterface
      */
     private array $listeners = [];
 
+    /** @var LoggerInterface */
     private LoggerInterface $logger;
 
     /**
@@ -54,9 +56,17 @@ class EventDispatcher implements EventDispatcherInterface
      *
      * Default false preserves the original "log-and-continue" contract used
      * outside a transaction (CLI scripts, tests, isolated dispatchers).
+     *
+     * @var bool
      */
     private bool $rethrowOnListenerFailure = false;
 
+    /**
+     * __construct.
+     *
+     * @param LoggerInterface|null $logger
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function __construct(?LoggerInterface $logger = null)
     {
         // Allow zero-arg construction (existing call sites) by falling back
@@ -73,6 +83,9 @@ class EventDispatcher implements EventDispatcherInterface
      * the entity write in the same transaction). The previous value is
      * returned so the caller can restore it in a `finally` block — required
      * for nested command dispatches and for not leaking state into tests.
+     *
+     * @param bool $rethrow
+     * @return bool
      */
     public function setRethrowOnListenerFailure(bool $rethrow): bool
     {
@@ -86,8 +99,9 @@ class EventDispatcher implements EventDispatcherInterface
      *
      * Multiple listeners can be registered for the same event.
      *
-     * @param string $eventClass Fully qualified event class name
-     * @param callable $listener The listener callable
+     * @param string   $eventClass Fully qualified event class name
+     * @param callable $listener   The listener callable
+     * @return void
      */
     public function subscribe(string $eventClass, callable $listener): void
     {
@@ -106,6 +120,7 @@ class EventDispatcher implements EventDispatcherInterface
      * logger and other listeners still execute.
      *
      * @param object $event The event to dispatch
+     * @return void
      */
     public function dispatch(object $event): void
     {
@@ -162,6 +177,13 @@ class EventDispatcher implements EventDispatcherInterface
         return isset($this->listeners[$eventClass]) ? count($this->listeners[$eventClass]) : 0;
     }
 
+    /**
+     * describeListener.
+     *
+     * @param callable $listener
+     * @return string
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     private function describeListener(callable $listener): string
     {
         if (is_object($listener) && !($listener instanceof \Closure)) {

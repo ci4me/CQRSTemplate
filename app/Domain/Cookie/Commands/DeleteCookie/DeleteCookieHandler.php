@@ -30,9 +30,9 @@ final readonly class DeleteCookieHandler
     /**
      * Create a new DeleteCookieHandler.
      *
-     * @param CookieRepositoryInterface $repository For persistence operations
-     * @param EventDispatcherInterface $eventDispatcher For dispatching domain events
-     * @param LoggerInterface $logger For logging command execution (channel: cookie.command.delete)
+     * @param CookieRepositoryInterface $repository      For persistence operations
+     * @param EventDispatcherInterface  $eventDispatcher For dispatching domain events
+     * @param LoggerInterface           $logger          For logging command execution (channel: cookie.command.delete)
      */
     public function __construct(
         private CookieRepositoryInterface $repository,
@@ -45,6 +45,7 @@ final readonly class DeleteCookieHandler
      * Handle the DeleteCookieCommand.
      *
      * @param DeleteCookieCommand $command The delete command
+     * @return void
      * @throws DomainException If cookie not found
      */
     public function handle(DeleteCookieCommand $command): void

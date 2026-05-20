@@ -44,9 +44,9 @@ final readonly class CreateCookieHandler
     /**
      * Create a new CreateCookieHandler.
      *
-     * @param CookieRepositoryInterface $repository For persistence operations
-     * @param EventDispatcherInterface $eventDispatcher For dispatching domain events
-     * @param LoggerInterface $logger For logging command execution (channel: cookie.command.create)
+     * @param CookieRepositoryInterface $repository      For persistence operations
+     * @param EventDispatcherInterface  $eventDispatcher For dispatching domain events
+     * @param LoggerInterface           $logger          For logging command execution (channel: cookie.command.create)
      */
     public function __construct(
         private CookieRepositoryInterface $repository,
@@ -140,6 +140,9 @@ final readonly class CreateCookieHandler
 
     /**
      * Determine appropriate error code based on exception type and context.
+     *
+     * @param \Throwable $e
+     * @return int
      */
     private function determineErrorCode(\Throwable $e): int
     {

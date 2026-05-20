@@ -69,10 +69,12 @@ final class ServiceProviderRegistry
      *
      * This is the main entry point called from Services.php.
      *
-     * @param CommandBus $commandBus The command bus
-     * @param QueryBus $queryBus The query bus
-     * @param EventDispatcher $eventDispatcher The event dispatcher
-     * @param array<string, object> $repositories Available repositories from Services
+     * @param CommandBus            $commandBus      The command bus
+     * @param QueryBus              $queryBus        The query bus
+     * @param EventDispatcher       $eventDispatcher The event dispatcher
+     * @param array<string, object> $repositories    Available repositories from Services
+     * @return void
+     * @throws RuntimeException
      */
     public static function registerAll(
         CommandBus $commandBus,
@@ -115,7 +117,7 @@ final class ServiceProviderRegistry
      * Scans Domain directory and finds classes marked with the attribute.
      * Results are cached for performance.
      *
-     * @return DomainServiceProviderInterface[]
+     * @return array<mixed>
      */
     private static function discoverProviders(): array
     {
@@ -147,7 +149,9 @@ final class ServiceProviderRegistry
     /**
      * Discover providers in one path.
      *
-     * @return DomainServiceProviderInterface[]
+     * @param string $path
+     * @return array<mixed>
+     * @throws RuntimeException
      */
     private static function discoverProvidersInPath(string $path): array
     {
@@ -263,6 +267,9 @@ final class ServiceProviderRegistry
      * the dot-free string (e.g. "App\Domain\Cookie") or '' if not found.
      *
      * @param list<array{0: int, 1: string, 2: int}|string> $tokens
+     * @param int                                           $start
+     * @param int                                           $count
+     * @return string
      */
     private static function readNamespaceName(array $tokens, int $start, int $count): string
     {
@@ -287,6 +294,9 @@ final class ServiceProviderRegistry
      * the class name following a T_CLASS token.
      *
      * @param list<array{0: int, 1: string, 2: int}|string> $tokens
+     * @param int                                           $start
+     * @param int                                           $count
+     * @return string|null
      */
     private static function readNextIdentifier(array $tokens, int $start, int $count): ?string
     {
@@ -303,6 +313,8 @@ final class ServiceProviderRegistry
      * Look backwards from a T_CLASS token to detect `new class { ... }`.
      *
      * @param list<array{0: int, 1: string, 2: int}|string> $tokens
+     * @param int                                           $classIndex
+     * @return bool
      */
     private static function isAnonymousClass(array $tokens, int $classIndex): bool
     {
@@ -325,6 +337,7 @@ final class ServiceProviderRegistry
      *
      * Useful for testing or when adding providers dynamically.
      *
+     * @return void
      */
     public static function clearCache(): void
     {

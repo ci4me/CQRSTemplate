@@ -37,8 +37,13 @@ final class JobQueue
     }
 
     /**
-     * @param class-string<JobHandlerInterface> $handler
+     * @param string               $handler
      * @param array<string, mixed> $payload
+     * @param string               $queue
+     * @param int                  $delaySeconds
+     * @param int                  $maxAttempts
+     * @return int
+     * @throws \InvalidArgumentException
      */
     public function push(
         string $handler,

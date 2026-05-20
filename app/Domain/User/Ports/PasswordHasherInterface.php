@@ -41,7 +41,7 @@ interface PasswordHasherInterface
      * against the stored hash to prevent timing attacks.
      *
      * @param string $plaintext Plain text password to verify
-     * @param string $hash Stored password hash to compare against
+     * @param string $hash      Stored password hash to compare against
      * @return bool True if password matches hash, false otherwise
      */
     public function verify(string $plaintext, string $hash): bool;

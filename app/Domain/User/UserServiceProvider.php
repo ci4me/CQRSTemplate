@@ -54,6 +54,14 @@ final class UserServiceProvider implements DomainServiceProviderInterface
      */
     private array $repositories = [];
 
+    /**
+     * registerCommands.
+     *
+     * @param CommandBus $commandBus
+     * @return void
+     * @throws \RuntimeException
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function registerCommands(CommandBus $commandBus): void
     {
         $repository = $this->getRepository('userRepository');
@@ -102,6 +110,14 @@ final class UserServiceProvider implements DomainServiceProviderInterface
         );
     }
 
+    /**
+     * registerQueries.
+     *
+     * @param QueryBus $queryBus
+     * @return void
+     * @throws \RuntimeException
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function registerQueries(QueryBus $queryBus): void
     {
         $repository = $this->getRepository('userRepository');
@@ -134,6 +150,14 @@ final class UserServiceProvider implements DomainServiceProviderInterface
         );
     }
 
+    /**
+     * registerEvents.
+     *
+     * @param EventDispatcher $dispatcher
+     * @return void
+     * @throws \RuntimeException
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function registerEvents(EventDispatcher $dispatcher): void
     {
         $logger = $this->getRepository('logger');
@@ -164,7 +188,7 @@ final class UserServiceProvider implements DomainServiceProviderInterface
     }
 
     /**
-     * @return string[]
+     * @return array<mixed>
      */
     public function getRepositories(): array
     {
@@ -180,12 +204,20 @@ final class UserServiceProvider implements DomainServiceProviderInterface
 
     /**
      * @param array<string, object> $repositories
+     * @return void
      */
     public function setRepositories(array $repositories): void
     {
         $this->repositories = $repositories;
     }
 
+    /**
+     * getRepository.
+     *
+     * @param string $name
+     * @return object
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     private function getRepository(string $name): object
     {
         return $this->repositories[$name];

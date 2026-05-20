@@ -25,6 +25,14 @@ use Psr\Log\LoggerInterface;
  */
 final readonly class GetAllUsersHandler
 {
+    /**
+     * __construct.
+     *
+     * @param UserRepositoryInterface $repository
+     * @param LoggerInterface         $logger
+     * @param Logging                 $loggingConfig
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function __construct(
         private UserRepositoryInterface $repository,
         private LoggerInterface $logger,
@@ -33,6 +41,7 @@ final readonly class GetAllUsersHandler
     }
 
     /**
+     * @param GetAllUsersQuery $query
      * @return array{data: array<UserDTO>, total: int, page: int, perPage: int, lastPage: int}
      */
     public function handle(GetAllUsersQuery $query): array

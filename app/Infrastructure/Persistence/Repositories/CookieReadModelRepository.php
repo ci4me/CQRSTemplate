@@ -31,11 +31,11 @@ final class CookieReadModelRepository implements CookieReadModelRepositoryInterf
 
     /**
      * @param BaseConnection<object|resource|false, object|resource|false>|null $db
-     * @param TenantContext|null $tenantContext When provided, every read
-     *        is scoped to the current tenant via a WHERE tenant_id = ?
-     *        clause. Null preserves the legacy "single-tenant deploy"
-     *        behaviour where every row is visible — used by tests that
-     *        don't go through Services.
+     * @param TenantContext|null                                                $tenantContext When provided, every read
+     *                                                       is scoped to the current tenant via a WHERE tenant_id = ?
+     *                                                       clause. Null preserves the legacy "single-tenant deploy"
+     *                                                       behaviour where every row is visible — used by tests that
+     *                                                       don't go through Services.
      */
     public function __construct(
         private readonly ?BaseConnection $db = null,
@@ -43,6 +43,13 @@ final class CookieReadModelRepository implements CookieReadModelRepositoryInterf
     ) {
     }
 
+    /**
+     * findById.
+     *
+     * @param int $cookieId
+     * @return CookieDTO|null
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function findById(int $cookieId): ?CookieDTO
     {
         $builder = $this->connection()
@@ -62,6 +69,7 @@ final class CookieReadModelRepository implements CookieReadModelRepositoryInterf
     }
 
     /**
+     * @param bool $includeInactive
      * @return list<CookieDTO>
      */
     public function findAll(bool $includeInactive = false): array
@@ -88,6 +96,10 @@ final class CookieReadModelRepository implements CookieReadModelRepositoryInterf
     }
 
     /**
+     * @param int         $page
+     * @param int         $perPage
+     * @param string|null $searchTerm
+     * @param bool        $includeInactive
      * @return array{data: list<CookieDTO>, total: int, page: int, perPage: int, lastPage: int}
      */
     public function findPaginated(
@@ -144,6 +156,7 @@ final class CookieReadModelRepository implements CookieReadModelRepositoryInterf
 
     /**
      * @param array<string, mixed> $row
+     * @return CookieDTO
      */
     private function toDto(array $row): CookieDTO
     {
@@ -177,6 +190,8 @@ final class CookieReadModelRepository implements CookieReadModelRepositoryInterf
      * side stamps `tenant_id` on every insert (see CookieRepository) so
      * the columns line up.
      *
+     * @param \CodeIgniter\Database\BaseBuilder $builder
+     * @return void
      */
     private function applyTenantFilter(\CodeIgniter\Database\BaseBuilder $builder): void
     {

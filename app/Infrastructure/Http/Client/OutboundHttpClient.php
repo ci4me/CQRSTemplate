@@ -27,6 +27,17 @@ use Psr\Log\NullLogger;
  */
 final readonly class OutboundHttpClient
 {
+    /**
+     * __construct.
+     *
+     * @param HttpTransportInterface $transport
+     * @param LoggerInterface        $logger
+     * @param int                    $maxAttempts
+     * @param float                  $timeoutSeconds
+     * @param array<mixed>           $retryStatuses
+     * @param array<mixed>           $backoffSeconds
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function __construct(
         private HttpTransportInterface $transport,
         private LoggerInterface $logger = new NullLogger(),
@@ -40,7 +51,9 @@ final readonly class OutboundHttpClient
     }
 
     /**
+     * @param string                $url
      * @param array<string, string> $headers
+     * @return HttpResponse
      */
     public function get(string $url, array $headers = []): HttpResponse
     {
@@ -48,7 +61,9 @@ final readonly class OutboundHttpClient
     }
 
     /**
+     * @param string                $url
      * @param array<string, string> $headers
+     * @return mixed
      */
     public function getJson(string $url, array $headers = []): mixed
     {
@@ -59,8 +74,10 @@ final readonly class OutboundHttpClient
     }
 
     /**
-     * @param array<string, mixed>   $payload
-     * @param array<string, string>  $headers
+     * @param string                $url
+     * @param array<string, mixed>  $payload
+     * @param array<string, string> $headers
+     * @return HttpResponse
      */
     public function postJson(string $url, array $payload, array $headers = []): HttpResponse
     {
@@ -70,7 +87,12 @@ final readonly class OutboundHttpClient
     }
 
     /**
+     * @param string                $method
+     * @param string                $url
      * @param array<string, string> $headers
+     * @param string                $body
+     * @return HttpResponse
+     * @throws HttpException
      */
     public function request(string $method, string $url, array $headers, string $body): HttpResponse
     {
@@ -139,6 +161,7 @@ final readonly class OutboundHttpClient
     }
 
     /**
+     * @param string                $method
      * @param array<string, string> $headers
      * @return array<string, string>
      */
@@ -160,6 +183,8 @@ final readonly class OutboundHttpClient
 
     /**
      * @param array<string, string> $headers
+     * @param string                $name
+     * @return bool
      */
     private function hasHeader(array $headers, string $name): bool
     {
@@ -172,16 +197,37 @@ final readonly class OutboundHttpClient
         return false;
     }
 
+    /**
+     * isMutating.
+     *
+     * @param string $method
+     * @return bool
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     private function isMutating(string $method): bool
     {
         return in_array($method, ['POST', 'PUT', 'PATCH', 'DELETE'], true);
     }
 
+    /**
+     * shouldRetry.
+     *
+     * @param int $attempts
+     * @return bool
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     private function shouldRetry(int $attempts): bool
     {
         return $attempts < $this->maxAttempts;
     }
 
+    /**
+     * sleepBackoff.
+     *
+     * @param int $attempts
+     * @return void
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     private function sleepBackoff(int $attempts): void
     {
         $idx = min($attempts - 1, count($this->backoffSeconds) - 1);
@@ -194,6 +240,16 @@ final readonly class OutboundHttpClient
         usleep($seconds * 1_000_000);
     }
 
+    /**
+     * ensureSuccessful.
+     *
+     * @param HttpResponse $response
+     * @param string       $method
+     * @param string       $url
+     * @return void
+     * @throws HttpException
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     private function ensureSuccessful(HttpResponse $response, string $method, string $url): void
     {
         if ($response->isSuccessful()) {
@@ -207,6 +263,7 @@ final readonly class OutboundHttpClient
 
     /**
      * @param array<string, mixed> $payload
+     * @return string
      */
     private function encode(array $payload): string
     {

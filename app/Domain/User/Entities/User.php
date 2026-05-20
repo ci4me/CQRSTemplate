@@ -60,16 +60,27 @@ final class User
     private const int MAX_FAILED_LOGIN_ATTEMPTS = 5;
     private const int LOCKOUT_DURATION_MINUTES = 15;
 
+    /** @var int|null */
     private ?int $id = null;
+    /** @var UserName */
     private UserName $name;
+    /** @var Email */
     private Email $email;
+    /** @var HashedPassword */
     private HashedPassword $hashedPassword;
+    /** @var UserRole */
     private UserRole $role;
+    /** @var UserStatus */
     private UserStatus $status;
+    /** @var int */
     private int $failedLoginAttempts;
+    /** @var \DateTimeImmutable|null */
     private ?\DateTimeImmutable $lockedUntil;
+    /** @var \DateTimeImmutable */
     private \DateTimeImmutable $createdAt;
+    /** @var \DateTimeImmutable|null */
     private ?\DateTimeImmutable $updatedAt;
+    /** @var \DateTimeImmutable|null */
     private ?\DateTimeImmutable $deletedAt;
 
     /**
@@ -78,13 +89,13 @@ final class User
      * Use named static factories (create, reconstitute) instead of
      * calling this constructor directly.
      *
-     * @param UserName $name The user's full name
-     * @param Email $email The user's email address
-     * @param HashedPassword $hashedPassword The user's hashed password
-     * @param UserRole $role The user's role
-     * @param UserStatus $status The user's account status
-     * @param int $failedLoginAttempts Number of failed login attempts
-     * @param \DateTimeImmutable|null $lockedUntil Account locked until this time
+     * @param UserName                $name                The user's full name
+     * @param Email                   $email               The user's email address
+     * @param HashedPassword          $hashedPassword      The user's hashed password
+     * @param UserRole                $role                The user's role
+     * @param UserStatus              $status              The user's account status
+     * @param int                     $failedLoginAttempts Number of failed login attempts
+     * @param \DateTimeImmutable|null $lockedUntil         Account locked until this time
      */
     private function __construct(
         UserName $name,
@@ -110,10 +121,10 @@ final class User
     /**
      * Create a new User (factory method for new users).
      *
-     * @param UserName $name The user's full name
-     * @param Email $email The user's email address
+     * @param UserName       $name           The user's full name
+     * @param Email          $email          The user's email address
      * @param HashedPassword $hashedPassword The user's hashed password
-     * @param UserRole $role The user's role
+     * @param UserRole       $role           The user's role
      * @return self New User instance
      */
     public static function create(
@@ -138,17 +149,17 @@ final class User
      *
      * Used by the repository when loading users from the database.
      *
-     * @param int $id The user ID
-     * @param UserName $name The user's full name
-     * @param Email $email The user's email address
-     * @param HashedPassword $hashedPassword The user's hashed password
-     * @param UserRole $role The user's role
-     * @param UserStatus $status The user's account status
-     * @param int $failedLoginAttempts Number of failed login attempts
-     * @param \DateTimeImmutable|null $lockedUntil Account locked until this time
-     * @param \DateTimeImmutable $createdAt Creation timestamp
-     * @param \DateTimeImmutable|null $updatedAt Last update timestamp
-     * @param \DateTimeImmutable|null $deletedAt Deletion timestamp (null if not deleted)
+     * @param int                     $id                  The user ID
+     * @param UserName                $name                The user's full name
+     * @param Email                   $email               The user's email address
+     * @param HashedPassword          $hashedPassword      The user's hashed password
+     * @param UserRole                $role                The user's role
+     * @param UserStatus              $status              The user's account status
+     * @param int                     $failedLoginAttempts Number of failed login attempts
+     * @param \DateTimeImmutable|null $lockedUntil         Account locked until this time
+     * @param \DateTimeImmutable      $createdAt           Creation timestamp
+     * @param \DateTimeImmutable|null $updatedAt           Last update timestamp
+     * @param \DateTimeImmutable|null $deletedAt           Deletion timestamp (null if not deleted)
      * @return self Reconstituted User instance
      */
     public static function reconstitute(
@@ -214,6 +225,8 @@ final class User
      * Activate the user account.
      *
      * Sets status to Active, allowing the user to login.
+     *
+     * @return void
      */
     public function activate(): void
     {
@@ -225,6 +238,8 @@ final class User
      * Deactivate the user account.
      *
      * Sets status to Inactive, preventing login.
+     *
+     * @return void
      */
     public function deactivate(): void
     {
@@ -236,6 +251,8 @@ final class User
      * Increment failed login attempts counter.
      *
      * Business Rule: After 5 failed attempts, lock account for 15 minutes.
+     *
+     * @return void
      */
     public function incrementFailedLoginAttempts(): void
     {
@@ -252,6 +269,8 @@ final class User
      * Reset failed login attempts counter and clear lock.
      *
      * Called after successful login.
+     *
+     * @return void
      */
     public function resetFailedLoginAttempts(): void
     {
@@ -266,6 +285,7 @@ final class User
      * Business Rule: Suspended accounts require admin intervention to reactivate.
      *
      * @param string $reason Reason for suspension (retained for domain event dispatch)
+     * @return void
      * @phpcsSuppress SlevomatCodingStandard.Functions.UnusedParameter.UnusedParameter
      */
     public function suspend(string $reason): void
@@ -282,10 +302,11 @@ final class User
      * - Only admins can change roles
      * - Status changes should be logged for audit
      *
-     * @param UserName $name New name
-     * @param Email $email New email address
-     * @param UserRole $role New role
+     * @param UserName   $name   New name
+     * @param Email      $email  New email address
+     * @param UserRole   $role   New role
      * @param UserStatus $status New status
+     * @return void
      */
     public function update(UserName $name, Email $email, UserRole $role, UserStatus $status): void
     {
@@ -300,6 +321,7 @@ final class User
      * Change user password.
      *
      * @param HashedPassword $newPassword The new hashed password
+     * @return void
      */
     public function changePassword(HashedPassword $newPassword): void
     {
@@ -311,6 +333,8 @@ final class User
      * Lock user account for lockout duration.
      *
      * Business Rule: Lock for 15 minutes after 5 failed attempts.
+     *
+     * @return void
      */
     private function lockAccount(): void
     {
@@ -320,56 +344,122 @@ final class User
 
     // Getters
 
+    /**
+     * getId.
+     *
+     * @return int|null
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function getId(): ?int
     {
         return $this->id;
     }
 
+    /**
+     * getName.
+     *
+     * @return UserName
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function getName(): UserName
     {
         return $this->name;
     }
 
+    /**
+     * getEmail.
+     *
+     * @return Email
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function getEmail(): Email
     {
         return $this->email;
     }
 
+    /**
+     * getHashedPassword.
+     *
+     * @return HashedPassword
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function getHashedPassword(): HashedPassword
     {
         return $this->hashedPassword;
     }
 
+    /**
+     * getRole.
+     *
+     * @return UserRole
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function getRole(): UserRole
     {
         return $this->role;
     }
 
+    /**
+     * getStatus.
+     *
+     * @return UserStatus
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function getStatus(): UserStatus
     {
         return $this->status;
     }
 
+    /**
+     * getFailedLoginAttempts.
+     *
+     * @return int
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function getFailedLoginAttempts(): int
     {
         return $this->failedLoginAttempts;
     }
 
+    /**
+     * getLockedUntil.
+     *
+     * @return \DateTimeImmutable|null
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function getLockedUntil(): ?\DateTimeImmutable
     {
         return $this->lockedUntil;
     }
 
+    /**
+     * getCreatedAt.
+     *
+     * @return \DateTimeImmutable
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function getCreatedAt(): \DateTimeImmutable
     {
         return $this->createdAt;
     }
 
+    /**
+     * getUpdatedAt.
+     *
+     * @return \DateTimeImmutable|null
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function getUpdatedAt(): ?\DateTimeImmutable
     {
         return $this->updatedAt;
     }
 
+    /**
+     * getDeletedAt.
+     *
+     * @return \DateTimeImmutable|null
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function getDeletedAt(): ?\DateTimeImmutable
     {
         return $this->deletedAt;

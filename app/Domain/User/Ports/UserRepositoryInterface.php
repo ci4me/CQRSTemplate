@@ -62,12 +62,12 @@ interface UserRepositoryInterface
     /**
      * Find users with pagination and optional filters.
      *
-     * @param int $page Page number (1-based)
-     * @param int $perPage Items per page
-     * @param bool $includeInactive Include soft-deleted users
-     * @param string $searchTerm Search in name and email
-     * @param string|null $role Filter by role
-     * @param string|null $status Filter by status
+     * @param int         $page            Page number (1-based)
+     * @param int         $perPage         Items per page
+     * @param bool        $includeInactive Include soft-deleted users
+     * @param string      $searchTerm      Search in name and email
+     * @param string|null $role            Filter by role
+     * @param string|null $status          Filter by status
      * @return array{data: array<User>, total: int, page: int, perPage: int, totalPages: int}
      */
     public function findPaginated(

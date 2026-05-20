@@ -23,10 +23,11 @@ use Config\Database;
  * Results are NOT cached per-request to avoid stale denials when role grants
  * change mid-request. Callers that fan out many checks should batch via the
  * future `allowed(list<Permission>)` API (TODO).
+ *
+ * NOT `final`: PHPUnit's mock generator cannot double a final class and
+ * several handlers depend on this service. Extending in production code
+ * is still discouraged — prefer composition.
  */
-// NOT `final`: PHPUnit's mock generator cannot double a final class and
-// several handlers depend on this service. Extending in production code
-// is still discouraged — prefer composition.
 readonly class PermissionService
 {
     /**
@@ -36,6 +37,14 @@ readonly class PermissionService
     {
     }
 
+    /**
+     * allows.
+     *
+     * @param Actor      $actor
+     * @param Permission $permission
+     * @return bool
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function allows(Actor $actor, Permission $permission): bool
     {
         // SECURITY: do NOT auto-grant the system actor. ActorResolver is
@@ -55,6 +64,14 @@ readonly class PermissionService
         return $this->rbacCheck($actor, $permission);
     }
 
+    /**
+     * denies.
+     *
+     * @param Actor      $actor
+     * @param Permission $permission
+     * @return bool
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function denies(Actor $actor, Permission $permission): bool
     {
         return !$this->allows($actor, $permission);
@@ -64,6 +81,9 @@ readonly class PermissionService
      * TRANSITIONAL: until users are migrated to user_roles, the legacy
      * users.role enum still controls admin access. Remove this method
      * once every user has at least one row in user_roles.
+     *
+     * @param Actor $actor
+     * @return bool
      */
     private function legacyAdminCheck(Actor $actor): bool
     {
@@ -86,6 +106,14 @@ readonly class PermissionService
         }
     }
 
+    /**
+     * rbacCheck.
+     *
+     * @param Actor      $actor
+     * @param Permission $permission
+     * @return bool
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     private function rbacCheck(Actor $actor, Permission $permission): bool
     {
         try {

@@ -44,6 +44,7 @@ final class RebuildProjections extends BaseCommand
 
     /**
      * @param array<int|string, mixed> $params
+     * @return int
      */
     public function run(array $params): int
     {
@@ -77,6 +78,14 @@ final class RebuildProjections extends BaseCommand
         return 0;
     }
 
+    /**
+     * resolveProjection.
+     *
+     * @param string $name
+     * @return ProjectionInterface|null
+     *
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     private function resolveProjection(string $name): ?ProjectionInterface
     {
         // For now we wire projections by name to avoid coupling the

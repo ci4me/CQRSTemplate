@@ -24,8 +24,14 @@ use Psr\Log\LoggerInterface;
 final class SessionManagementService
 {
     private const int DEFAULT_MAX_SESSIONS = 5;
+    /** @var LoggerInterface */
     private LoggerInterface $logger;
 
+    /**
+     * __construct.
+     *
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function __construct()
     {
         $this->logger = LoggerFactory::create('auth.session-management');
@@ -34,12 +40,12 @@ final class SessionManagementService
     /**
      * Create new session record.
      *
-     * @param int $userId User ID
-     * @param string $accessTokenJti Access token JTI
-     * @param string $refreshTokenJti Refresh token JTI
-     * @param string $ipAddress Client IP address
-     * @param string|null $userAgent Browser/device user agent
-     * @param int $expiresAt Refresh token expiration timestamp
+     * @param int         $userId          User ID
+     * @param string      $accessTokenJti  Access token JTI
+     * @param string      $refreshTokenJti Refresh token JTI
+     * @param string      $ipAddress       Client IP address
+     * @param string|null $userAgent       Browser/device user agent
+     * @param int         $expiresAt       Refresh token expiration timestamp
      * @return int Session ID
      */
     public function createSession(
@@ -89,6 +95,7 @@ final class SessionManagementService
      * Update session last activity timestamp.
      *
      * @param string $accessTokenJti Access token JTI
+     * @return void
      */
     public function updateLastActivity(string $accessTokenJti): void
     {
@@ -107,7 +114,8 @@ final class SessionManagementService
      * Revoke specific session.
      *
      * @param int $sessionId Session ID
-     * @param int $userId User ID (for authorization check)
+     * @param int $userId    User ID (for authorization check)
+     * @return void
      */
     public function revokeSession(int $sessionId, int $userId): void
     {
@@ -134,7 +142,8 @@ final class SessionManagementService
      * SECURITY: Used during logout to ensure complete session revocation (CR-2.1)
      *
      * @param string $accessTokenJti Access token JTI
-     * @param int $userId User ID (for authorization check)
+     * @param int    $userId         User ID (for authorization check)
+     * @return void
      */
     public function revokeSessionByAccessJti(string $accessTokenJti, int $userId): void
     {
@@ -164,6 +173,7 @@ final class SessionManagementService
      * Revoke all user sessions (forced logout).
      *
      * @param int $userId User ID
+     * @return void
      */
     public function revokeAllUserSessions(int $userId): void
     {
@@ -237,7 +247,7 @@ final class SessionManagementService
     /**
      * Generate device fingerprint from IP and user agent.
      *
-     * @param string $ipAddress IP address
+     * @param string      $ipAddress IP address
      * @param string|null $userAgent User agent string
      * @return string SHA-256 hash
      */
@@ -253,6 +263,7 @@ final class SessionManagementService
      * Revokes oldest sessions if limit exceeded.
      *
      * @param int $userId User ID
+     * @return void
      */
     private function enforceSessionLimit(int $userId): void
     {

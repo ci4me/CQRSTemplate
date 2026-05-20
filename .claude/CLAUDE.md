@@ -276,6 +276,69 @@ AFTER making changes, you MUST:
 - Run `phpstan-specialist` (MUST pass Level 8 with 0 errors)
 - Run `slevomat-specialist` (MUST pass with 0 violations)
 - Run `test-specialist` (MUST maintain 90% coverage)
+- Run `composer docblocks:audit` (MUST exit 0 — no un-reviewed auto-generated docblocks)
+
+---
+
+## 📝 PHPDoc Policy (Intelephense / IDE Autocomplete)
+
+**This project requires full PHPDoc blocks on every class, method, and
+property in `app/` (tests + framework-scaffolded paths are excluded).**
+
+PHPCS enforces existence; PHPStan enforces type accuracy. Together they
+keep Intelephense autocomplete reliable across the codebase.
+
+### When to run the docblock generator
+
+The repository ships TWO scripts that work together:
+
+| Command                        | What it does                                                                                                          |
+|--------------------------------|-----------------------------------------------------------------------------------------------------------------------|
+| `composer docblocks:generate`  | Walks `app/` and inserts a PHPDoc stub on every class/method/property that lacks one. Existing docblocks are preserved unless the @param/@return/@throws tags don't match the signature (in which case they are surgically corrected, keeping any prose). |
+| `composer docblocks:audit`     | Greps for the auto-generated marker. Exits non-zero if any unreviewed stub remains. Wired into `composer check` and `composer ci`. |
+
+**AI agents MUST run `composer docblocks:generate` when:**
+- A new class, method, or property is added to `app/` and the agent did not
+  write a complete PHPDoc block by hand. Running the generator afterwards
+  fills in the missing tags from the signature.
+- A method signature changes (param added/removed/renamed/typed) AND there
+  was already an existing PHPDoc block. The generator's "amend" pass
+  reorders / retypes / fills in tags without touching prose.
+
+**Agents MUST run `composer docblocks:audit` before reporting work as complete.**
+If the audit reports any hits, the agent must REPLACE the marker line with a
+real one-sentence description of the symbol's purpose. The marker is:
+
+```text
+@todo Auto-generated docblock — review and replace this description.
+```
+
+### English-only policy
+
+All PHPDoc text — descriptions, `@param` comments, `@throws` notes,
+class summaries — MUST be written in **English**. The generator emits
+English placeholders; reviewers must keep everything English when
+replacing those placeholders.
+
+### What the generator preserves
+
+- Existing prose descriptions inside a docblock (lines without `@tag`).
+- `@param` descriptions that follow `@param TYPE $name` (the type may be
+  rewritten if it drifted from the signature; the description survives).
+- `@return` descriptions following the type.
+- Other tags the generator does not own: `@see`, `@throws`, `@internal`,
+  `@phpstan-*`, `@psalm-*`, etc.
+- More-specific existing types: if a `@param array<string, Foo>` exists
+  and the signature is bare `array`, the existing narrower type is kept
+  rather than overwritten with the generator's `array<mixed>` default.
+
+### What the generator NEVER does
+
+- Invent prose. Class / method descriptions always start as the placeholder
+  marker; a human (or reviewing agent) must replace it.
+- Modify framework-scaffolded files (`app/Models/`, `app/Config/`,
+  `app/Database/Migrations/`, `app/Database/Seeds/`, `app/Libraries/AbiSageIntacct/`).
+- Touch existing docblocks whose tags already match the signature exactly.
 
 ### Orchestrator Pattern - Parallel Delegation
 

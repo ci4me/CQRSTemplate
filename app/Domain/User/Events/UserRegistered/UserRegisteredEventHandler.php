@@ -6,13 +6,31 @@ namespace App\Domain\User\Events\UserRegistered;
 
 use Psr\Log\LoggerInterface;
 
+/**
+ * UserRegisteredEventHandler.
+ *
+ * @todo Auto-generated docblock — review and replace this description.
+ */
 final readonly class UserRegisteredEventHandler
 {
+    /**
+     * __construct.
+     *
+     * @param LoggerInterface $logger
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function __construct(
         private LoggerInterface $logger,
     ) {
     }
 
+    /**
+     * __invoke.
+     *
+     * @param UserRegisteredEvent $event
+     * @return void
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function __invoke(UserRegisteredEvent $event): void
     {
         $this->logger->info('User registered successfully', [

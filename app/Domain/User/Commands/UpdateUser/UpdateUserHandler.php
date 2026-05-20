@@ -37,6 +37,15 @@ use Psr\Log\LoggerInterface;
  */
 final readonly class UpdateUserHandler
 {
+    /**
+     * __construct.
+     *
+     * @param UserRepositoryInterface  $repository
+     * @param EventDispatcherInterface $eventDispatcher
+     * @param LoggerInterface          $logger
+     * @param PermissionService|null   $permissions
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function __construct(
         private UserRepositoryInterface $repository,
         private EventDispatcherInterface $eventDispatcher,
@@ -45,6 +54,14 @@ final readonly class UpdateUserHandler
     ) {
     }
 
+    /**
+     * handle.
+     *
+     * @param UpdateUserCommand $command
+     * @return void
+     * @throws \RuntimeException
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function handle(UpdateUserCommand $command): void
     {
 
@@ -157,6 +174,11 @@ final readonly class UpdateUserHandler
      * fields. We don't allow the command to omit them (so the protocol
      * stays explicit), but we DO require that the values match what is
      * already in the database.
+     *
+     * @param UpdateUserCommand              $command
+     * @param \App\Domain\User\Entities\User $user
+     * @return void
+     * @throws DomainException
      */
     private function assertRoleAndStatusChangesAllowed(
         UpdateUserCommand $command,
@@ -191,6 +213,13 @@ final readonly class UpdateUserHandler
         );
     }
 
+    /**
+     * actorIsAdmin.
+     *
+     * @param UpdateUserCommand $command
+     * @return bool
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     private function actorIsAdmin(UpdateUserCommand $command): bool
     {
         $actor = $command->updatedBy;

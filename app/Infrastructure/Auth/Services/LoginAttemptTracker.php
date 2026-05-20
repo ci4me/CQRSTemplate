@@ -25,8 +25,14 @@ final class LoginAttemptTracker
 {
     private const int BRUTE_FORCE_THRESHOLD = 5;
     private const int BRUTE_FORCE_WINDOW_SECONDS = 300; // 5 minutes
+    /** @var LoggerInterface */
     private LoggerInterface $logger;
 
+    /**
+     * __construct.
+     *
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function __construct()
     {
         $this->logger = LoggerFactory::create('auth.login-attempts');
@@ -35,12 +41,13 @@ final class LoginAttemptTracker
     /**
      * Record login attempt.
      *
-     * @param string $email Email used in login attempt
-     * @param int|null $userId User ID if account exists
-     * @param string $ipAddress Client IP address
-     * @param string|null $userAgent Browser/device user agent
-     * @param bool $success Whether login succeeded
+     * @param string      $email         Email used in login attempt
+     * @param int|null    $userId        User ID if account exists
+     * @param string      $ipAddress     Client IP address
+     * @param string|null $userAgent     Browser/device user agent
+     * @param bool        $success       Whether login succeeded
      * @param string|null $failureReason Reason for failure
+     * @return void
      */
     public function recordAttempt(
         string $email,
@@ -111,7 +118,7 @@ final class LoginAttemptTracker
      * Get recent login attempts for user.
      *
      * @param int $userId User ID
-     * @param int $limit Number of attempts to retrieve
+     * @param int $limit  Number of attempts to retrieve
      * @return array<int, array<string, mixed>>
      */
     public function getRecentAttempts(int $userId, int $limit = 10): array
@@ -134,8 +141,8 @@ final class LoginAttemptTracker
     /**
      * Get failed login count for email in time window.
      *
-     * @param string $email Email address
-     * @param int $windowSeconds Time window in seconds
+     * @param string $email         Email address
+     * @param int    $windowSeconds Time window in seconds
      * @return int Number of failed attempts
      */
     public function getFailedAttemptCount(string $email, int $windowSeconds): int

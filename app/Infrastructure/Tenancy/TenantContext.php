@@ -32,8 +32,15 @@ final class TenantContext
     public const string HEADER = 'X-Tenant-Id';
     public const int DEFAULT_TENANT_ID = 1;
 
+    /** @var int|null */
     private ?int $override = null;
 
+    /**
+     * __construct.
+     *
+     * @param RequestInterface|null $request
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function __construct(
         private readonly ?RequestInterface $request = null
     ) {
@@ -45,6 +52,10 @@ final class TenantContext
      * Used by CLI tasks that operate against a specific tenant
      * (`spark projections:rebuild --tenant=2`) and by tests that need a
      * deterministic value.
+     *
+     * @param int $tenantId
+     * @return void
+     * @throws \InvalidArgumentException
      */
     public function set(int $tenantId): void
     {
@@ -57,12 +68,20 @@ final class TenantContext
     /**
      * Clear an earlier {@see self::set()} override, restoring the normal
      * read order.
+     *
+     * @return void
      */
     public function clear(): void
     {
         $this->override = null;
     }
 
+    /**
+     * currentTenantId.
+     *
+     * @return int
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function currentTenantId(): int
     {
         if ($this->override !== null) {
@@ -87,6 +106,12 @@ final class TenantContext
         return self::DEFAULT_TENANT_ID;
     }
 
+    /**
+     * tenantFromHeader.
+     *
+     * @return int|null
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     private function tenantFromHeader(): ?int
     {
         if ($this->request === null) {
@@ -100,6 +125,12 @@ final class TenantContext
         return $value >= 1 ? $value : null;
     }
 
+    /**
+     * tenantFromSession.
+     *
+     * @return int|null
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     private function tenantFromSession(): ?int
     {
         if (!function_exists('session')) {

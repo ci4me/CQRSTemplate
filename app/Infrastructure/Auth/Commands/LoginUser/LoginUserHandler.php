@@ -14,8 +14,24 @@ use App\Infrastructure\Auth\Services\SessionManagementService;
 use App\Infrastructure\Persistence\Repositories\UserRepository;
 use Psr\Log\LoggerInterface;
 
+/**
+ * LoginUserHandler.
+ *
+ * @todo Auto-generated docblock — review and replace this description.
+ */
 final readonly class LoginUserHandler
 {
+    /**
+     * __construct.
+     *
+     * @param UserRepository                 $userRepository
+     * @param AuthenticationServiceInterface $authService
+     * @param SessionManagementService       $sessionManager
+     * @param LoginAttemptTracker            $loginAttemptTracker
+     * @param SecurityEventService           $securityEvents
+     * @param LoggerInterface                $logger
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function __construct(
         private UserRepository $userRepository,
         private AuthenticationServiceInterface $authService,
@@ -26,6 +42,13 @@ final readonly class LoginUserHandler
     ) {
     }
 
+    /**
+     * handle.
+     *
+     * @param LoginUserCommand $command
+     * @return AuthenticationResult
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function handle(LoginUserCommand $command): AuthenticationResult
     {
         $ipAddress = $command->ipAddress ?? '0.0.0.0';

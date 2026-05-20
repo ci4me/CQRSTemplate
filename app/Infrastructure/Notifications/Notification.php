@@ -10,7 +10,17 @@ namespace App\Infrastructure\Notifications;
 final readonly class Notification
 {
     /**
+     * @param int                  $id
+     * @param int                  $userId
+     * @param int|null             $tenantId
+     * @param string               $type
+     * @param string               $title
+     * @param string|null          $body
      * @param array<string, mixed> $data
+     * @param string|null          $url
+     * @param NotificationLevel    $level
+     * @param string|null          $readAt
+     * @param string               $createdAt
      */
     public function __construct(
         public int $id,
@@ -27,6 +37,12 @@ final readonly class Notification
     ) {
     }
 
+    /**
+     * isRead.
+     *
+     * @return bool
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function isRead(): bool
     {
         return $this->readAt !== null;

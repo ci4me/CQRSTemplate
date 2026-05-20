@@ -40,9 +40,8 @@ final class TimingSafeComparison
      * by always comparing the full length, regardless of where differences occur.
      *
      * @param string $known The known (expected) value
-     * @param string $user The user-provided value to verify
+     * @param string $user  The user-provided value to verify
      * @return bool True if strings are identical, false otherwise
-     *
      * @example
      * ```php
      * // Correct usage:
@@ -69,9 +68,8 @@ final class TimingSafeComparison
      * Normalizes case to ensure case-insensitive comparison.
      *
      * @param string $knownToken The known token (stored value)
-     * @param string $userToken The user-provided token to verify
+     * @param string $userToken  The user-provided token to verify
      * @return bool True if tokens are identical (case-insensitive), false otherwise
-     *
      * @example
      * ```php
      * $apiToken = 'A1B2C3D4E5F6...'; // Stored API token
@@ -104,9 +102,8 @@ final class TimingSafeComparison
      * including signature verification timing resistance.
      *
      * @param string $knownJwt The known JWT (stored or expected value)
-     * @param string $userJwt The user-provided JWT to verify
+     * @param string $userJwt  The user-provided JWT to verify
      * @return bool True if JWTs are identical, false otherwise
-     *
      * @example
      * ```php
      * $storedRefreshToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6...';
@@ -138,9 +135,8 @@ final class TimingSafeComparison
      * before comparison to prevent length-based timing attacks.
      *
      * @param string $knownHash The known hash value
-     * @param string $userHash The user-provided hash to verify
+     * @param string $userHash  The user-provided hash to verify
      * @return bool True if hashes are identical, false otherwise
-     *
      * @example
      * ```php
      * // Useful when migrating hash algorithms

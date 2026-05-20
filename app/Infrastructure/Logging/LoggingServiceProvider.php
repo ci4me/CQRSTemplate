@@ -60,8 +60,8 @@ final readonly class LoggingServiceProvider
      * Helper method for creating loggers with domain-specific channels.
      * Channel format: {domain}.{type}.{operation}
      *
-     * @param string $domain Domain name (e.g., 'cookie')
-     * @param string $type Operation type (e.g., 'command', 'query', 'event')
+     * @param string $domain    Domain name (e.g., 'cookie')
+     * @param string $type      Operation type (e.g., 'command', 'query', 'event')
      * @param string $operation Operation name (e.g., 'create', 'update', 'delete')
      * @return LoggerInterface PSR-3 compliant logger instance
      */

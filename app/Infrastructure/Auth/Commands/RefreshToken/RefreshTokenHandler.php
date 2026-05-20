@@ -32,8 +32,17 @@ use Psr\Log\LoggerInterface;
  */
 final readonly class RefreshTokenHandler
 {
+    /** @var LoggerInterface */
     private LoggerInterface $logger;
 
+    /**
+     * __construct.
+     *
+     * @param JwtService                   $jwtService
+     * @param UserRepository               $userRepository
+     * @param TokenBlacklistInterface|null $blacklist
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function __construct(
         private JwtService $jwtService,
         private UserRepository $userRepository,
@@ -42,6 +51,14 @@ final readonly class RefreshTokenHandler
         $this->logger = LoggerFactory::create('auth.refresh-token');
     }
 
+    /**
+     * handle.
+     *
+     * @param RefreshTokenCommand $command
+     * @return AuthenticationResult
+     * @throws \RuntimeException
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function handle(RefreshTokenCommand $command): AuthenticationResult
     {
         $this->logger->info('Processing refresh token request', [
@@ -144,6 +161,13 @@ final readonly class RefreshTokenHandler
         }
     }
 
+    /**
+     * isRefreshTokenRevoked.
+     *
+     * @param string $jti
+     * @return bool
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     private function isRefreshTokenRevoked(string $jti): bool
     {
         $db = \Config\Database::connect();
@@ -156,6 +180,13 @@ final readonly class RefreshTokenHandler
         return $result > 0;
     }
 
+    /**
+     * revokeRefreshToken.
+     *
+     * @param string $jti
+     * @return void
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     private function revokeRefreshToken(string $jti): void
     {
         $db = \Config\Database::connect();
@@ -168,6 +199,15 @@ final readonly class RefreshTokenHandler
             ]);
     }
 
+    /**
+     * storeRefreshToken.
+     *
+     * @param int    $userId
+     * @param string $jti
+     * @param int    $expiresAt
+     * @return void
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     private function storeRefreshToken(int $userId, string $jti, int $expiresAt): void
     {
         $db = \Config\Database::connect();
@@ -182,6 +222,13 @@ final readonly class RefreshTokenHandler
         ]);
     }
 
+    /**
+     * revokeAllUserTokens.
+     *
+     * @param int $userId
+     * @return void
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     private function revokeAllUserTokens(int $userId): void
     {
         $db = \Config\Database::connect();

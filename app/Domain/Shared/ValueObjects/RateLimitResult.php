@@ -20,9 +20,10 @@ namespace App\Domain\Shared\ValueObjects;
 class RateLimitResult
 {
     /**
-     * @param bool $allowed Whether the request is allowed
-     * @param int $attemptsRemaining Number of attempts remaining in the current window
-     * @param int $resetTime Unix timestamp when the rate limit will reset
+     * @param bool $allowed           Whether the request is allowed
+     * @param int  $attemptsRemaining Number of attempts remaining in the current window
+     * @param int  $resetTime         Unix timestamp when the rate limit will reset
+     * @throws \InvalidArgumentException
      */
     public function __construct(
         private readonly bool $allowed,
@@ -38,21 +39,45 @@ class RateLimitResult
         }
     }
 
+    /**
+     * isAllowed.
+     *
+     * @return bool
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function isAllowed(): bool
     {
         return $this->allowed;
     }
 
+    /**
+     * getAttemptsRemaining.
+     *
+     * @return int
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function getAttemptsRemaining(): int
     {
         return $this->attemptsRemaining;
     }
 
+    /**
+     * getResetTime.
+     *
+     * @return int
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function getResetTime(): int
     {
         return $this->resetTime;
     }
 
+    /**
+     * getSecondsUntilReset.
+     *
+     * @return int
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function getSecondsUntilReset(): int
     {
         return max(0, $this->resetTime - time());

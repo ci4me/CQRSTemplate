@@ -41,6 +41,18 @@ final class DocumentNumberingService
     {
     }
 
+    /**
+     * allocate.
+     *
+     * @param string $series
+     * @param string $scope
+     * @param string $prefix
+     * @param string $suffix
+     * @param int    $padLength
+     * @return DocumentNumber
+     * @throws \InvalidArgumentException
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function allocate(
         string $series,
         string $scope = '',
@@ -82,6 +94,10 @@ final class DocumentNumberingService
     /**
      * Peek at the current value without bumping it. Useful for display or
      * tests. Returns null if no sequence row exists yet.
+     *
+     * @param string $series
+     * @param string $scope
+     * @return int|null
      */
     public function peek(string $series, string $scope = ''): ?int
     {
@@ -101,6 +117,11 @@ final class DocumentNumberingService
 
     /**
      * @param BaseConnection<object|resource|false, object|resource|false> $db
+     * @param string                                                       $series
+     * @param string                                                       $scope
+     * @param string                                                       $prefix
+     * @param string                                                       $suffix
+     * @param int                                                          $padLength
      * @return array{id:int, current_value:int, prefix:string, suffix:string, pad_length:int}
      */
     private function fetchOrCreateRow(
@@ -167,6 +188,16 @@ final class DocumentNumberingService
         ];
     }
 
+    /**
+     * format.
+     *
+     * @param string $prefix
+     * @param int    $value
+     * @param int    $padLength
+     * @param string $suffix
+     * @return string
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     private function format(string $prefix, int $value, int $padLength, string $suffix): string
     {
         return $prefix . str_pad((string) $value, $padLength, '0', STR_PAD_LEFT) . $suffix;

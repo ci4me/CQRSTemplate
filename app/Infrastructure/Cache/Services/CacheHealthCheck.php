@@ -19,6 +19,13 @@ use Psr\Log\LoggerInterface;
  */
 final readonly class CacheHealthCheck
 {
+    /**
+     * __construct.
+     *
+     * @param CacheInterface  $cache
+     * @param LoggerInterface $logger
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function __construct(
         private CacheInterface $cache,
         private LoggerInterface $logger

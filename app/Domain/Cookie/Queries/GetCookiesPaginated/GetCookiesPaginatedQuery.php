@@ -20,18 +20,22 @@ final readonly class GetCookiesPaginatedQuery
     private const int DEFAULT_PER_PAGE = 20;
     private const int MAX_PER_PAGE = 100;
 
+    /** @var int */
     public int $page;
+    /** @var int */
     public int $perPage;
+    /** @var string|null */
     public ?string $searchTerm;
+    /** @var bool */
     public bool $includeInactive;
 
     /**
      * Create a new GetCookiesPaginatedQuery.
      *
-     * @param int $page The page number (1-indexed)
-     * @param int $perPage Number of items per page
-     * @param string|null $searchTerm Optional search term for name filtering
-     * @param bool $includeInactive Whether to include inactive cookies
+     * @param int         $page            The page number (1-indexed)
+     * @param int         $perPage         Number of items per page
+     * @param string|null $searchTerm      Optional search term for name filtering
+     * @param bool        $includeInactive Whether to include inactive cookies
      */
     public function __construct(
         int $page = self::DEFAULT_PAGE,

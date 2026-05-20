@@ -33,9 +33,9 @@ final readonly class GetCookiesPaginatedHandler
     /**
      * Create a new GetCookiesPaginatedHandler.
      *
-     * @param CookieReadModelRepositoryInterface $repository For data retrieval
-     * @param LoggerInterface $logger For query logging
-     * @param Logging $loggingConfig For logging configuration
+     * @param CookieReadModelRepositoryInterface $repository    For data retrieval
+     * @param LoggerInterface                    $logger        For query logging
+     * @param Logging                            $loggingConfig For logging configuration
      */
     public function __construct(
         private CookieReadModelRepositoryInterface $repository,
@@ -72,9 +72,10 @@ final readonly class GetCookiesPaginatedHandler
     /**
      * Log query execution based on configured logging level.
      *
-     * @param GetCookiesPaginatedQuery $query The query being executed
-     * @param array{data: array<int, CookieDTO>, total: int, page: int, perPage: int, lastPage: int} $result The query result
-     * @param float $durationMs Execution duration in milliseconds
+     * @param GetCookiesPaginatedQuery                                                               $query      The query being executed
+     * @param array{data: array<int, CookieDTO>, total: int, page: int, perPage: int, lastPage: int} $result     The query result
+     * @param float                                                                                  $durationMs Execution duration in milliseconds
+     * @return void
      */
     private function logQueryExecution(GetCookiesPaginatedQuery $query, array $result, float $durationMs): void
     {
@@ -104,10 +105,11 @@ final readonly class GetCookiesPaginatedHandler
     /**
      * Log query details with context.
      *
-     * @param GetCookiesPaginatedQuery $query The query being executed
-     * @param array{data: array<int, CookieDTO>, total: int, page: int, perPage: int, lastPage: int} $result The query result
-     * @param float $durationMs Execution duration in milliseconds
-     * @param bool $isSlowQuery Whether this is a slow query
+     * @param GetCookiesPaginatedQuery                                                               $query       The query being executed
+     * @param array{data: array<int, CookieDTO>, total: int, page: int, perPage: int, lastPage: int} $result      The query result
+     * @param float                                                                                  $durationMs  Execution duration in milliseconds
+     * @param bool                                                                                   $isSlowQuery Whether this is a slow query
+     * @return void
      */
     private function logQuery(
         GetCookiesPaginatedQuery $query,

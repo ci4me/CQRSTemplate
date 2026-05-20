@@ -26,13 +26,18 @@ final class CsvReader
     /** @var resource */
     private $handle;
 
+    /** @var bool */
     private bool $ownsHandle;
 
     /**
-     * @param resource $handle
+     * @param mixed  $handle
+     * @param string $delimiter
+     * @param string $enclosure
+     * @param string $escape
+     * @param bool   $ownsHandle
      */
     private function __construct(
-        $handle,
+        mixed $handle,
         private readonly string $delimiter = ',',
         private readonly string $enclosure = '"',
         private readonly string $escape = '\\',
@@ -42,6 +47,16 @@ final class CsvReader
         $this->ownsHandle = $ownsHandle;
     }
 
+    /**
+     * fromString.
+     *
+     * @param string $csv
+     * @param string $delimiter
+     * @param string $enclosure
+     * @return self
+     * @throws \RuntimeException
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public static function fromString(string $csv, string $delimiter = ',', string $enclosure = '"'): self
     {
         $handle = fopen('php://temp', 'r+');
@@ -54,6 +69,16 @@ final class CsvReader
         return new self($handle, $delimiter, $enclosure, '\\', true);
     }
 
+    /**
+     * fromFile.
+     *
+     * @param string $path
+     * @param string $delimiter
+     * @param string $enclosure
+     * @return self
+     * @throws \RuntimeException
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public static function fromFile(string $path, string $delimiter = ',', string $enclosure = '"'): self
     {
         $handle = fopen($path, 'r');
@@ -66,6 +91,7 @@ final class CsvReader
 
     /**
      * @return iterable<int, array<string, string>>
+     * @throws \RuntimeException
      */
     public function rows(): iterable
     {
@@ -91,6 +117,12 @@ final class CsvReader
         }
     }
 
+    /**
+     * close.
+     *
+     * @return void
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function close(): void
     {
         if (!$this->ownsHandle) {
@@ -122,6 +154,11 @@ final class CsvReader
         return $strings;
     }
 
+    /**
+     * __destruct.
+     *
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function __destruct()
     {
         $this->close();

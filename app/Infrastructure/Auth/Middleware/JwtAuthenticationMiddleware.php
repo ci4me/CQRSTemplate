@@ -48,12 +48,27 @@ use Psr\Log\LoggerInterface;
  */
 final class JwtAuthenticationMiddleware implements FilterInterface
 {
+    /** @var JwtService */
     private JwtService $jwtService;
+    /** @var TokenBlacklistInterface */
     private TokenBlacklistInterface $blacklistService;
+    /** @var UserRepository */
     private UserRepository $userRepository;
+    /** @var SessionManagementService */
     private SessionManagementService $sessionManager;
+    /** @var LoggerInterface */
     private LoggerInterface $logger;
 
+    /**
+     * __construct.
+     *
+     * @param JwtService|null               $jwtService
+     * @param TokenBlacklistInterface|null  $blacklistService
+     * @param UserRepository|null           $userRepository
+     * @param SessionManagementService|null $sessionManager
+     * @param LoggerInterface|null          $logger
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function __construct(
         ?JwtService $jwtService = null,
         ?TokenBlacklistInterface $blacklistService = null,
@@ -73,10 +88,9 @@ final class JwtAuthenticationMiddleware implements FilterInterface
      *
      * Validates JWT token and attaches authenticated user to request.
      *
-     * @param RequestInterface $request HTTP request
-     * @param mixed $arguments Optional middleware arguments
+     * @param RequestInterface $request   HTTP request
+     * @param mixed            $arguments Optional middleware arguments
      * @return RequestInterface|ResponseInterface Modified request with user, or 401 response
-     *
      * @phpcsSuppress SlevomatCodingStandard.Functions.UnusedParameter.UnusedParameter
      */
     public function before(RequestInterface $request, mixed $arguments = null): RequestInterface|ResponseInterface
@@ -197,7 +211,7 @@ final class JwtAuthenticationMiddleware implements FilterInterface
      * to accommodate dynamic IPs and legitimate device changes.
      *
      * @param array<string, mixed> $payload JWT token payload
-     * @param RequestInterface $request HTTP request
+     * @param RequestInterface     $request HTTP request
      * @return ResponseInterface|null Unauthorized response if validation fails, null if passes
      */
     private function validateDeviceFingerprint(array $payload, RequestInterface $request): ?ResponseInterface
@@ -396,7 +410,6 @@ final class JwtAuthenticationMiddleware implements FilterInterface
      * @param string $ipAddress IP address (kept for backward compatibility)
      * @param string $userAgent User agent string
      * @return string SHA-256 hash
-     *
      * @todo Remove $ipAddress parameter in the next major version
      * @phpcsSuppress SlevomatCodingStandard.Functions.UnusedParameter.UnusedParameter
      */
@@ -408,11 +421,10 @@ final class JwtAuthenticationMiddleware implements FilterInterface
     /**
      * Execute middleware after controller.
      *
-     * @param RequestInterface $request HTTP request
-     * @param ResponseInterface $response HTTP response
-     * @param mixed $arguments Optional middleware arguments
+     * @param RequestInterface  $request   HTTP request
+     * @param ResponseInterface $response  HTTP response
+     * @param mixed             $arguments Optional middleware arguments
      * @return ResponseInterface Unmodified response
-     *
      * @phpcsSuppress SlevomatCodingStandard.Functions.UnusedParameter.UnusedParameter
      */
     public function after(RequestInterface $request, ResponseInterface $response, mixed $arguments = null): ResponseInterface
@@ -460,9 +472,9 @@ final class JwtAuthenticationMiddleware implements FilterInterface
     /**
      * Return 401 Unauthorized response with error details.
      *
-     * @param string $errorCode Machine-readable error code
-     * @param string $message Human-readable error message
-     * @param array<string, mixed> $context Additional context for logging
+     * @param string               $errorCode Machine-readable error code
+     * @param string               $message   Human-readable error message
+     * @param array<string, mixed> $context   Additional context for logging
      * @return ResponseInterface 401 response
      */
     private function unauthorizedResponse(
@@ -490,8 +502,9 @@ final class JwtAuthenticationMiddleware implements FilterInterface
     /**
      * Log successful authentication.
      *
-     * @param User $user Authenticated user
+     * @param User             $user    Authenticated user
      * @param RequestInterface $request HTTP request
+     * @return void
      */
     private function logAuthenticationSuccess(User $user, RequestInterface $request): void
     {
@@ -514,6 +527,7 @@ final class JwtAuthenticationMiddleware implements FilterInterface
      * after a period of inactivity.
      *
      * @param array<string, mixed> $payload JWT token payload
+     * @return void
      */
     private function updateSessionActivity(array $payload): void
     {

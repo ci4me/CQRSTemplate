@@ -34,10 +34,10 @@ final readonly class CookieCreatedEvent implements DomainEventInterface
     /**
      * Create a new CookieCreatedEvent.
      *
-     * @param int $cookieId The ID of the created cookie
-     * @param string $cookieName The name of the created cookie
-     * @param string $cookiePrice Decimal price string for the created cookie
-     * @param int $initialStock The initial stock quantity
+     * @param int    $cookieId     The ID of the created cookie
+     * @param string $cookieName   The name of the created cookie
+     * @param string $cookiePrice  Decimal price string for the created cookie
+     * @param int    $initialStock The initial stock quantity
      */
     public function __construct(
         public int $cookieId,

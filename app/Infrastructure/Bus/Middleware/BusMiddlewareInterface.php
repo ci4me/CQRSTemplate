@@ -14,5 +14,13 @@ namespace App\Infrastructure\Bus\Middleware;
  */
 interface BusMiddlewareInterface
 {
+    /**
+     * handle.
+     *
+     * @param object   $message
+     * @param callable $next
+     * @return mixed
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function handle(object $message, callable $next): mixed;
 }

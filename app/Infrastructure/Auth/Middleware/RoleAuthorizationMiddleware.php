@@ -29,8 +29,15 @@ use Psr\Log\LoggerInterface;
  */
 final readonly class RoleAuthorizationMiddleware implements FilterInterface
 {
+    /** @var LoggerInterface */
     private LoggerInterface $logger;
 
+    /**
+     * __construct.
+     *
+     * @param LoggerInterface|null $logger
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function __construct(
         ?LoggerInterface $logger = null
     ) {
@@ -40,8 +47,9 @@ final readonly class RoleAuthorizationMiddleware implements FilterInterface
     /**
      * Process request before controller execution.
      *
-     * @param RequestInterface $request Current request
-     * @param mixed $arguments Filter arguments [requiredRole]
+     * @param RequestInterface $request   Current request
+     * @param mixed            $arguments Filter arguments [requiredRole]
+     * @return RequestInterface|ResponseInterface|null
      */
     public function before(RequestInterface $request, mixed $arguments = null): RequestInterface|ResponseInterface|null
     {
@@ -84,11 +92,12 @@ final readonly class RoleAuthorizationMiddleware implements FilterInterface
      *
      * No action needed - authorization is applied before execution.
      *
-     * @param RequestInterface $request Current request
-     * @param ResponseInterface $response Current response
-     * @param mixed $arguments Filter arguments
+     * @param RequestInterface  $request   Current request
+     * @param ResponseInterface $response  Current response
+     * @param mixed             $arguments Filter arguments
+     * @return ResponseInterface|null
+     * @phpcsSuppress SlevomatCodingStandard.Functions.UnusedParameter.UnusedParameter
      */
-    // phpcs:ignore SlevomatCodingStandard.Functions.UnusedParameter.UnusedParameter
     public function after(RequestInterface $request, ResponseInterface $response, mixed $arguments = null): ResponseInterface|null
     {
         return null;
@@ -138,6 +147,7 @@ final readonly class RoleAuthorizationMiddleware implements FilterInterface
      *
      * @param object $user User object
      * @return string User role
+     * @throws \RuntimeException
      */
     private function getUserRole(object $user): string
     {
@@ -185,7 +195,7 @@ final readonly class RoleAuthorizationMiddleware implements FilterInterface
      * Admin role has access to all resources.
      * Other roles must match exactly.
      *
-     * @param string $userRole User's role
+     * @param string $userRole     User's role
      * @param string $requiredRole Required role
      * @return bool True if user has required role
      */
@@ -203,10 +213,11 @@ final readonly class RoleAuthorizationMiddleware implements FilterInterface
     /**
      * Log authorization failure.
      *
-     * @param RequestInterface $request Current request
-     * @param object $user User object
-     * @param string $userRole User's role
-     * @param string $requiredRole Required role
+     * @param RequestInterface $request      Current request
+     * @param object           $user         User object
+     * @param string           $userRole     User's role
+     * @param string           $requiredRole Required role
+     * @return void
      */
     private function logAuthorizationFailure(RequestInterface $request, object $user, string $userRole, string $requiredRole): void
     {
@@ -236,6 +247,7 @@ final readonly class RoleAuthorizationMiddleware implements FilterInterface
      * Create 401 Unauthorized response.
      *
      * @param string $message Error message
+     * @return ResponseInterface
      */
     private function createUnauthorizedResponse(string $message): ResponseInterface
     {
@@ -251,6 +263,8 @@ final readonly class RoleAuthorizationMiddleware implements FilterInterface
 
     /**
      * Create 403 Forbidden response.
+     *
+     * @return ResponseInterface
      */
     private function createForbiddenResponse(): ResponseInterface
     {

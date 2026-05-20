@@ -16,7 +16,9 @@ namespace App\Infrastructure\Bus;
 interface CommandMiddlewareInterface
 {
     /**
-     * @param callable(object): mixed $next Continuation that invokes the next
+     * @param object   $command
+     * @param callable $next    * @param callable(object): mixed $next Continuation that invokes the next
+     * @return mixed
      *                                      middleware or the final handler.
      */
     public function handle(object $command, callable $next): mixed;

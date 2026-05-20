@@ -26,14 +26,26 @@ use App\Domain\Cookie\DTOs\CookieDTO;
  */
 interface CookieReadModelRepositoryInterface
 {
+    /**
+     * findById.
+     *
+     * @param int $cookieId
+     * @return CookieDTO|null
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function findById(int $cookieId): ?CookieDTO;
 
     /**
+     * @param bool $includeInactive
      * @return list<CookieDTO>
      */
     public function findAll(bool $includeInactive = false): array;
 
     /**
+     * @param int         $page
+     * @param int         $perPage
+     * @param string|null $searchTerm
+     * @param bool        $includeInactive
      * @return array{data: list<CookieDTO>, total: int, page: int, perPage: int, lastPage: int}
      */
     public function findPaginated(

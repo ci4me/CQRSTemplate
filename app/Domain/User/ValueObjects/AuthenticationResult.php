@@ -46,12 +46,12 @@ final readonly class AuthenticationResult
     /**
      * Create a new AuthenticationResult value object.
      *
-     * @param bool $success Whether authentication succeeded
-     * @param AccessToken|null $accessToken The access token (success only)
+     * @param bool             $success      Whether authentication succeeded
+     * @param AccessToken|null $accessToken  The access token (success only)
      * @param AccessToken|null $refreshToken The refresh token (success only)
-     * @param User|null $user The authenticated user (success only)
-     * @param int|null $expiresIn Seconds until token expiration (success only)
-     * @param string|null $errorMessage Error message (failure only)
+     * @param User|null        $user         The authenticated user (success only)
+     * @param int|null         $expiresIn    Seconds until token expiration (success only)
+     * @param string|null      $errorMessage Error message (failure only)
      */
     private function __construct(
         public bool $success,
@@ -66,10 +66,10 @@ final readonly class AuthenticationResult
     /**
      * Create successful authentication result.
      *
-     * @param AccessToken $accessToken The access token
+     * @param AccessToken $accessToken  The access token
      * @param AccessToken $refreshToken The refresh token
-     * @param User $user The authenticated user
-     * @param int $expiresIn Seconds until token expiration
+     * @param User        $user         The authenticated user
+     * @param int         $expiresIn    Seconds until token expiration
      * @return self Successful authentication result
      */
     public static function success(

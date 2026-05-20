@@ -40,6 +40,11 @@ final class SettingsService
 
     /**
      * Look up a setting; return $default when no row matches.
+     *
+     * @param string   $key
+     * @param mixed    $default
+     * @param int|null $tenantId
+     * @return mixed
      */
     public function get(string $key, mixed $default = null, ?int $tenantId = null): mixed
     {
@@ -62,6 +67,14 @@ final class SettingsService
 
     /**
      * Upsert a setting. Stores `value` as JSON and refreshes the cache.
+     *
+     * @param string      $key
+     * @param mixed       $value
+     * @param int|null    $tenantId
+     * @param string      $type
+     * @param string|null $description
+     * @param bool        $isSecret
+     * @return void
      */
     public function set(
         string $key,
@@ -97,6 +110,10 @@ final class SettingsService
 
     /**
      * Remove a setting. Idempotent — no-op if the row does not exist.
+     *
+     * @param string   $key
+     * @param int|null $tenantId
+     * @return void
      */
     public function forget(string $key, ?int $tenantId = null): void
     {
@@ -109,6 +126,14 @@ final class SettingsService
         unset($this->cache[$this->cacheKey($key, $tenantId)]);
     }
 
+    /**
+     * has.
+     *
+     * @param string   $key
+     * @param int|null $tenantId
+     * @return bool
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function has(string $key, ?int $tenantId = null): bool
     {
         return $this->fetchRow($key, $tenantId) !== null;
@@ -117,6 +142,8 @@ final class SettingsService
     /**
      * Drop the in-memory cache. Mostly useful from tests; production code
      * shouldn't need to touch it because set/forget already invalidate.
+     *
+     * @return void
      */
     public function clearCache(): void
     {
@@ -124,6 +151,8 @@ final class SettingsService
     }
 
     /**
+     * @param string   $key
+     * @param int|null $tenantId
      * @return array<string, mixed>|null
      */
     private function fetchRow(string $key, ?int $tenantId): ?array
@@ -148,6 +177,14 @@ final class SettingsService
         return $row;
     }
 
+    /**
+     * existingRowId.
+     *
+     * @param string   $key
+     * @param int|null $tenantId
+     * @return int|null
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     private function existingRowId(string $key, ?int $tenantId): ?int
     {
         $row = $this->fetchRow($key, $tenantId);
@@ -158,6 +195,13 @@ final class SettingsService
         return $id > 0 ? $id : null;
     }
 
+    /**
+     * decodeValue.
+     *
+     * @param string $json
+     * @return mixed
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     private function decodeValue(string $json): mixed
     {
         try {
@@ -167,11 +211,26 @@ final class SettingsService
         }
     }
 
+    /**
+     * encodeValue.
+     *
+     * @param mixed $value
+     * @return string
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     private function encodeValue(mixed $value): string
     {
         return json_encode($value, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
     }
 
+    /**
+     * cacheKey.
+     *
+     * @param string   $key
+     * @param int|null $tenantId
+     * @return string
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     private function cacheKey(string $key, ?int $tenantId): string
     {
         return $key . ':' . ($tenantId === null ? 'global' : (string) $tenantId);

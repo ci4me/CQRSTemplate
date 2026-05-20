@@ -17,6 +17,15 @@ namespace App\Domain\Shared\ValueObjects;
  */
 final readonly class DocumentNumber
 {
+    /**
+     * __construct.
+     *
+     * @param string $series
+     * @param string $scope
+     * @param int    $value
+     * @param string $formatted
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     private function __construct(
         public string $series,
         public string $scope,
@@ -31,6 +40,12 @@ final readonly class DocumentNumber
      * after it allocates a fresh sequence row. The arguments are validated
      * to catch corrupted/badly configured rows before they reach a document
      * (an invoice with `series=""` would silently slip past a public ctor).
+     *
+     * @param string $series
+     * @param string $scope
+     * @param int    $value
+     * @param string $formatted
+     * @return self
      */
     public static function create(string $series, string $scope, int $value, string $formatted): self
     {
@@ -40,17 +55,36 @@ final readonly class DocumentNumber
     /**
      * Rebuild from persistence. Same validation rules — the column may
      * have been edited by hand or by a buggy migration.
+     *
+     * @param string $series
+     * @param string $scope
+     * @param int    $value
+     * @param string $formatted
+     * @return self
      */
     public static function reconstitute(string $series, string $scope, int $value, string $formatted): self
     {
         return new self($series, $scope, $value, $formatted);
     }
 
+    /**
+     * __toString.
+     *
+     * @return string
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function __toString(): string
     {
         return $this->formatted;
     }
 
+    /**
+     * assertValid.
+     *
+     * @return void
+     * @throws \InvalidArgumentException
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     private function assertValid(): void
     {
         if ($this->series === '') {

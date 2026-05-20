@@ -25,7 +25,8 @@ use CodeIgniter\Session\Session;
 final readonly class LocaleResolver
 {
     /**
-     * @param list<string> $supported  ISO-639 codes (lowercase) we ship
+     * @param list<string> $supported ISO-639 codes (lowercase) we ship
+     * @param string       $default
      *                                  translations for.
      */
     public function __construct(
@@ -34,6 +35,13 @@ final readonly class LocaleResolver
     ) {
     }
 
+    /**
+     * resolve.
+     *
+     * @param RequestInterface $request
+     * @return string
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function resolve(RequestInterface $request): string
     {
         $session = $this->session();
@@ -62,6 +70,9 @@ final readonly class LocaleResolver
     /**
      * Persist the chosen locale in the session so subsequent requests
      * pick it up without re-resolving from the header.
+     *
+     * @param string $locale
+     * @return bool
      */
     public function persistChoice(string $locale): bool
     {
@@ -83,11 +94,24 @@ final readonly class LocaleResolver
         return $this->supported;
     }
 
+    /**
+     * default.
+     *
+     * @return string
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function default(): string
     {
         return $this->default;
     }
 
+    /**
+     * fromAcceptLanguage.
+     *
+     * @param RequestInterface $request
+     * @return string|null
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     private function fromAcceptLanguage(RequestInterface $request): ?string
     {
         $header = $request->getHeaderLine('Accept-Language');
@@ -123,6 +147,7 @@ final readonly class LocaleResolver
      * UserRepository here.
      *
      * @phpstan-ignore-next-line method return type kept ?string for future use
+     * @return string|null
      */
     private function userPreferredLocale(): ?string
     {
@@ -136,6 +161,9 @@ final readonly class LocaleResolver
      * picks up our "pt-br" translations. If that fails, falls back to
      * the primary subtag, so "en-US" matches "en". Returns the matched
      * supported code or null when nothing fits.
+     *
+     * @param string $value
+     * @return string|null
      */
     private function matchSupported(string $value): ?string
     {
@@ -156,6 +184,12 @@ final readonly class LocaleResolver
         return null;
     }
 
+    /**
+     * session.
+     *
+     * @return Session|null
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     private function session(): ?Session
     {
         if (!function_exists('session')) {

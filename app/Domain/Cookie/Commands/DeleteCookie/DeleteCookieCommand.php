@@ -17,6 +17,13 @@ use App\Domain\Shared\ValueObjects\Actor;
  */
 final readonly class DeleteCookieCommand
 {
+    /**
+     * __construct.
+     *
+     * @param int   $id
+     * @param Actor $deletedBy
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function __construct(
         public int $id,
         public Actor $deletedBy

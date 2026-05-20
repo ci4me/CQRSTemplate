@@ -15,6 +15,21 @@ use App\Domain\User\Entities\User;
  */
 final readonly class UserDTO
 {
+    /**
+     * __construct.
+     *
+     * @param int|null    $id
+     * @param string      $name
+     * @param string      $email
+     * @param string      $role
+     * @param string      $status
+     * @param int         $failedLoginAttempts
+     * @param string|null $lockedUntil
+     * @param string      $createdAt
+     * @param string|null $updatedAt
+     * @param string|null $deletedAt
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function __construct(
         public ?int $id,
         public string $name,
@@ -29,6 +44,13 @@ final readonly class UserDTO
     ) {
     }
 
+    /**
+     * fromEntity.
+     *
+     * @param User $user
+     * @return self
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public static function fromEntity(User $user): self
     {
         return new self(

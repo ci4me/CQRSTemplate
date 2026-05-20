@@ -18,12 +18,12 @@ use App\Domain\Shared\Events\DomainEventInterface;
 final readonly class CookieUpdatedEvent implements DomainEventInterface
 {
     /**
-     * @param int $cookieId           ID of the updated cookie
-     * @param string $cookieName      New name (denormalised for log readability)
-     * @param string $cookiePrice     New decimal price string
+     * @param int                        $cookieId      ID of the updated cookie
+     * @param string                     $cookieName    New name (denormalised for log readability)
+     * @param string                     $cookiePrice   New decimal price string
      * @param array<string, scalar|null> $previousState Snapshot before the update
      * @param array<string, scalar|null> $newState      Snapshot after the update
-     * @param int $updatedBy          Actor id (0 for system)
+     * @param int                        $updatedBy     Actor id (0 for system)
      */
     public function __construct(
         public int $cookieId,

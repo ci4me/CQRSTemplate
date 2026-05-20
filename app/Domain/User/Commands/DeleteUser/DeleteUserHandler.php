@@ -30,6 +30,14 @@ use Psr\Log\LoggerInterface;
  */
 final readonly class DeleteUserHandler
 {
+    /**
+     * __construct.
+     *
+     * @param UserRepositoryInterface  $repository
+     * @param EventDispatcherInterface $eventDispatcher
+     * @param LoggerInterface          $logger
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function __construct(
         private UserRepositoryInterface $repository,
         private EventDispatcherInterface $eventDispatcher,
@@ -37,6 +45,15 @@ final readonly class DeleteUserHandler
     ) {
     }
 
+    /**
+     * handle.
+     *
+     * @param DeleteUserCommand $command
+     * @return void
+     * @throws \InvalidArgumentException
+     * @throws \RuntimeException
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function handle(DeleteUserCommand $command): void
     {
 

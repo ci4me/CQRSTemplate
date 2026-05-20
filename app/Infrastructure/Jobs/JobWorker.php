@@ -29,6 +29,7 @@ final class JobWorker
     private const array BACKOFF_SECONDS = [30, 120, 600, 3600, 21600, 86400];
 
     /**
+     * @param LoggerInterface                                                   $logger
      * @param BaseConnection<object|resource|false, object|resource|false>|null $db
      */
     public function __construct(
@@ -38,6 +39,8 @@ final class JobWorker
     }
 
     /**
+     * @param string $queue
+     * @param int    $batchSize
      * @return array{processed: int, succeeded: int, retried: int, failed: int}
      */
     public function drain(string $queue = 'default', int $batchSize = 10): array
@@ -68,6 +71,9 @@ final class JobWorker
     }
 
     /**
+     * @param string $queue
+     * @param int    $batchSize
+     * @param string $now
      * @return list<array<string, mixed>>
      */
     private function fetchPending(string $queue, int $batchSize, string $now): array
@@ -93,6 +99,7 @@ final class JobWorker
 
     /**
      * @param array<string, mixed> $row
+     * @return string
      */
     private function processRow(array $row): string
     {
@@ -126,6 +133,13 @@ final class JobWorker
         return 'succeeded';
     }
 
+    /**
+     * claim.
+     *
+     * @param int $id
+     * @return bool
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     private function claim(int $id): bool
     {
         $this->connection()
@@ -141,6 +155,14 @@ final class JobWorker
         return $this->connection()->affectedRows() === 1;
     }
 
+    /**
+     * resolveHandler.
+     *
+     * @param string $class
+     * @return JobHandlerInterface
+     * @throws \RuntimeException
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     private function resolveHandler(string $class): JobHandlerInterface
     {
         if ($class === '' || !class_exists($class)) {
@@ -159,6 +181,16 @@ final class JobWorker
         return $instance;
     }
 
+    /**
+     * onFailure.
+     *
+     * @param int        $id
+     * @param int        $attempts
+     * @param int        $maxAttempts
+     * @param \Throwable $e
+     * @return string
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     private function onFailure(int $id, int $attempts, int $maxAttempts, \Throwable $e): string
     {
         $nextAttempts = $attempts + 1;
@@ -195,6 +227,13 @@ final class JobWorker
         return $exhausted ? 'failed' : 'retried';
     }
 
+    /**
+     * markDone.
+     *
+     * @param int $id
+     * @return void
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     private function markDone(int $id): void
     {
         $this->connection()

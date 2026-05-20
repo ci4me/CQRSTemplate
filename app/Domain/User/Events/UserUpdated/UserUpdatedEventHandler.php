@@ -19,11 +19,24 @@ use Psr\Log\LoggerInterface;
  */
 final readonly class UserUpdatedEventHandler
 {
+    /**
+     * __construct.
+     *
+     * @param LoggerInterface $logger
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function __construct(
         private LoggerInterface $logger
     ) {
     }
 
+    /**
+     * __invoke.
+     *
+     * @param UserUpdatedEvent $event
+     * @return void
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function __invoke(UserUpdatedEvent $event): void
     {
         $this->logger->info('User updated', [

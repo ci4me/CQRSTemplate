@@ -65,7 +65,7 @@ interface AuthenticationServiceInterface
      * - Generates new access token on success
      * - Failed authentication increments failed login counter
      *
-     * @param User $user The user to authenticate
+     * @param User   $user     The user to authenticate
      * @param string $password The plaintext password to verify
      * @return AuthenticationResult Result containing tokens or error
      */

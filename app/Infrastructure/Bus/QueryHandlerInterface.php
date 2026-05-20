@@ -22,6 +22,9 @@ interface QueryHandlerInterface
     /**
      * Execute the query and return a read-model. Concrete handlers
      * narrow the parameter to their specific query class.
+     *
+     * @param object $query
+     * @return mixed
      */
     public function handle(object $query): mixed;
 }

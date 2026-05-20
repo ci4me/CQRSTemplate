@@ -26,10 +26,23 @@ final class ProjectionRegistry
      */
     private array $projections = [];
 
+    /**
+     * __construct.
+     *
+     * @param EventDispatcher $dispatcher
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function __construct(private readonly EventDispatcher $dispatcher)
     {
     }
 
+    /**
+     * register.
+     *
+     * @param ProjectionInterface $projection
+     * @return void
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function register(ProjectionInterface $projection): void
     {
         $this->projections[$projection->name()] = $projection;
@@ -52,6 +65,14 @@ final class ProjectionRegistry
         return $this->projections;
     }
 
+    /**
+     * get.
+     *
+     * @param string $name
+     * @return ProjectionInterface
+     * @throws \RuntimeException
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function get(string $name): ProjectionInterface
     {
         if (!isset($this->projections[$name])) {

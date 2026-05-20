@@ -1,0 +1,107 @@
+#!/usr/bin/env php
+<?php
+
+declare(strict_types=1);
+
+/**
+ * docblocks:audit — flag every docblock the generator marked as auto-generated.
+ *
+ * The companion generator (`bin/docblocks-generate`, run automatically by the
+ * composer `docblocks:generate` script or by AI agents per CLAUDE.md) inserts a
+ * stable marker line whenever it CREATES a brand-new docblock that nobody has
+ * reviewed yet. This script greps the codebase for that marker and reports
+ * every occurrence so developers (or the next agent) know which classes /
+ * methods still need a human-written description.
+ *
+ * Exit codes:
+ *   0  — no unreviewed auto-generated docblocks found (clean tree).
+ *   1  — one or more occurrences exist. Prints the file:line list and a
+ *         reminder to update them before committing.
+ *
+ * Usage:
+ *   php bin/docblocks-audit                    # walks app/ by default
+ *   php bin/docblocks-audit path/to/dir        # explicit path
+ *   php bin/docblocks-audit --quiet            # exit code only, no output
+ */
+
+const MARKER = '@todo Auto-generated docblock — review and replace this description.';
+
+$quiet = false;
+$paths = [];
+foreach (array_slice($argv, 1) as $arg) {
+    if ($arg === '--quiet' || $arg === '-q') {
+        $quiet = true;
+        continue;
+    }
+    $paths[] = $arg;
+}
+if ($paths === []) {
+    $paths = ['app'];
+}
+
+$root = dirname(__DIR__);
+$hits = [];
+
+foreach ($paths as $path) {
+    $abs = $root . DIRECTORY_SEPARATOR . ltrim($path, '/\\');
+    if (!file_exists($abs)) {
+        fwrite(STDERR, sprintf("docblocks:audit: path not found: %s\n", $abs));
+        exit(1);
+    }
+    if (is_file($abs)) {
+        scanFile($abs, $hits, $root);
+        continue;
+    }
+    $it = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($abs));
+    foreach ($it as $f) {
+        if ($f instanceof SplFileInfo && $f->isFile() && $f->getExtension() === 'php') {
+            scanFile($f->getPathname(), $hits, $root);
+        }
+    }
+}
+
+if ($hits === []) {
+    if (!$quiet) {
+        echo "✓ docblocks:audit — no auto-generated docblock markers found.\n";
+    }
+    exit(0);
+}
+
+if ($quiet) {
+    exit(1);
+}
+
+printf("⚠ docblocks:audit — %d auto-generated docblock(s) need a human description:\n\n", count($hits));
+foreach ($hits as $hit) {
+    printf("  %s:%d\n", $hit['file'], $hit['line']);
+}
+echo "\nReview each location and replace the placeholder line:\n";
+echo "  '" . MARKER . "'\n";
+echo "with a real description of the class / method / property purpose.\n";
+exit(1);
+
+/**
+ * Scan one file for the marker line; append any hits to the running list.
+ *
+ * @param string $path Absolute path of the file to scan.
+ * @param list<array{file: string, line: int}> $hits Accumulator passed by reference.
+ * @param string $root Project root, stripped from paths so the report stays compact.
+ */
+function scanFile(string $path, array &$hits, string $root): void
+{
+    $contents = file_get_contents($path);
+    if ($contents === false) {
+        return;
+    }
+    if (!str_contains($contents, MARKER)) {
+        return;
+    }
+    foreach (explode("\n", $contents) as $i => $line) {
+        if (str_contains($line, MARKER)) {
+            $rel = str_starts_with($path, $root . DIRECTORY_SEPARATOR)
+                ? substr($path, strlen($root) + 1)
+                : $path;
+            $hits[] = ['file' => $rel, 'line' => $i + 1];
+        }
+    }
+}

@@ -24,16 +24,20 @@ final readonly class GetAllUsersQuery
     private const int DEFAULT_PER_PAGE = 20;
     private const int MAX_PER_PAGE = 100;
 
+    /** @var int */
     public int $page;
+    /** @var int */
     public int $perPage;
+    /** @var bool */
     public bool $includeInactive;
+    /** @var string */
     public string $searchTerm;
 
     /**
-     * @param int $page Current page number (default: 1)
-     * @param int $perPage Users per page (default: 20)
-     * @param bool $includeInactive Include deleted users (default: false)
-     * @param string $searchTerm Optional search term (default: '')
+     * @param int    $page            Current page number (default: 1)
+     * @param int    $perPage         Users per page (default: 20)
+     * @param bool   $includeInactive Include deleted users (default: false)
+     * @param string $searchTerm      Optional search term (default: '')
      */
     public function __construct(
         int $page = self::DEFAULT_PAGE,

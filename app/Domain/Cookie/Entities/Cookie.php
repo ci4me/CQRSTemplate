@@ -68,20 +68,31 @@ final class Cookie
 {
     use AggregateRoot;
 
+    /** @var int|null */
     private ?int $id = null;
+    /** @var CookieName */
     private CookieName $name;
+    /** @var string|null */
     private ?string $description;
+    /** @var CookiePrice */
     private CookiePrice $price;
+    /** @var int */
     private int $stock;
+    /** @var bool */
     private bool $isActive;
     /**
      * Optimistic-locking token. Incremented by the repository on every save;
      * UPDATEs include `WHERE version = $version` so concurrent writers detect
      * the race instead of silently overwriting each other.
+     *
+     * @var int
      */
     private int $version = 0;
+    /** @var string|null */
     private ?string $createdAt = null;
+    /** @var string|null */
     private ?string $updatedAt = null;
+    /** @var string|null */
     private ?string $deletedAt = null;
 
     /**
@@ -90,11 +101,11 @@ final class Cookie
      * Use named static factories (create, reconstitute) instead of
      * calling this constructor directly.
      *
-     * @param CookieName $name The cookie name
+     * @param CookieName  $name        The cookie name
      * @param string|null $description The cookie description
-     * @param CookiePrice $price The cookie price
-     * @param int $stock The stock quantity
-     * @param bool $isActive Whether the cookie is active
+     * @param CookiePrice $price       The cookie price
+     * @param int         $stock       The stock quantity
+     * @param bool        $isActive    Whether the cookie is active
      */
     private function __construct(
         CookieName $name,
@@ -113,11 +124,12 @@ final class Cookie
     /**
      * Create a new Cookie (factory method for new cookies).
      *
-     * @param CookieName $name The cookie name
+     * @param CookieName  $name        The cookie name
      * @param string|null $description The cookie description
-     * @param CookiePrice $price The cookie price
-     * @param int $stock The initial stock quantity
-     * @param bool $isActive Whether the cookie is active
+     * @param CookiePrice $price       The cookie price
+     * @param int         $stock       The initial stock quantity
+     * @param bool        $isActive    Whether the cookie is active
+     * @return self
      */
     public static function create(
         CookieName $name,
@@ -134,15 +146,17 @@ final class Cookie
      *
      * Used by the repository when loading cookies from the database.
      *
-     * @param int $id The cookie ID
-     * @param CookieName $name The cookie name
+     * @param int         $id          The cookie ID
+     * @param CookieName  $name        The cookie name
      * @param string|null $description The cookie description
-     * @param CookiePrice $price The cookie price
-     * @param int $stock The stock quantity
-     * @param bool $isActive Whether the cookie is active
-     * @param string|null $createdAt Creation timestamp
-     * @param string|null $updatedAt Last update timestamp
-     * @param string|null $deletedAt Deletion timestamp (null if not deleted)
+     * @param CookiePrice $price       The cookie price
+     * @param int         $stock       The stock quantity
+     * @param bool        $isActive    Whether the cookie is active
+     * @param string|null $createdAt   Creation timestamp
+     * @param string|null $updatedAt   Last update timestamp
+     * @param string|null $deletedAt   Deletion timestamp (null if not deleted)
+     * @param int         $version
+     * @return self
      */
     public static function reconstitute(
         int $id,
@@ -171,6 +185,7 @@ final class Cookie
      * Called by the repository — should not be called by application code.
      *
      * @internal
+     * @return void
      */
     public function bumpVersion(): void
     {
@@ -182,6 +197,9 @@ final class Cookie
      * Called by the repository — should not be called by application code.
      *
      * @internal
+     * @param int $id
+     * @return void
+     * @throws \LogicException
      */
     public function assignId(int $id): void
     {
@@ -193,6 +211,12 @@ final class Cookie
         $this->id = $id;
     }
 
+    /**
+     * getVersion.
+     *
+     * @return int
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function getVersion(): int
     {
         return $this->version;
@@ -201,11 +225,12 @@ final class Cookie
     /**
      * Update cookie information.
      *
-     * @param CookieName $name The new cookie name
+     * @param CookieName  $name        The new cookie name
      * @param string|null $description The new description
-     * @param CookiePrice $price The new price
-     * @param int $stock The new stock quantity
-     * @param bool $isActive Whether the cookie is active
+     * @param CookiePrice $price       The new price
+     * @param int         $stock       The new stock quantity
+     * @param bool        $isActive    Whether the cookie is active
+     * @return void
      */
     public function update(
         CookieName $name,
@@ -266,6 +291,13 @@ final class Cookie
         ];
     }
 
+    /**
+     * assertNotDeleted.
+     *
+     * @return void
+     * @throws DomainException
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     private function assertNotDeleted(): void
     {
         if ($this->deletedAt !== null) {
@@ -286,6 +318,10 @@ final class Cookie
      * "save first, then move stock"; if a caller has a use case for
      * pre-save stock manipulation it must be expressed as the entity's
      * initial `stock` argument to {@see self::create()}.
+     *
+     * @param string $operation
+     * @return void
+     * @throws DomainException
      */
     private function assertPersisted(string $operation): void
     {
@@ -304,6 +340,8 @@ final class Cookie
      * Business Rule: Stock cannot go negative.
      *
      * @param int $quantity The quantity to decrease
+     * @return void
+     * @throws ValidationException
      * @throws DomainException If resulting stock would be negative
      */
     public function decreaseStock(int $quantity): void
@@ -340,6 +378,7 @@ final class Cookie
      * Increase stock by a given quantity.
      *
      * @param int $quantity The quantity to increase
+     * @return void
      * @throws ValidationException If quantity is not positive
      */
     public function increaseStock(int $quantity): void
@@ -368,6 +407,7 @@ final class Cookie
      * Business Rule: Stock cannot be negative.
      *
      * @param int $stock The new stock quantity
+     * @return void
      * @throws ValidationException If stock is negative
      */
     private function setStock(int $stock): void
@@ -381,6 +421,8 @@ final class Cookie
 
     /**
      * Activate the cookie (make it visible to customers).
+     *
+     * @return void
      */
     public function activate(): void
     {
@@ -390,6 +432,8 @@ final class Cookie
 
     /**
      * Deactivate the cookie (hide from customers).
+     *
+     * @return void
      */
     public function deactivate(): void
     {
@@ -431,46 +475,100 @@ final class Cookie
 
     // Getters
 
+    /**
+     * getId.
+     *
+     * @return int|null
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function getId(): ?int
     {
         return $this->id;
     }
 
+    /**
+     * getName.
+     *
+     * @return CookieName
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function getName(): CookieName
     {
         return $this->name;
     }
 
+    /**
+     * getDescription.
+     *
+     * @return string|null
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function getDescription(): ?string
     {
         return $this->description;
     }
 
+    /**
+     * getPrice.
+     *
+     * @return CookiePrice
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function getPrice(): CookiePrice
     {
         return $this->price;
     }
 
+    /**
+     * getStock.
+     *
+     * @return int
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function getStock(): int
     {
         return $this->stock;
     }
 
+    /**
+     * getIsActive.
+     *
+     * @return bool
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function getIsActive(): bool
     {
         return $this->isActive;
     }
 
+    /**
+     * getCreatedAt.
+     *
+     * @return string|null
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function getCreatedAt(): ?string
     {
         return $this->createdAt;
     }
 
+    /**
+     * getUpdatedAt.
+     *
+     * @return string|null
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function getUpdatedAt(): ?string
     {
         return $this->updatedAt;
     }
 
+    /**
+     * getDeletedAt.
+     *
+     * @return string|null
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function getDeletedAt(): ?string
     {
         return $this->deletedAt;

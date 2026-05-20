@@ -43,6 +43,14 @@ final class AuthServiceProvider implements DomainServiceProviderInterface
      */
     private array $repositories = [];
 
+    /**
+     * registerCommands.
+     *
+     * @param CommandBus $commandBus
+     * @return void
+     * @throws \RuntimeException
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function registerCommands(CommandBus $commandBus): void
     {
         $userRepository = $this->getRepository('userRepository');
@@ -104,20 +112,34 @@ final class AuthServiceProvider implements DomainServiceProviderInterface
         );
     }
 
-    // phpcs:ignore SlevomatCodingStandard.Functions.UnusedParameter.UnusedParameter
+    /**
+     * registerQueries.
+     *
+     * @param QueryBus $_queryBus
+     * @return void
+     * @todo Auto-generated docblock — review and replace this description.
+     * @phpcsSuppress SlevomatCodingStandard.Functions.UnusedParameter.UnusedParameter
+     */
     public function registerQueries(QueryBus $_queryBus): void
     {
         // No queries in auth module
     }
 
-    // phpcs:ignore SlevomatCodingStandard.Functions.UnusedParameter.UnusedParameter
+    /**
+     * registerEvents.
+     *
+     * @param EventDispatcher $_dispatcher
+     * @return void
+     * @todo Auto-generated docblock — review and replace this description.
+     * @phpcsSuppress SlevomatCodingStandard.Functions.UnusedParameter.UnusedParameter
+     */
     public function registerEvents(EventDispatcher $_dispatcher): void
     {
         // No events in auth module
     }
 
     /**
-     * @return string[]
+     * @return array<mixed>
      */
     public function getRepositories(): array
     {
@@ -137,12 +159,20 @@ final class AuthServiceProvider implements DomainServiceProviderInterface
 
     /**
      * @param array<string, object> $repositories
+     * @return void
      */
     public function setRepositories(array $repositories): void
     {
         $this->repositories = $repositories;
     }
 
+    /**
+     * getRepository.
+     *
+     * @param string $name
+     * @return object
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     private function getRepository(string $name): object
     {
         return $this->repositories[$name];

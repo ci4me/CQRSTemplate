@@ -24,8 +24,14 @@ use Psr\Log\LoggerInterface;
  */
 final class SecurityEventService
 {
+    /** @var LoggerInterface */
     private LoggerInterface $logger;
 
+    /**
+     * __construct.
+     *
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function __construct()
     {
         $this->logger = LoggerFactory::create('auth.security-events');
@@ -34,12 +40,13 @@ final class SecurityEventService
     /**
      * Log security event.
      *
-     * @param string $eventType Event type identifier
-     * @param string $severity Severity level (low, medium, high, critical)
-     * @param int|null $userId User ID if applicable
-     * @param string $ipAddress Client IP address
-     * @param string $description Human-readable description
-     * @param array<string, mixed>|null $metadata Additional context
+     * @param string                    $eventType   Event type identifier
+     * @param string                    $severity    Severity level (low, medium, high, critical)
+     * @param int|null                  $userId      User ID if applicable
+     * @param string                    $ipAddress   Client IP address
+     * @param string                    $description Human-readable description
+     * @param array<string, mixed>|null $metadata    Additional context
+     * @return void
      */
     public function logEvent(
         string $eventType,
@@ -72,6 +79,11 @@ final class SecurityEventService
 
     /**
      * Log login success event.
+     *
+     * @param int    $userId
+     * @param string $ipAddress
+     * @param string $userAgent
+     * @return void
      */
     public function logLoginSuccess(int $userId, string $ipAddress, string $userAgent): void
     {
@@ -87,6 +99,12 @@ final class SecurityEventService
 
     /**
      * Log login failure event.
+     *
+     * @param string $email
+     * @param string $ipAddress
+     * @param string $reason
+     * @param string $userAgent
+     * @return void
      */
     public function logLoginFailure(string $email, string $ipAddress, string $reason, string $userAgent): void
     {
@@ -106,6 +124,10 @@ final class SecurityEventService
 
     /**
      * Log password change event.
+     *
+     * @param int    $userId
+     * @param string $ipAddress
+     * @return void
      */
     public function logPasswordChanged(int $userId, string $ipAddress): void
     {
@@ -122,10 +144,11 @@ final class SecurityEventService
     /**
      * Log suspicious activity.
      *
-     * @param int|null $userId User ID if known
-     * @param string $ipAddress IP address
-     * @param string $description Description of suspicious activity
-     * @param array<string, mixed> $metadata Additional context data
+     * @param int|null             $userId      User ID if known
+     * @param string               $ipAddress   IP address
+     * @param string               $description Description of suspicious activity
+     * @param array<string, mixed> $metadata    Additional context data
+     * @return void
      */
     public function logSuspiciousActivity(
         ?int $userId,
@@ -145,6 +168,11 @@ final class SecurityEventService
 
     /**
      * Log token theft detection.
+     *
+     * @param int    $userId
+     * @param string $ipAddress
+     * @param string $jti
+     * @return void
      */
     public function logTokenTheft(int $userId, string $ipAddress, string $jti): void
     {
@@ -162,7 +190,7 @@ final class SecurityEventService
      * Get recent security events for user.
      *
      * @param int $userId User ID
-     * @param int $limit Number of events to retrieve
+     * @param int $limit  Number of events to retrieve
      * @return array<int, array<string, mixed>>
      */
     public function getRecentEvents(int $userId, int $limit = 20): array

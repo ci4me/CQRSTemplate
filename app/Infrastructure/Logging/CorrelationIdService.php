@@ -29,6 +29,7 @@ final class CorrelationIdService
     /**
      * Current correlation ID for this request lifecycle
      *
+     * @var string|null
      */
     private static ?string $correlationId = null;
 
@@ -73,6 +74,7 @@ final class CorrelationIdService
      * or when receiving correlation ID from request headers.
      *
      * @param string $id Correlation ID to set
+     * @return void
      */
     public static function set(string $id): void
     {
@@ -85,6 +87,7 @@ final class CorrelationIdService
      * Resets correlation ID to null. Primarily used for testing
      * to prevent correlation ID leakage between test cases.
      *
+     * @return void
      */
     public static function clear(): void
     {

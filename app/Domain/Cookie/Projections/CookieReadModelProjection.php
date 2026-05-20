@@ -32,8 +32,9 @@ use Config\Database;
 final class CookieReadModelProjection implements ProjectionInterface
 {
     /**
+     * @param CookieRepositoryInterface                                         $repository
      * @param BaseConnection<object|resource|false, object|resource|false>|null $db
-     * @param \App\Infrastructure\Tenancy\TenantContext|null $tenantContext
+     * @param \App\Infrastructure\Tenancy\TenantContext|null                    $tenantContext
      *        Stamps `tenant_id` on every projected row so the read repo's
      *        tenant filter has something to match against. Null falls
      *        back to TenantContext::DEFAULT_TENANT_ID (1), keeping the
@@ -46,6 +47,12 @@ final class CookieReadModelProjection implements ProjectionInterface
     ) {
     }
 
+    /**
+     * name.
+     *
+     * @return string
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function name(): string
     {
         return 'cookie';
@@ -65,6 +72,13 @@ final class CookieReadModelProjection implements ProjectionInterface
         ];
     }
 
+    /**
+     * apply.
+     *
+     * @param object $event
+     * @return void
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function apply(object $event): void
     {
         match (true) {
@@ -77,11 +91,24 @@ final class CookieReadModelProjection implements ProjectionInterface
         };
     }
 
+    /**
+     * truncate.
+     *
+     * @return void
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function truncate(): void
     {
         $this->connection()->table('cookie_read_model')->truncate();
     }
 
+    /**
+     * rebuildFromSource.
+     *
+     * @param callable|null $progressCallback
+     * @return void
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function rebuildFromSource(?callable $progressCallback = null): void
     {
         $this->rebuildInto('cookie_read_model', $progressCallback);
@@ -104,6 +131,9 @@ final class CookieReadModelProjection implements ProjectionInterface
      * SQLite has no atomic RENAME-to-existing semantics, so we fall back to
      * the in-place rebuild for the test/dev path. Production targets MySQL
      * or Postgres, which both support the atomic swap.
+     *
+     * @param callable|null $progressCallback
+     * @return void
      */
     public function rebuildFromSourceAtomic(?callable $progressCallback = null): void
     {
@@ -179,6 +209,10 @@ final class CookieReadModelProjection implements ProjectionInterface
      * Shared rebuild loop: paginate over the canonical source and upsert
      * every row into the given target table. Used by both the in-place
      * and shadow-table flows.
+     *
+     * @param string        $targetTable
+     * @param callable|null $progressCallback
+     * @return void
      */
     private function rebuildInto(string $targetTable, ?callable $progressCallback): void
     {
@@ -214,6 +248,13 @@ final class CookieReadModelProjection implements ProjectionInterface
         }
     }
 
+    /**
+     * onCreated.
+     *
+     * @param CookieCreatedEvent $event
+     * @return void
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     private function onCreated(CookieCreatedEvent $event): void
     {
         $cookie = $this->repository->findById($event->cookieId);
@@ -223,6 +264,13 @@ final class CookieReadModelProjection implements ProjectionInterface
         $this->upsertFromEntity($cookie);
     }
 
+    /**
+     * onUpdated.
+     *
+     * @param CookieUpdatedEvent $event
+     * @return void
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     private function onUpdated(CookieUpdatedEvent $event): void
     {
         $cookie = $this->repository->findById($event->cookieId);
@@ -232,6 +280,13 @@ final class CookieReadModelProjection implements ProjectionInterface
         $this->upsertFromEntity($cookie);
     }
 
+    /**
+     * onDeleted.
+     *
+     * @param CookieDeletedEvent $event
+     * @return void
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     private function onDeleted(CookieDeletedEvent $event): void
     {
         $now = date('Y-m-d H:i:s');
@@ -245,6 +300,13 @@ final class CookieReadModelProjection implements ProjectionInterface
             ]);
     }
 
+    /**
+     * onRestored.
+     *
+     * @param CookieRestoredEvent $event
+     * @return void
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     private function onRestored(CookieRestoredEvent $event): void
     {
         $cookie = $this->repository->findById($event->cookieId);
@@ -254,6 +316,13 @@ final class CookieReadModelProjection implements ProjectionInterface
         $this->upsertFromEntity($cookie);
     }
 
+    /**
+     * onStockChanged.
+     *
+     * @param CookieStockChangedEvent $event
+     * @return void
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     private function onStockChanged(CookieStockChangedEvent $event): void
     {
         if ($event->cookieId === null) {
@@ -270,6 +339,14 @@ final class CookieReadModelProjection implements ProjectionInterface
             ]);
     }
 
+    /**
+     * upsertFromEntity.
+     *
+     * @param Cookie $cookie
+     * @param string $targetTable
+     * @return void
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     private function upsertFromEntity(Cookie $cookie, string $targetTable = 'cookie_read_model'): void
     {
         $id = $cookie->getId();
@@ -296,6 +373,7 @@ final class CookieReadModelProjection implements ProjectionInterface
     }
 
     /**
+     * @param Cookie $cookie
      * @return array<string, scalar|null>
      */
     private function rowFor(Cookie $cookie): array

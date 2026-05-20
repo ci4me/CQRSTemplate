@@ -35,14 +35,15 @@ use RuntimeException;
  */
 class DomainException extends RuntimeException
 {
+    /** @var int */
     private int $errorCode = 0;
 
     /**
      * Create a new domain exception.
      *
-     * @param string $message Human-readable error message explaining the domain violation
-     * @param int $errorCode Domain-specific error code (separate from HTTP status)
-     * @param int $code PHP exception code (default: 0)
+     * @param string $message   Human-readable error message explaining the domain violation
+     * @param int    $errorCode Domain-specific error code (separate from HTTP status)
+     * @param int    $code      PHP exception code (default: 0)
      */
     public function __construct(string $message, int $errorCode = 0, int $code = 0)
     {
@@ -64,8 +65,9 @@ class DomainException extends RuntimeException
      * Create exception for invalid entity state.
      *
      * @param string $entityName Name of the entity (e.g., "Cookie", "User")
-     * @param string $reason Why the state is invalid
-     * @param int $errorCode Domain-specific error code
+     * @param string $reason     Why the state is invalid
+     * @param int    $errorCode  Domain-specific error code
+     * @return self
      */
     public static function invalidState(string $entityName, string $reason, int $errorCode = 0): self
     {
@@ -78,9 +80,10 @@ class DomainException extends RuntimeException
     /**
      * Create exception for business rule violation.
      *
-     * @param string $ruleName Name of the violated business rule
-     * @param string $details Additional details about the violation
-     * @param int $errorCode Domain-specific error code
+     * @param string $ruleName  Name of the violated business rule
+     * @param string $details   Additional details about the violation
+     * @param int    $errorCode Domain-specific error code
+     * @return self
      */
     public static function businessRuleViolation(string $ruleName, string $details, int $errorCode = 0): self
     {
@@ -93,9 +96,10 @@ class DomainException extends RuntimeException
     /**
      * Create exception for entity not found scenarios.
      *
-     * @param string $entityName Name of the entity that was not found
+     * @param string     $entityName Name of the entity that was not found
      * @param int|string $identifier The identifier that was searched for
-     * @param int $errorCode Domain-specific error code
+     * @param int        $errorCode  Domain-specific error code
+     * @return self
      */
     public static function notFound(string $entityName, int|string $identifier, int $errorCode = 0): self
     {
@@ -110,11 +114,12 @@ class DomainException extends RuntimeException
      * did not match the row's current `version`, meaning the row was modified
      * by someone else between read and write.
      *
-     * @param string $entityName    Name of the entity that lost the race
-     * @param int|string $identifier ID of the row
-     * @param int $expectedVersion  Version the caller held
-     * @param int $actualVersion    Current version in the database
-     * @param int $errorCode        Optional domain error code
+     * @param string     $entityName      Name of the entity that lost the race
+     * @param int|string $identifier      ID of the row
+     * @param int        $expectedVersion Version the caller held
+     * @param int        $actualVersion   Current version in the database
+     * @param int        $errorCode       Optional domain error code
+     * @return self
      */
     public static function concurrentModification(
         string $entityName,

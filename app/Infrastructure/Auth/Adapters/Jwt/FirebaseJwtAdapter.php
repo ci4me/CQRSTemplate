@@ -12,8 +12,21 @@ use App\Domain\User\ValueObjects\AuthenticationResult;
 use App\Infrastructure\Auth\Services\JwtService;
 use App\Infrastructure\Persistence\Repositories\UserRepository;
 
+/**
+ * FirebaseJwtAdapter.
+ *
+ * @todo Auto-generated docblock — review and replace this description.
+ */
 final readonly class FirebaseJwtAdapter implements AuthenticationServiceInterface
 {
+    /**
+     * __construct.
+     *
+     * @param JwtService              $jwtService
+     * @param TokenBlacklistInterface $blacklist
+     * @param UserRepository          $userRepository
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function __construct(
         private JwtService $jwtService,
         private TokenBlacklistInterface $blacklist,
@@ -21,6 +34,14 @@ final readonly class FirebaseJwtAdapter implements AuthenticationServiceInterfac
     ) {
     }
 
+    /**
+     * authenticate.
+     *
+     * @param User   $user
+     * @param string $password
+     * @return AuthenticationResult
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function authenticate(User $user, string $password): AuthenticationResult
     {
         if (!$user->getHashedPassword()->verify($password)) {
@@ -45,6 +66,13 @@ final readonly class FirebaseJwtAdapter implements AuthenticationServiceInterfac
         return AuthenticationResult::success($accessToken, $refreshToken, $user, $expiresIn);
     }
 
+    /**
+     * validateToken.
+     *
+     * @param string $token
+     * @return User|null
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function validateToken(string $token): ?User
     {
         if ($this->blacklist->isBlacklisted($token)) {
@@ -65,6 +93,13 @@ final readonly class FirebaseJwtAdapter implements AuthenticationServiceInterfac
         }
     }
 
+    /**
+     * generateToken.
+     *
+     * @param User $user
+     * @return AccessToken
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function generateToken(User $user): AccessToken
     {
         $tokenString = $this->jwtService->generateAccessToken($user);

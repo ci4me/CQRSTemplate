@@ -22,7 +22,7 @@ use App\Domain\Shared\ValueObjects\Actor;
 final readonly class DeleteUserCommand
 {
     /**
-     * @param int $userId User ID to delete
+     * @param int   $userId    User ID to delete
      * @param Actor $deletedBy Authenticated actor performing the deletion
      */
     public function __construct(

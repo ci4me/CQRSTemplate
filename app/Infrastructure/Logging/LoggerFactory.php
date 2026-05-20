@@ -40,7 +40,7 @@ final class LoggerFactory
      * Create a logger instance with CQRS context.
      *
      * @param string $channel Logger channel name (e.g., 'cookie.command.create')
-     * @param Level $level Minimum log level (default: INFO)
+     * @param Level  $level   Minimum log level (default: INFO)
      * @return Logger PSR-3 compliant logger instance
      */
     public static function create(string $channel, Level $level = Level::Info): Logger
@@ -116,7 +116,7 @@ final class LoggerFactory
      * Channel format: {domain}.{type}.{operation}
      * Example: 'cookie.command.create' -> domain: cookie, command: create
      *
-     * @return callable(LogRecord): LogRecord Processor callable
+     * @return callable LogRecord Processor callable
      */
     private static function createCqrsContextProcessor(): callable
     {
@@ -161,7 +161,7 @@ final class LoggerFactory
      * Automatically injects correlation_id into every log entry's extra field.
      * Uses CorrelationIdService::get() to retrieve the current correlation ID.
      *
-     * @return callable(LogRecord): LogRecord Processor callable
+     * @return callable LogRecord Processor callable
      */
     private static function createCorrelationIdProcessor(): callable
     {

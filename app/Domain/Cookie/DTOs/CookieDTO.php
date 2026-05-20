@@ -15,6 +15,20 @@ use App\Domain\Cookie\Entities\Cookie;
  */
 final readonly class CookieDTO
 {
+    /**
+     * __construct.
+     *
+     * @param int|null    $id
+     * @param string      $name
+     * @param string|null $description
+     * @param string      $price
+     * @param string      $formattedPrice
+     * @param int         $stock
+     * @param bool        $isActive
+     * @param string|null $createdAt
+     * @param string|null $updatedAt
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function __construct(
         public ?int $id,
         public string $name,
@@ -28,6 +42,13 @@ final readonly class CookieDTO
     ) {
     }
 
+    /**
+     * fromEntity.
+     *
+     * @param Cookie $cookie
+     * @return self
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public static function fromEntity(Cookie $cookie): self
     {
         return new self(
@@ -43,6 +64,12 @@ final readonly class CookieDTO
         );
     }
 
+    /**
+     * isOutOfStock.
+     *
+     * @return bool
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function isOutOfStock(): bool
     {
         return $this->stock === 0;

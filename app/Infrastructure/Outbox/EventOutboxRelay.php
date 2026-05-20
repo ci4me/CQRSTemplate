@@ -33,6 +33,8 @@ final class EventOutboxRelay
     private const array BACKOFF_SECONDS = [30, 120, 600, 3600, 21600, 86400];
 
     /**
+     * @param EventDispatcher                                                   $dispatcher
+     * @param LoggerInterface                                                   $logger
      * @param BaseConnection<object|resource|false, object|resource|false>|null $db
      */
     public function __construct(
@@ -45,6 +47,7 @@ final class EventOutboxRelay
     /**
      * Process up to $batchSize pending rows.
      *
+     * @param int $batchSize
      * @return array{processed: int, delivered: int, retried: int, failed: int}
      */
     public function drain(int $batchSize = 50): array
@@ -75,6 +78,8 @@ final class EventOutboxRelay
     }
 
     /**
+     * @param int    $batchSize
+     * @param string $now
      * @return list<array<string, mixed>>
      */
     private function fetchPending(int $batchSize, string $now): array
@@ -99,6 +104,7 @@ final class EventOutboxRelay
 
     /**
      * @param array<string, mixed> $row
+     * @return string
      */
     private function processRow(array $row): string
     {
@@ -139,6 +145,13 @@ final class EventOutboxRelay
         return 'delivered';
     }
 
+    /**
+     * claim.
+     *
+     * @param int $id
+     * @return bool
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     private function claim(int $id): bool
     {
         // CI4's update() returns `true` on success regardless of how many
@@ -156,6 +169,15 @@ final class EventOutboxRelay
         return $db->affectedRows() === 1;
     }
 
+    /**
+     * rehydrate.
+     *
+     * @param string $eventClass
+     * @param string $json
+     * @return object
+     * @throws \RuntimeException
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     private function rehydrate(string $eventClass, string $json): object
     {
         if (!class_exists($eventClass)) {
@@ -204,6 +226,15 @@ final class EventOutboxRelay
         return $reflection->newInstanceArgs($args);
     }
 
+    /**
+     * onDispatchFailure.
+     *
+     * @param int        $id
+     * @param int        $currentAttempts
+     * @param \Throwable $e
+     * @return string
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     private function onDispatchFailure(int $id, int $currentAttempts, \Throwable $e): string
     {
         $nextAttempt = $currentAttempts + 1;
@@ -236,6 +267,13 @@ final class EventOutboxRelay
         return $maxed ? 'failed' : 'retried';
     }
 
+    /**
+     * markDelivered.
+     *
+     * @param int $id
+     * @return void
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     private function markDelivered(int $id): void
     {
         $this->connection()->table('event_outbox')
@@ -247,6 +285,14 @@ final class EventOutboxRelay
             ]);
     }
 
+    /**
+     * markFailed.
+     *
+     * @param int    $id
+     * @param string $reason
+     * @return void
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     private function markFailed(int $id, string $reason): void
     {
         $this->connection()->table('event_outbox')

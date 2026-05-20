@@ -34,6 +34,14 @@ final readonly class Currency
         'TND' => 3,
     ];
 
+    /**
+     * __construct.
+     *
+     * @param string $iso
+     * @param int    $decimals
+     * @param string $symbol
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     private function __construct(
         public string $iso,
         public int $decimals,
@@ -41,6 +49,15 @@ final readonly class Currency
     ) {
     }
 
+    /**
+     * fromIso.
+     *
+     * @param string      $iso
+     * @param string|null $symbol
+     * @return self
+     * @throws \InvalidArgumentException
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public static function fromIso(string $iso, ?string $symbol = null): self
     {
         $iso = strtoupper(trim($iso));
@@ -58,16 +75,34 @@ final readonly class Currency
         );
     }
 
+    /**
+     * usd.
+     *
+     * @return self
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public static function usd(): self
     {
         return self::fromIso('USD', '$');
     }
 
+    /**
+     * eur.
+     *
+     * @return self
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public static function eur(): self
     {
         return self::fromIso('EUR', '€');
     }
 
+    /**
+     * brl.
+     *
+     * @return self
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public static function brl(): self
     {
         return self::fromIso('BRL', 'R$');
@@ -82,6 +117,8 @@ final readonly class Currency
      * "default currency" decision is being made (e.g. CookiePrice when
      * the request doesn't specify one) so the choice has a single
      * source of truth.
+     *
+     * @return self
      */
     public static function default(): self
     {
@@ -96,11 +133,25 @@ final readonly class Currency
         return self::fromIso($iso);
     }
 
+    /**
+     * equals.
+     *
+     * @param self $other
+     * @return bool
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function equals(self $other): bool
     {
         return $this->iso === $other->iso;
     }
 
+    /**
+     * defaultSymbolFor.
+     *
+     * @param string $iso
+     * @return string
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     private static function defaultSymbolFor(string $iso): string
     {
         return match ($iso) {

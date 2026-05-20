@@ -25,9 +25,9 @@ use App\Domain\Shared\Events\DomainEventInterface;
 final readonly class UserUpdatedEvent implements DomainEventInterface
 {
     /**
-     * @param int $userId User ID that was updated
+     * @param int           $userId        User ID that was updated
      * @param array<string> $updatedFields List of fields that changed
-     * @param string $updatedAt ISO 8601 timestamp of update
+     * @param string        $updatedAt     ISO 8601 timestamp of update
      */
     public function __construct(
         public int $userId,

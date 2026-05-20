@@ -26,8 +26,16 @@ use Psr\Log\LoggerInterface;
  */
 final readonly class RequestPasswordResetHandler
 {
+    /** @var LoggerInterface */
     private LoggerInterface $logger;
 
+    /**
+     * __construct.
+     *
+     * @param UserRepository $userRepository
+     * @param EmailService   $emailService
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function __construct(
         private UserRepository $userRepository,
         private EmailService $emailService
@@ -35,6 +43,13 @@ final readonly class RequestPasswordResetHandler
         $this->logger = LoggerFactory::create('auth.password-reset');
     }
 
+    /**
+     * handle.
+     *
+     * @param RequestPasswordResetCommand $command
+     * @return void
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function handle(RequestPasswordResetCommand $command): void
     {
         $this->logger->info('Password reset requested', [
@@ -102,6 +117,13 @@ final readonly class RequestPasswordResetHandler
         }
     }
 
+    /**
+     * deleteExistingTokens.
+     *
+     * @param int $userId
+     * @return void
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     private function deleteExistingTokens(int $userId): void
     {
         $db = \Config\Database::connect();
@@ -111,6 +133,14 @@ final readonly class RequestPasswordResetHandler
             ->delete();
     }
 
+    /**
+     * storeResetToken.
+     *
+     * @param int                $userId
+     * @param PasswordResetToken $token
+     * @return void
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     private function storeResetToken(int $userId, PasswordResetToken $token): void
     {
         $db = \Config\Database::connect();

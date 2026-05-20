@@ -17,6 +17,13 @@ namespace App\Infrastructure\Auth\ValueObjects;
  */
 final readonly class PasswordResetToken
 {
+    /**
+     * __construct.
+     *
+     * @param string $token
+     * @param string $tokenHash
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     private function __construct(
         private string $token,
         private string $tokenHash
@@ -26,6 +33,7 @@ final readonly class PasswordResetToken
     /**
      * Generate new password reset token.
      *
+     * @return self
      */
     public static function generate(): self
     {
@@ -40,6 +48,7 @@ final readonly class PasswordResetToken
      * Reconstitute from raw token (for validation).
      *
      * @param string $token Raw token from email link
+     * @return self
      */
     public static function fromToken(string $token): self
     {
@@ -50,6 +59,7 @@ final readonly class PasswordResetToken
     /**
      * Get raw token (send to user via email).
      *
+     * @return string
      */
     public function getToken(): string
     {
@@ -59,6 +69,7 @@ final readonly class PasswordResetToken
     /**
      * Get hashed token (store in database).
      *
+     * @return string
      */
     public function getTokenHash(): string
     {

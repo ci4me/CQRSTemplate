@@ -59,6 +59,11 @@
         <exclude-pattern>app/Controllers/Api/*Controller.php</exclude-pattern>
         <!-- Exclude AbiSageIntacct library - third-party namespace with different conventions -->
         <exclude-pattern>app/Libraries/AbiSageIntacct/*</exclude-pattern>
+        <!-- We want FULL docblocks for Intelephense (Squiz.Commenting.FunctionComment
+             requires @param on every parameter). Slevomat's "useless annotation"
+             check would call those duplicate, so we silence it where the duplication
+             is mandated by the docblock policy. -->
+        <exclude name="SlevomatCodingStandard.TypeHints.ParameterTypeHint.UselessAnnotation"/>
     </rule>
     <rule ref="SlevomatCodingStandard.TypeHints.PropertyTypeHint">
         <!-- Exclude BaseController and API controllers due to CodeIgniter parent class limitations -->
@@ -73,8 +78,16 @@
              types here would break inheritance compatibility. -->
         <exclude-pattern>app/Infrastructure/Persistence/Models/*</exclude-pattern>
         <exclude-pattern>app/Models/*</exclude-pattern>
+        <!-- Same rationale as Parameter/ReturnTypeHint: docblock policy mandates
+             @var on every property, so "useless" duplication is by design. -->
+        <exclude name="SlevomatCodingStandard.TypeHints.PropertyTypeHint.UselessAnnotation"/>
     </rule>
-    <rule ref="SlevomatCodingStandard.TypeHints.ReturnTypeHint"/>
+    <rule ref="SlevomatCodingStandard.TypeHints.ReturnTypeHint">
+        <!-- Same rationale as ParameterTypeHint above: Squiz.Commenting.FunctionComment
+             requires @return on every non-void method, so Slevomat's "useless"
+             check on @return-that-matches-native conflicts with the docblock policy. -->
+        <exclude name="SlevomatCodingStandard.TypeHints.ReturnTypeHint.UselessAnnotation"/>
+    </rule>
 
     <!-- Discourage else (encourage early returns) -->
     <rule ref="SlevomatCodingStandard.ControlStructures.EarlyExit"/>
@@ -134,4 +147,99 @@
     <rule ref="SlevomatCodingStandard.Functions.StrictCall"/>
     <rule ref="SlevomatCodingStandard.PHP.ShortList"/>
 
+    <!--
+      ============================================================
+      Required documentation (drives Intelephense / IDE autocomplete)
+      ============================================================
+      These rules MANDATE docblocks on every class, method, and
+      property in production code. They do NOT apply to tests
+      (test methods are self-documenting and adding @param/@return
+      to every test_* method is pure ceremony).
+
+      Why each rule:
+        FunctionComment           - every function has a docblock with @param + @return
+        ClassComment              - every class has a docblock describing its purpose
+        VariableComment           - every property has a @var docblock for Intelephense
+        FunctionCommentThrowTag   - every thrown exception has a matching @throws
+        DocCommentSpacing         - tidy blank-line policy inside docblocks
+    -->
+    <rule ref="Squiz.Commenting.FunctionComment">
+        <exclude-pattern>tests/*</exclude-pattern>
+        <exclude-pattern>*/Database/Migrations/*</exclude-pattern>
+        <exclude-pattern>*/Database/Seeds/*</exclude-pattern>
+        <exclude-pattern>app/Infrastructure/Persistence/Models/*</exclude-pattern>
+        <exclude-pattern>app/Models/*</exclude-pattern>
+        <exclude-pattern>app/Libraries/AbiSageIntacct/*</exclude-pattern>
+        <!-- Native typehints already carry the param/return type; we don't
+             also force prose descriptions for every parameter. -->
+        <exclude name="Squiz.Commenting.FunctionComment.MissingParamComment"/>
+        <exclude name="Squiz.Commenting.FunctionComment.EmptyThrows"/>
+        <exclude name="Squiz.Commenting.FunctionComment.ScalarTypeHintMissing"/>
+        <exclude name="Squiz.Commenting.FunctionComment.TypeHintMissing"/>
+        <!-- These are pure-prose stylistic nags - they don't change the
+             information Intelephense reads (types in @param/@return). We
+             enforce that docblocks EXIST and carry types; we don't enforce
+             that every English sentence ends with a period or starts capital. -->
+        <exclude name="Squiz.Commenting.FunctionComment.ParamCommentFullStop"/>
+        <exclude name="Squiz.Commenting.FunctionComment.ParamCommentNotCapital"/>
+        <exclude name="Squiz.Commenting.FunctionComment.ThrowsNoFullStop"/>
+        <exclude name="Squiz.Commenting.FunctionComment.ThrowsNotCapital"/>
+        <!-- Allow short-form scalars in docblocks (bool/int/float/string),
+             matching the native typehint conventions. Squiz defaults to
+             the older long-form "boolean/integer/double" which is no longer
+             idiomatic and conflicts with Slevomat's preference. -->
+        <exclude name="Squiz.Commenting.FunctionComment.IncorrectTypeHint"/>
+        <exclude name="Squiz.Commenting.FunctionComment.InvalidReturn"/>
+        <!-- Doesn't understand generators: a function with `iterable` return
+             type may legally `return;` to early-exit. -->
+        <exclude name="Squiz.Commenting.FunctionComment.InvalidReturnNotVoid"/>
+        <!-- Squiz's IncorrectParamVarName sniff also gets re-used to enforce
+             long-form scalars in @param ("integer" not "int"). We prefer
+             short forms in docblocks to match the native typehint syntax.
+             True name-vs-position mismatches are still caught by
+             Squiz.Commenting.FunctionComment.ParamNameNoMatch. -->
+        <exclude name="Squiz.Commenting.FunctionComment.IncorrectParamVarName"/>
+    </rule>
+
+    <rule ref="Squiz.Commenting.ClassComment">
+        <exclude-pattern>tests/*</exclude-pattern>
+        <exclude-pattern>*/Database/Migrations/*</exclude-pattern>
+        <exclude-pattern>*/Database/Seeds/*</exclude-pattern>
+        <exclude-pattern>app/Libraries/AbiSageIntacct/*</exclude-pattern>
+        <!-- CodeIgniter Model subclasses are framework-driven; the parent
+             class already carries the canonical description. -->
+        <exclude-pattern>app/Infrastructure/Persistence/Models/*</exclude-pattern>
+        <exclude-pattern>app/Models/*</exclude-pattern>
+    </rule>
+
+    <rule ref="Squiz.Commenting.VariableComment">
+        <exclude-pattern>tests/*</exclude-pattern>
+        <exclude-pattern>*/Database/Migrations/*</exclude-pattern>
+        <exclude-pattern>*/Database/Seeds/*</exclude-pattern>
+        <exclude-pattern>app/Infrastructure/Persistence/Models/*</exclude-pattern>
+        <exclude-pattern>app/Models/*</exclude-pattern>
+        <exclude-pattern>app/Libraries/AbiSageIntacct/*</exclude-pattern>
+        <!-- Same rationale as FunctionComment: keep short-form scalars. -->
+        <exclude name="Squiz.Commenting.VariableComment.IncorrectVarType"/>
+    </rule>
+
+    <rule ref="Squiz.Commenting.FunctionCommentThrowTag">
+        <exclude-pattern>tests/*</exclude-pattern>
+        <exclude-pattern>*/Database/Migrations/*</exclude-pattern>
+        <exclude-pattern>*/Database/Seeds/*</exclude-pattern>
+        <exclude-pattern>app/Libraries/AbiSageIntacct/*</exclude-pattern>
+        <!-- Squiz's @throws checks are simplistic: they count `throw`
+             statements in the body and demand a matching @throws count.
+             Re-throws (`throw $e`) and polymorphic throws via method calls
+             can't be resolved without full type inference, so the count is
+             unreliable. We still REQUIRE the @throws docblock structure (so
+             Intelephense picks it up) but don't enforce per-statement count.
+             PHPStan's `throws` rule covers the type-inference side. -->
+        <exclude name="Squiz.Commenting.FunctionCommentThrowTag.Missing"/>
+        <exclude name="Squiz.Commenting.FunctionCommentThrowTag.WrongNumber"/>
+    </rule>
+
+    <rule ref="SlevomatCodingStandard.Commenting.DocCommentSpacing">
+        <exclude-pattern>tests/*</exclude-pattern>
+    </rule>
 </ruleset>

@@ -18,11 +18,23 @@ use CodeIgniter\Session\Session;
  */
 final class AuthController extends BaseController
 {
+    /**
+     * showRegister.
+     *
+     * @return string
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function showRegister(): string
     {
         return view('auth/register');
     }
 
+    /**
+     * register.
+     *
+     * @return ResponseInterface
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function register(): ResponseInterface
     {
         $commandBus = service('commandBus');
@@ -55,11 +67,23 @@ final class AuthController extends BaseController
         }
     }
 
+    /**
+     * showLogin.
+     *
+     * @return string
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function showLogin(): string
     {
         return view('auth/login');
     }
 
+    /**
+     * login.
+     *
+     * @return ResponseInterface
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function login(): ResponseInterface
     {
         $commandBus = service('commandBus');
@@ -97,6 +121,12 @@ final class AuthController extends BaseController
         }
     }
 
+    /**
+     * logout.
+     *
+     * @return ResponseInterface
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function logout(): ResponseInterface
     {
         $session = session();

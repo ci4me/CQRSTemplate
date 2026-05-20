@@ -42,6 +42,13 @@ final class CommandBus
      */
     private array $middleware = [];
 
+    /**
+     * pushMiddleware.
+     *
+     * @param CommandMiddlewareInterface $middleware
+     * @return void
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function pushMiddleware(CommandMiddlewareInterface $middleware): void
     {
         $this->middleware[] = $middleware;
@@ -51,6 +58,7 @@ final class CommandBus
      * Replace the middleware pipeline (useful in tests).
      *
      * @param list<CommandMiddlewareInterface> $middleware
+     * @return void
      */
     public function setMiddleware(array $middleware): void
     {
@@ -59,6 +67,11 @@ final class CommandBus
 
     /**
      * Register a command handler.
+     *
+     * @param string $commandClass
+     * @param object $handler
+     * @return void
+     * @throws RuntimeException
      */
     public function register(string $commandClass, object $handler): void
     {
@@ -79,6 +92,10 @@ final class CommandBus
 
     /**
      * Dispatch a command through the middleware pipeline to its handler.
+     *
+     * @param object $command
+     * @return mixed
+     * @throws DomainException
      */
     public function dispatch(object $command): mixed
     {
@@ -111,6 +128,13 @@ final class CommandBus
         return $pipeline($command);
     }
 
+    /**
+     * hasHandler.
+     *
+     * @param string $commandClass
+     * @return bool
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function hasHandler(string $commandClass): bool
     {
         return isset($this->handlers[$commandClass]);

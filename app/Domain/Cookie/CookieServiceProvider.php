@@ -80,6 +80,8 @@ final class CookieServiceProvider implements DomainServiceProviderInterface
      * Commands represent write operations that change state.
      *
      * @param CommandBus $commandBus The command bus
+     * @return void
+     * @throws \RuntimeException
      */
     public function registerCommands(CommandBus $commandBus): void
     {
@@ -126,6 +128,8 @@ final class CookieServiceProvider implements DomainServiceProviderInterface
      * Queries represent read operations that return data.
      *
      * @param QueryBus $queryBus The query bus
+     * @return void
+     * @throws \RuntimeException
      */
     public function registerQueries(QueryBus $queryBus): void
     {
@@ -171,6 +175,7 @@ final class CookieServiceProvider implements DomainServiceProviderInterface
      * Handlers perform side effects (logging, notifications, etc.)
      *
      * @param EventDispatcher $dispatcher The event dispatcher
+     * @return void
      */
     public function registerEvents(EventDispatcher $dispatcher): void
     {
@@ -218,7 +223,7 @@ final class CookieServiceProvider implements DomainServiceProviderInterface
      * - 'cookieRepository' => Services::cookieRepository()
      * - 'eventDispatcher' => Services::eventDispatcher()
      *
-     * @return string[]
+     * @return array<mixed>
      */
     public function getRepositories(): array
     {
@@ -237,6 +242,7 @@ final class CookieServiceProvider implements DomainServiceProviderInterface
      * Called by ServiceProviderRegistry to inject dependencies.
      *
      * @param array<string, object> $repositories Map of repository name => instance
+     * @return void
      */
     public function setRepositories(array $repositories): void
     {

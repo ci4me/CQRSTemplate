@@ -35,10 +35,10 @@ final readonly class RegisterUserCommand
     /**
      * Create a new RegisterUserCommand.
      *
-     * @param string $name The user's full name
-     * @param string $email The user's email address (will be validated and normalized)
+     * @param string $name     The user's full name
+     * @param string $email    The user's email address (will be validated and normalized)
      * @param string $password The user's plain-text password (will be hashed by handler)
-     * @param string $role The user's role (must match UserRole enum values: 'admin', 'customer', 'guest')
+     * @param string $role     The user's role (must match UserRole enum values: 'admin', 'customer', 'guest')
      */
     public function __construct(
         public string $name,

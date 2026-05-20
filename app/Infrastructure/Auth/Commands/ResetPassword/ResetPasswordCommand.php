@@ -13,6 +13,13 @@ namespace App\Infrastructure\Auth\Commands\ResetPassword;
  */
 final readonly class ResetPasswordCommand
 {
+    /**
+     * __construct.
+     *
+     * @param string $token
+     * @param string $newPassword
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function __construct(
         public string $token,
         public string $newPassword

@@ -48,22 +48,30 @@ class CookieRepository implements CookieRepositoryInterface
     use BusinessMetricsLogging;
     use RepositoryLogging;
 
+    /** @var CookieModel */
     private CookieModel $model;
 
     /**
      * Logger instance for repository operations.
      * Used by RepositoryLogging and BusinessMetricsLogging traits.
+     *
+     * @var LoggerInterface
      */
     private LoggerInterface $logger;
 
     /**
      * Logging configuration.
      * Used by RepositoryLogging and BusinessMetricsLogging traits.
+     *
+     * @var Logging
      */
     private Logging $loggingConfig;
 
+    /** @var EventDispatcher|null */
     private ?EventDispatcher $eventDispatcher;
+    /** @var EventOutboxWriter|null */
     private ?EventOutboxWriter $outboxWriter;
+    /** @var \App\Infrastructure\Tenancy\TenantContext|null */
     private ?\App\Infrastructure\Tenancy\TenantContext $tenantContext;
 
     /**
@@ -79,6 +87,13 @@ class CookieRepository implements CookieRepositoryInterface
      * scopes queries; the column is part of the composite UNIQUE so the
      * default fallback (1) is what keeps the index meaningful on
      * single-tenant deploys.
+     *
+     * @param LoggerInterface                                $logger
+     * @param Logging                                        $loggingConfig
+     * @param CookieModel|null                               $model
+     * @param EventDispatcher|null                           $eventDispatcher
+     * @param EventOutboxWriter|null                         $outboxWriter
+     * @param \App\Infrastructure\Tenancy\TenantContext|null $tenantContext
      */
     public function __construct(
         LoggerInterface $logger,
@@ -99,9 +114,10 @@ class CookieRepository implements CookieRepositoryInterface
     /**
      * Save a cookie (create or update).
      *
-     * @param Cookie $cookie The cookie to save
-     * @param Actor|null $actor Stamps `created_by` (insert) / `updated_by` (update)
+     * @param Cookie     $cookie The cookie to save
+     * @param Actor|null $actor  Stamps `created_by` (insert) / `updated_by` (update)
      * @return int The cookie ID
+     * @throws DomainException
      */
     public function save(Cookie $cookie, ?Actor $actor = null): int
     {
@@ -140,6 +156,13 @@ class CookieRepository implements CookieRepositoryInterface
         }
     }
 
+    /**
+     * isDuplicateKey.
+     *
+     * @param \Throwable $e
+     * @return bool
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     private function isDuplicateKey(\Throwable $e): bool
     {
         $message = strtolower($e->getMessage());
@@ -148,6 +171,13 @@ class CookieRepository implements CookieRepositoryInterface
             || str_contains($message, '1062');
     }
 
+    /**
+     * dispatchPendingEvents.
+     *
+     * @param Cookie $cookie
+     * @return void
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     private function dispatchPendingEvents(Cookie $cookie): void
     {
         $events = $cookie->pullEvents();
@@ -226,10 +256,10 @@ class CookieRepository implements CookieRepositoryInterface
     /**
      * Find cookies with pagination and optional search.
      *
-     * @param int $page The page number (1-indexed)
-     * @param int $perPage Number of items per page
-     * @param string|null $searchTerm Optional search term
-     * @param bool $includeInactive Whether to include inactive cookies
+     * @param int         $page            The page number (1-indexed)
+     * @param int         $perPage         Number of items per page
+     * @param string|null $searchTerm      Optional search term
+     * @param bool        $includeInactive Whether to include inactive cookies
      * @return array{data: array<int, Cookie>, total: int, page: int, perPage: int, lastPage: int}
      */
     public function findPaginated(
@@ -264,8 +294,8 @@ class CookieRepository implements CookieRepositoryInterface
     /**
      * Check if a cookie exists with the given name, excluding a specific ID.
      *
-     * @param string $name The cookie name
-     * @param int $excludeId The ID to exclude
+     * @param string $name      The cookie name
+     * @param int    $excludeId The ID to exclude
      * @return bool True if exists
      */
     public function existsByNameExcludingId(string $name, int $excludeId): bool
@@ -276,7 +306,7 @@ class CookieRepository implements CookieRepositoryInterface
     /**
      * Soft delete a cookie.
      *
-     * @param int $id The cookie ID
+     * @param int        $id    The cookie ID
      * @param Actor|null $actor Stamps `deleted_by` on the row before soft-delete
      * @return bool True if successful, false if cookie doesn't exist
      */
@@ -309,8 +339,9 @@ class CookieRepository implements CookieRepositoryInterface
     /**
      * Restore a previously soft-deleted cookie.
      *
-     * @param int $id The cookie ID
+     * @param int        $id    The cookie ID
      * @param Actor|null $actor Stamps `updated_by` on the restored row
+     * @return bool
      */
     public function restore(int $id, ?Actor $actor = null): bool
     {
@@ -340,6 +371,9 @@ class CookieRepository implements CookieRepositoryInterface
 
     /**
      * Find a cookie by id, ignoring the soft-delete filter.
+     *
+     * @param int $id
+     * @return Cookie|null
      */
     public function findByIdWithTrashed(int $id): ?Cookie
     {
@@ -377,6 +411,9 @@ class CookieRepository implements CookieRepositoryInterface
 
     /**
      * Get old price for existing cookie.
+     *
+     * @param Cookie $cookie
+     * @return CookiePrice|null
      */
     private function getOldPrice(Cookie $cookie): ?CookiePrice
     {
@@ -397,6 +434,10 @@ class CookieRepository implements CookieRepositoryInterface
      * same statement. If zero rows are affected the row's version moved on
      * (someone else wrote concurrently) and we throw a domain-level
      * concurrent-modification exception.
+     *
+     * @param Cookie     $cookie
+     * @param Actor|null $actor
+     * @return int
      */
     private function performSave(Cookie $cookie, ?Actor $actor = null): int
     {
@@ -444,7 +485,10 @@ class CookieRepository implements CookieRepositoryInterface
     }
 
     /**
+     * @param Cookie                     $cookie
      * @param array<string, scalar|null> $data
+     * @param Actor|null                 $actor
+     * @return void
      */
     private function updateWithOptimisticLock(Cookie $cookie, array $data, ?Actor $actor = null): void
     {
@@ -470,6 +514,15 @@ class CookieRepository implements CookieRepositoryInterface
         $this->raiseConcurrentModification($cookie, $expectedVersion);
     }
 
+    /**
+     * raiseConcurrentModification.
+     *
+     * @param Cookie $cookie
+     * @param int    $expectedVersion
+     * @return never
+     * @throws DomainException
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     private function raiseConcurrentModification(Cookie $cookie, int $expectedVersion): never
     {
         /** @var array<string, scalar|null>|object|null $current */
@@ -492,7 +545,9 @@ class CookieRepository implements CookieRepositoryInterface
     /**
      * Execute findAll query.
      *
+     * @param bool $includeInactive
      * @return array<int, Cookie>
+     * @throws \RuntimeException
      */
     private function executeFindAll(bool $includeInactive): array
     {
@@ -517,7 +572,12 @@ class CookieRepository implements CookieRepositoryInterface
     /**
      * Execute findPaginated query.
      *
+     * @param int         $page
+     * @param int         $perPage
+     * @param string|null $searchTerm
+     * @param bool        $includeInactive
      * @return array{data: array<int, Cookie>, total: int, page: int, perPage: int, lastPage: int}
+     * @throws \RuntimeException
      */
     private function executeFindPaginated(
         int $page,

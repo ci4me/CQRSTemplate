@@ -32,10 +32,12 @@ class DatabaseTokenBlacklistService implements TokenBlacklistInterface
     private const string TABLE = 'token_blacklist';
     private const int DEFAULT_LIFETIME_SECONDS = 2_592_000; // 30 days
 
+    /** @var LoggerInterface */
     private readonly LoggerInterface $logger;
 
     /**
      * @param BaseConnection<object|resource|false, object|resource|false>|null $db
+     * @param LoggerInterface|null                                              $logger
      */
     public function __construct(
         private readonly ?BaseConnection $db = null,
@@ -44,6 +46,13 @@ class DatabaseTokenBlacklistService implements TokenBlacklistInterface
         $this->logger = $logger ?? LoggerFactory::create('auth.token.blacklist.db');
     }
 
+    /**
+     * blacklist.
+     *
+     * @param string $token
+     * @return void
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function blacklist(string $token): void
     {
         $hash = $this->hash($token);
@@ -72,6 +81,13 @@ class DatabaseTokenBlacklistService implements TokenBlacklistInterface
         }
     }
 
+    /**
+     * isBlacklisted.
+     *
+     * @param string $token
+     * @return bool
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function isBlacklisted(string $token): bool
     {
         $hash = $this->hash($token);
@@ -89,6 +105,8 @@ class DatabaseTokenBlacklistService implements TokenBlacklistInterface
     /**
      * Drop rows past their `expires_at`. Intended to be called by a
      * spark task on a schedule (e.g. once an hour).
+     *
+     * @return int
      */
     public function purgeExpired(): int
     {
@@ -101,11 +119,25 @@ class DatabaseTokenBlacklistService implements TokenBlacklistInterface
         return $connection->affectedRows();
     }
 
+    /**
+     * hash.
+     *
+     * @param string $token
+     * @return string
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     private function hash(string $token): string
     {
         return hash('sha256', $token);
     }
 
+    /**
+     * isDuplicate.
+     *
+     * @param \Throwable $e
+     * @return bool
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     private function isDuplicate(\Throwable $e): bool
     {
         $message = strtolower($e->getMessage());

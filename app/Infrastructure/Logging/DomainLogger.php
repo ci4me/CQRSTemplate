@@ -33,6 +33,7 @@ use Psr\Log\LoggerInterface;
  */
 final class DomainLogger
 {
+    /** @var LoggerInterface|null */
     private static ?LoggerInterface $logger = null;
 
     /**
@@ -52,9 +53,10 @@ final class DomainLogger
     /**
      * Log validation failure before throwing exception.
      *
-     * @param string $domain Domain name (e.g., 'Cookie')
-     * @param string $valueObject Value object class name (e.g., 'CookieName')
-     * @param array<string, mixed> $context Additional context (attempted_value, validation_rule, error_code)
+     * @param string               $domain      Domain name (e.g., 'Cookie')
+     * @param string               $valueObject Value object class name (e.g., 'CookieName')
+     * @param array<string, mixed> $context     Additional context (attempted_value, validation_rule, error_code)
+     * @return void
      */
     public static function logValidation(string $domain, string $valueObject, array $context): void
     {
@@ -67,9 +69,10 @@ final class DomainLogger
     /**
      * Log business rule violation before throwing exception.
      *
-     * @param string $domain Domain name (e.g., 'Cookie')
-     * @param string $entity Entity class name (e.g., 'Cookie')
+     * @param string               $domain  Domain name (e.g., 'Cookie')
+     * @param string               $entity  Entity class name (e.g., 'Cookie')
      * @param array<string, mixed> $context Additional context (business_rule, current_state, error_code)
+     * @return void
      */
     public static function logBusinessRule(string $domain, string $entity, array $context): void
     {
@@ -81,6 +84,8 @@ final class DomainLogger
 
     /**
      * Reset logger instance (for testing).
+     *
+     * @return void
      */
     public static function reset(): void
     {

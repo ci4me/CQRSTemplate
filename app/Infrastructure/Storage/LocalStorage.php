@@ -16,8 +16,16 @@ namespace App\Infrastructure\Storage;
  */
 final class LocalStorage implements StorageInterface
 {
+    /** @var string */
     private readonly string $baseDir;
 
+    /**
+     * __construct.
+     *
+     * @param string|null $baseDir
+     * @throws StorageException
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function __construct(?string $baseDir = null)
     {
         $resolved = $baseDir ?? (defined('WRITEPATH') ? WRITEPATH . 'uploads' : sys_get_temp_dir() . '/erp-uploads');
@@ -31,11 +39,26 @@ final class LocalStorage implements StorageInterface
         $this->baseDir = $real;
     }
 
+    /**
+     * name.
+     *
+     * @return string
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function name(): string
     {
         return 'local';
     }
 
+    /**
+     * put.
+     *
+     * @param string $key
+     * @param string $contents
+     * @return void
+     * @throws StorageException
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function put(string $key, string $contents): void
     {
         $path = $this->resolveKey($key);
@@ -50,6 +73,14 @@ final class LocalStorage implements StorageInterface
         }
     }
 
+    /**
+     * get.
+     *
+     * @param string $key
+     * @return string
+     * @throws StorageException
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function get(string $key): string
     {
         $path = $this->resolveKey($key);
@@ -63,6 +94,13 @@ final class LocalStorage implements StorageInterface
         return $contents;
     }
 
+    /**
+     * exists.
+     *
+     * @param string $key
+     * @return bool
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function exists(string $key): bool
     {
         try {
@@ -73,6 +111,13 @@ final class LocalStorage implements StorageInterface
         }
     }
 
+    /**
+     * delete.
+     *
+     * @param string $key
+     * @return void
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function delete(string $key): void
     {
         $path = $this->resolveKey($key);
@@ -82,6 +127,14 @@ final class LocalStorage implements StorageInterface
         @unlink($path);
     }
 
+    /**
+     * sizeBytes.
+     *
+     * @param string $key
+     * @return int
+     * @throws StorageException
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function sizeBytes(string $key): int
     {
         $path = $this->resolveKey($key);
@@ -95,6 +148,14 @@ final class LocalStorage implements StorageInterface
         return $size;
     }
 
+    /**
+     * resolveKey.
+     *
+     * @param string $key
+     * @return string
+     * @throws StorageException
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     private function resolveKey(string $key): string
     {
         if ($key === '' || str_contains($key, "\0") || str_contains($key, '..') || str_starts_with($key, '/')) {
@@ -114,6 +175,12 @@ final class LocalStorage implements StorageInterface
         return $path;
     }
 
+    /**
+     * baseDirectory.
+     *
+     * @return string
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function baseDirectory(): string
     {
         return $this->baseDir;

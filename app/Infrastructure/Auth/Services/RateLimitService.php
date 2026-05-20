@@ -33,6 +33,12 @@ final readonly class RateLimitService implements RateLimitInterface
     private const string CACHE_PREFIX = 'rate_limit_';
     private const int CACHE_TTL = 86400; // 24 hours
 
+    /**
+     * __construct.
+     *
+     * @param CacheInterface $cache
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function __construct(
         private CacheInterface $cache
     ) {
@@ -50,9 +56,9 @@ final readonly class RateLimitService implements RateLimitInterface
      * 6. Update state in cache
      * 7. Return result with attempts remaining and reset time
      *
-     * @param string $identifier Unique identifier (IP address, user ID, etc.)
-     * @param int $maxAttempts Maximum number of attempts allowed (bucket capacity)
-     * @param int $windowSeconds Time window in seconds (rate calculation period)
+     * @param string $identifier    Unique identifier (IP address, user ID, etc.)
+     * @param int    $maxAttempts   Maximum number of attempts allowed (bucket capacity)
+     * @param int    $windowSeconds Time window in seconds (rate calculation period)
      * @return RateLimitResult Result containing allowed status and metadata
      */
     public function checkLimit(string $identifier, int $maxAttempts, int $windowSeconds): RateLimitResult
@@ -99,6 +105,7 @@ final readonly class RateLimitService implements RateLimitInterface
      * Clears the token bucket state from cache.
      *
      * @param string $identifier Unique identifier to reset
+     * @return void
      */
     public function reset(string $identifier): void
     {
@@ -109,6 +116,9 @@ final readonly class RateLimitService implements RateLimitInterface
     /**
      * Validate rate limit parameters.
      *
+     * @param int $maxAttempts
+     * @param int $windowSeconds
+     * @return void
      * @throws \InvalidArgumentException If parameters are invalid
      */
     private function validateParameters(int $maxAttempts, int $windowSeconds): void
@@ -127,7 +137,7 @@ final readonly class RateLimitService implements RateLimitInterface
      *
      * Example: 5 requests per 60 seconds = 0.0833 tokens/second
      *
-     * @param int $maxAttempts Maximum number of attempts
+     * @param int $maxAttempts   Maximum number of attempts
      * @param int $windowSeconds Time window in seconds
      * @return float Refill rate in tokens per second
      */
@@ -146,10 +156,10 @@ final readonly class RateLimitService implements RateLimitInterface
      *   resetTime: int - Unix timestamp when bucket will be full
      * }
      *
-     * @param string $cacheKey Cache key for the identifier
-     * @param int $maxAttempts Maximum bucket capacity
-     * @param int $now Current Unix timestamp
-     * @param int $windowSeconds Time window for rate limit
+     * @param string $cacheKey      Cache key for the identifier
+     * @param int    $maxAttempts   Maximum bucket capacity
+     * @param int    $now           Current Unix timestamp
+     * @param int    $windowSeconds Time window for rate limit
      * @return array{tokens: float, lastRefillTime: int, resetTime: int}
      */
     private function loadState(string $cacheKey, int $maxAttempts, int $now, int $windowSeconds): array
@@ -186,10 +196,10 @@ final readonly class RateLimitService implements RateLimitInterface
      * - Tokens to add: 12 * 0.0833 = 1.0
      * - New tokens: min(2.5 + 1.0, 5.0) = 3.5
      *
-     * @param array{tokens: float, lastRefillTime: int, resetTime: int} $state Current bucket state
-     * @param int $now Current Unix timestamp
-     * @param float $refillRate Tokens per second
-     * @param int $maxAttempts Maximum bucket capacity
+     * @param array{tokens: float, lastRefillTime: int, resetTime: int} $state       Current bucket state
+     * @param int                                                       $now         Current Unix timestamp
+     * @param float                                                     $refillRate  Tokens per second
+     * @param int                                                       $maxAttempts Maximum bucket capacity
      * @return array{tokens: float, lastRefillTime: int, resetTime: int}
      */
     private function refillTokens(array $state, int $now, float $refillRate, int $maxAttempts): array
@@ -231,8 +241,9 @@ final readonly class RateLimitService implements RateLimitInterface
      * - State updates are serialized by cache layer
      * - No explicit locking needed
      *
-     * @param string $cacheKey Cache key for the identifier
-     * @param array{tokens: float, lastRefillTime: int, resetTime: int} $state Bucket state to save
+     * @param string                                                    $cacheKey Cache key for the identifier
+     * @param array{tokens: float, lastRefillTime: int, resetTime: int} $state    Bucket state to save
+     * @return void
      */
     private function saveState(string $cacheKey, array $state): void
     {

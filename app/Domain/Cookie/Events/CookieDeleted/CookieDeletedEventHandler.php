@@ -44,6 +44,7 @@ final readonly class CookieDeletedEventHandler
      * Handle the CookieDeletedEvent.
      *
      * @param CookieDeletedEvent $event The event containing cookie deletion data
+     * @return void
      */
     public function __invoke(CookieDeletedEvent $event): void
     {

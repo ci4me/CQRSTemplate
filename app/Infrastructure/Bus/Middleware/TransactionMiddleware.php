@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Infrastructure\Bus\Middleware;
 
 use App\Infrastructure\Bus\CommandMiddlewareInterface;
-use App\Infrastructure\Bus\EventDispatcher;
 use App\Infrastructure\Logging\CorrelationIdService;
 use CodeIgniter\Database\BaseConnection;
 use Config\Database;
@@ -30,14 +29,15 @@ use Psr\Log\LoggerInterface;
 final readonly class TransactionMiddleware implements CommandMiddlewareInterface
 {
     /**
+     * @param LoggerInterface                                                   $logger
      * @param BaseConnection<object|resource|false, object|resource|false>|null $db
-     * @param (\Closure(): ?EventDispatcher)|null $dispatcherResolver
-     *     Lazy resolver for the shared EventDispatcher. Resolved at handle()
-     *     time so Services::commandBus(false) does not have to invoke
-     *     Services::eventDispatcher() during bus construction — which would
-     *     recurse through ensureProvidersRegistered() before either bus is
-     *     cached. Pass `null` to disable strict event-dispatch mode (CLI
-     *     scripts, tests with isolated dispatchers).
+     * @param \Closure|null                                                     $dispatcherResolver * @param (\Closure(): ?EventDispatcher)|null $dispatcherResolver
+     *                                                     Lazy resolver for the shared EventDispatcher. Resolved at handle()
+     *                                                     time so Services::commandBus(false) does not have to invoke
+     *                                                     Services::eventDispatcher() during bus construction — which would
+     *                                                     recurse through ensureProvidersRegistered() before either bus is
+     *                                                     cached. Pass `null` to disable strict event-dispatch mode (CLI
+     *                                                     scripts, tests with isolated dispatchers).
      */
     public function __construct(
         private LoggerInterface $logger,
@@ -46,6 +46,15 @@ final readonly class TransactionMiddleware implements CommandMiddlewareInterface
     ) {
     }
 
+    /**
+     * handle.
+     *
+     * @param object   $command
+     * @param callable $next
+     * @return mixed
+     * @throws \RuntimeException
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function handle(object $command, callable $next): mixed
     {
         $db = $this->db ?? Database::connect();

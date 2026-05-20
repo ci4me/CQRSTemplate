@@ -39,6 +39,8 @@ use Psr\Log\LoggerInterface;
 final readonly class AuditMiddleware implements CommandMiddlewareInterface
 {
     /**
+     * @param LoggerInterface                                                   $logger
+     * @param ActorResolver                                                     $actorResolver
      * @param BaseConnection<object|resource|false, object|resource|false>|null $db
      */
     public function __construct(
@@ -48,6 +50,14 @@ final readonly class AuditMiddleware implements CommandMiddlewareInterface
     ) {
     }
 
+    /**
+     * handle.
+     *
+     * @param object   $command
+     * @param callable $next
+     * @return mixed
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function handle(object $command, callable $next): mixed
     {
         $startMs = microtime(true) * 1000;
@@ -80,6 +90,18 @@ final readonly class AuditMiddleware implements CommandMiddlewareInterface
         return $result;
     }
 
+    /**
+     * writeRow.
+     *
+     * @param object          $command
+     * @param int             $actorId
+     * @param string          $status
+     * @param string          $digest
+     * @param \Throwable|null $error
+     * @param float           $durationMs
+     * @return void
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     private function writeRow(
         object $command,
         int $actorId,
@@ -136,6 +158,7 @@ final readonly class AuditMiddleware implements CommandMiddlewareInterface
 
     /**
      * @param BaseConnection<object|resource|false, object|resource|false> $db
+     * @return bool
      */
     private function disableTransException(BaseConnection $db): bool
     {
@@ -152,6 +175,7 @@ final readonly class AuditMiddleware implements CommandMiddlewareInterface
 
     /**
      * @param BaseConnection<object|resource|false, object|resource|false> $db
+     * @return void
      */
     private function enableTransException(BaseConnection $db): void
     {
@@ -166,6 +190,8 @@ final readonly class AuditMiddleware implements CommandMiddlewareInterface
 
     /**
      * @param BaseConnection<object|resource|false, object|resource|false> $db
+     * @param bool                                                         $previous
+     * @return void
      */
     private function restoreTransStatus(BaseConnection $db, bool $previous): void
     {
@@ -185,6 +211,9 @@ final readonly class AuditMiddleware implements CommandMiddlewareInterface
      * Build a stable digest of the command's public properties after redacting
      * sensitive fields. Uses {@see RedactingProcessor} indirectly via the same
      * key allowlist by piggy-backing on the processor's contract.
+     *
+     * @param object $command
+     * @return string
      */
     private function digestOf(object $command): string
     {
@@ -203,6 +232,7 @@ final readonly class AuditMiddleware implements CommandMiddlewareInterface
     }
 
     /**
+     * @param object $command
      * @return array<string, mixed>
      */
     private function extractPublicState(object $command): array
@@ -246,6 +276,13 @@ final readonly class AuditMiddleware implements CommandMiddlewareInterface
         return $out;
     }
 
+    /**
+     * normaliseForJson.
+     *
+     * @param mixed $value
+     * @return mixed
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     private function normaliseForJson(mixed $value): mixed
     {
         if (is_scalar($value) || $value === null) {

@@ -13,6 +13,12 @@ namespace App\Infrastructure\Auth\Commands\RequestPasswordReset;
  */
 final readonly class RequestPasswordResetCommand
 {
+    /**
+     * __construct.
+     *
+     * @param string $email
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function __construct(
         public string $email
     ) {

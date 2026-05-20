@@ -37,6 +37,16 @@ use Psr\Log\LoggerInterface;
  */
 final readonly class ChangeUserPasswordHandler
 {
+    /**
+     * __construct.
+     *
+     * @param UserRepositoryInterface       $repository
+     * @param PasswordHistoryRepository     $passwordHistory
+     * @param EventDispatcherInterface      $eventDispatcher
+     * @param LoggerInterface               $logger
+     * @param SessionManagementService|null $sessionManager
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function __construct(
         private UserRepositoryInterface $repository,
         private PasswordHistoryRepository $passwordHistory,
@@ -46,6 +56,15 @@ final readonly class ChangeUserPasswordHandler
     ) {
     }
 
+    /**
+     * handle.
+     *
+     * @param ChangeUserPasswordCommand $command
+     * @return void
+     * @throws \RuntimeException
+     * @throws \InvalidArgumentException
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function handle(ChangeUserPasswordCommand $command): void
     {
 

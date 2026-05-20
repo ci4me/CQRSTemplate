@@ -32,6 +32,9 @@ final class CorrelationIdMiddleware implements FilterInterface
 
     /**
      * @phpcsSuppress SlevomatCodingStandard.Functions.UnusedParameter.UnusedParameter
+     * @param RequestInterface $request
+     * @param mixed            $arguments
+     * @return RequestInterface
      */
     public function before(RequestInterface $request, mixed $arguments = null): RequestInterface
     {
@@ -51,6 +54,10 @@ final class CorrelationIdMiddleware implements FilterInterface
 
     /**
      * @phpcsSuppress SlevomatCodingStandard.Functions.UnusedParameter.UnusedParameter
+     * @param RequestInterface  $request
+     * @param ResponseInterface $response
+     * @param mixed             $arguments
+     * @return ResponseInterface
      */
     public function after(RequestInterface $request, ResponseInterface $response, mixed $arguments = null): ResponseInterface
     {
@@ -66,6 +73,13 @@ final class CorrelationIdMiddleware implements FilterInterface
         return $response;
     }
 
+    /**
+     * isValidCorrelationId.
+     *
+     * @param string $value
+     * @return bool
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     private function isValidCorrelationId(string $value): bool
     {
         $len = strlen($value);

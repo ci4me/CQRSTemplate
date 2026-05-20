@@ -28,6 +28,12 @@ final class EmailService
      */
     private $transport = null;
 
+    /**
+     * __construct.
+     *
+     * @param LoggerInterface $logger
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function __construct(
         private readonly LoggerInterface $logger
     ) {
@@ -36,10 +42,11 @@ final class EmailService
     /**
      * Render an email template and send the resulting HTML.
      *
-     * @param string $toEmail   Recipient address (single)
-     * @param string $subject   Subject line
-     * @param string $view      View path under app/Views/, e.g. 'emails/auth/password_reset'
+     * @param string               $toEmail Recipient address (single)
+     * @param string               $subject Subject line
+     * @param string               $view    View path under app/Views/, e.g. 'emails/auth/password_reset'
      * @param array<string, mixed> $payload View variables (must include $title for the layout)
+     * @return bool
      */
     public function sendTemplate(
         string $toEmail,
@@ -67,6 +74,11 @@ final class EmailService
      * Convenience wrapper that builds the password-reset URL and renders
      * the corresponding template. Preserved for backward compatibility
      * with existing call sites in the auth flow.
+     *
+     * @param string $toEmail
+     * @param string $resetToken
+     * @param string $baseUrl
+     * @return bool
      */
     public function sendPasswordResetEmail(string $toEmail, string $resetToken, string $baseUrl): bool
     {
@@ -87,13 +99,23 @@ final class EmailService
      * Override the underlying transport. Intended for testing — production
      * callers leave this alone and the service falls back to CI4's Email.
      *
-     * @param (callable(string, string, string): bool)|null $transport
+     * @param callable|null $transport * @param (callable(string, string, string): bool)|null $transport
+     * @return void
      */
     public function setTransport(?callable $transport): void
     {
         $this->transport = $transport;
     }
 
+    /**
+     * sendEmail.
+     *
+     * @param string $to
+     * @param string $subject
+     * @param string $message
+     * @return bool
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     private function sendEmail(string $to, string $subject, string $message): bool
     {
         if ($this->transport !== null) {
@@ -103,6 +125,15 @@ final class EmailService
         return $this->dispatchViaCodeIgniter($to, $subject, $message);
     }
 
+    /**
+     * dispatchViaTransport.
+     *
+     * @param string $to
+     * @param string $subject
+     * @param string $message
+     * @return bool
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     private function dispatchViaTransport(string $to, string $subject, string $message): bool
     {
         $transport = $this->transport;
@@ -121,6 +152,15 @@ final class EmailService
         return $result;
     }
 
+    /**
+     * dispatchViaCodeIgniter.
+     *
+     * @param string $to
+     * @param string $subject
+     * @param string $message
+     * @return bool
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     private function dispatchViaCodeIgniter(string $to, string $subject, string $message): bool
     {
         $email = new Email($this->buildConfig());
@@ -180,6 +220,14 @@ final class EmailService
         ];
     }
 
+    /**
+     * envOr.
+     *
+     * @param string $key
+     * @param string $default
+     * @return string
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     private function envOr(string $key, string $default): string
     {
         $value = getenv($key);

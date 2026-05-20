@@ -14,6 +14,12 @@ namespace App\Infrastructure\Auth\Commands\RefreshToken;
  */
 final readonly class RefreshTokenCommand
 {
+    /**
+     * __construct.
+     *
+     * @param string $refreshToken
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function __construct(
         public string $refreshToken
     ) {

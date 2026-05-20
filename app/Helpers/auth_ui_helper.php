@@ -26,6 +26,8 @@ if (!function_exists('current_actor')) {
     /**
      * Resolve the actor for the current request. Returns Actor::system()
      * when no user is bound (e.g. in CLI or in tests that omit auth).
+     *
+     * @return \App\Domain\Shared\ValueObjects\Actor
      */
     function current_actor(): \App\Domain\Shared\ValueObjects\Actor
     {
@@ -40,6 +42,7 @@ if (!function_exists('can')) {
      * `<?php if (can('cookies.update')): ?> ... <?php endif ?>`
      *
      * @param string $permissionName Dotted permission identifier
+     * @return bool
      */
     function can(string $permissionName): bool
     {
@@ -61,6 +64,9 @@ if (!function_exists('cannot')) {
     /**
      * Inverse of {@see can()} — convenient for "show only when forbidden"
      * messaging.
+     *
+     * @param string $permissionName
+     * @return bool
      */
     function cannot(string $permissionName): bool
     {
@@ -73,6 +79,9 @@ if (!function_exists('any_of')) {
      * True when the actor holds at least one of the supplied permissions.
      *
      * `<?php if (any_of('cookies.update', 'cookies.delete')): ?>` ...
+     *
+     * @param string ...$permissionNames
+     * @return bool
      */
     function any_of(string ...$permissionNames): bool
     {
@@ -88,6 +97,9 @@ if (!function_exists('any_of')) {
 if (!function_exists('all_of')) {
     /**
      * True only when the actor holds every supplied permission.
+     *
+     * @param string ...$permissionNames
+     * @return bool
      */
     function all_of(string ...$permissionNames): bool
     {

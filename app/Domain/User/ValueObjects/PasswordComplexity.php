@@ -37,6 +37,8 @@ final readonly class PasswordComplexity
 
     /**
      * Private constructor to enforce factory method usage.
+     *
+     * @param string $value
      */
     private function __construct(private string $value)
     {
@@ -128,6 +130,8 @@ final readonly class PasswordComplexity
 
     /**
      * Get the validated password value.
+     *
+     * @return string
      */
     public function getValue(): string
     {
@@ -136,6 +140,8 @@ final readonly class PasswordComplexity
 
     /**
      * Get the password length.
+     *
+     * @return int
      */
     public function getLength(): int
     {
@@ -144,6 +150,8 @@ final readonly class PasswordComplexity
 
     /**
      * Check if password meets minimum length requirement.
+     *
+     * @return bool
      */
     public function meetsMinimumLength(): bool
     {
@@ -152,6 +160,8 @@ final readonly class PasswordComplexity
 
     /**
      * Check if password contains uppercase letter.
+     *
+     * @return bool
      */
     public function hasUppercase(): bool
     {
@@ -160,6 +170,8 @@ final readonly class PasswordComplexity
 
     /**
      * Check if password contains lowercase letter.
+     *
+     * @return bool
      */
     public function hasLowercase(): bool
     {
@@ -168,6 +180,8 @@ final readonly class PasswordComplexity
 
     /**
      * Check if password contains digit.
+     *
+     * @return bool
      */
     public function hasDigit(): bool
     {
@@ -176,6 +190,8 @@ final readonly class PasswordComplexity
 
     /**
      * Check if password contains special character.
+     *
+     * @return bool
      */
     public function hasSpecialCharacter(): bool
     {

@@ -14,7 +14,11 @@ namespace App\Infrastructure\Bulk;
 final readonly class ImportSummary
 {
     /**
+     * @param int                                   $processed
+     * @param int                                   $succeeded
+     * @param int                                   $failed
      * @param list<array{line: int, error: string}> $errors
+     * @param bool                                  $dryRun
      */
     public function __construct(
         public int $processed,
@@ -25,6 +29,12 @@ final readonly class ImportSummary
     ) {
     }
 
+    /**
+     * isFullySuccessful.
+     *
+     * @return bool
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function isFullySuccessful(): bool
     {
         return $this->failed === 0;

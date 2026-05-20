@@ -44,6 +44,9 @@ final class IdempotencyMiddleware implements FilterInterface
 
     /**
      * @phpcsSuppress SlevomatCodingStandard.Functions.UnusedParameter.UnusedParameter
+     * @param RequestInterface $request
+     * @param mixed            $arguments
+     * @return RequestInterface|ResponseInterface
      */
     public function before(RequestInterface $request, mixed $arguments = null): RequestInterface|ResponseInterface
     {
@@ -100,6 +103,10 @@ final class IdempotencyMiddleware implements FilterInterface
 
     /**
      * @phpcsSuppress SlevomatCodingStandard.Functions.UnusedParameter.UnusedParameter
+     * @param RequestInterface  $request
+     * @param ResponseInterface $response
+     * @param mixed             $arguments
+     * @return ResponseInterface
      */
     public function after(RequestInterface $request, ResponseInterface $response, mixed $arguments = null): ResponseInterface
     {
@@ -147,11 +154,25 @@ final class IdempotencyMiddleware implements FilterInterface
         return $response;
     }
 
+    /**
+     * shouldProcess.
+     *
+     * @param RequestInterface $request
+     * @return bool
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     private function shouldProcess(RequestInterface $request): bool
     {
         return in_array(strtoupper($request->getMethod()), self::MUTATING_METHODS, true);
     }
 
+    /**
+     * isValidKey.
+     *
+     * @param string $key
+     * @return bool
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     private function isValidKey(string $key): bool
     {
         $len = strlen($key);
@@ -161,11 +182,25 @@ final class IdempotencyMiddleware implements FilterInterface
         return preg_match('/^[A-Za-z0-9._-]+$/', $key) === 1;
     }
 
+    /**
+     * actorId.
+     *
+     * @param RequestInterface $request
+     * @return int
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     private function actorId(RequestInterface $request): int
     {
         return (new ActorResolver())->resolve($request)->id;
     }
 
+    /**
+     * requestHash.
+     *
+     * @param RequestInterface $request
+     * @return string
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     private function requestHash(RequestInterface $request): string
     {
         $parts = [
@@ -177,6 +212,8 @@ final class IdempotencyMiddleware implements FilterInterface
     }
 
     /**
+     * @param string $key
+     * @param int    $actorId
      * @return array{request_hash: string, status_code: int, response_body: string, response_headers: string, expires_at: string}|null
      */
     private function lookup(string $key, int $actorId): ?array
@@ -215,6 +252,7 @@ final class IdempotencyMiddleware implements FilterInterface
 
     /**
      * @param array{status_code: int, response_body: string, response_headers: string} $row
+     * @return ResponseInterface
      */
     private function replay(array $row): ResponseInterface
     {

@@ -16,8 +16,21 @@ use App\Infrastructure\Persistence\Models\UserModel;
 use Config\Logging;
 use Psr\Log\LoggerInterface;
 
+/**
+ * UserRepository.
+ *
+ * @todo Auto-generated docblock — review and replace this description.
+ */
 readonly class UserRepository implements UserRepositoryInterface
 {
+    /**
+     * __construct.
+     *
+     * @param UserModel       $model
+     * @param LoggerInterface $logger
+     * @param Logging         $loggingConfig
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function __construct(
         private UserModel $model,
         private LoggerInterface $logger,
@@ -25,6 +38,14 @@ readonly class UserRepository implements UserRepositoryInterface
     ) {
     }
 
+    /**
+     * save.
+     *
+     * @param User $user
+     * @return int
+     * @throws \RuntimeException
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function save(User $user): int
     {
         $startTime = microtime(true);
@@ -56,6 +77,13 @@ readonly class UserRepository implements UserRepositoryInterface
         }
     }
 
+    /**
+     * findById.
+     *
+     * @param int $id
+     * @return User|null
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function findById(int $id): ?User
     {
         $startTime = microtime(true);
@@ -84,6 +112,13 @@ readonly class UserRepository implements UserRepositoryInterface
         }
     }
 
+    /**
+     * findByEmail.
+     *
+     * @param Email $email
+     * @return User|null
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function findByEmail(Email $email): ?User
     {
         $startTime = microtime(true);
@@ -112,6 +147,13 @@ readonly class UserRepository implements UserRepositoryInterface
         }
     }
 
+    /**
+     * update.
+     *
+     * @param User $user
+     * @return bool
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function update(User $user): bool
     {
         $startTime = microtime(true);
@@ -137,6 +179,13 @@ readonly class UserRepository implements UserRepositoryInterface
         }
     }
 
+    /**
+     * delete.
+     *
+     * @param int $id
+     * @return bool
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function delete(int $id): bool
     {
         try {
@@ -156,12 +205,12 @@ readonly class UserRepository implements UserRepositoryInterface
     /**
      * Find users with pagination and optional filters.
      *
-     * @param int $page Page number (1-based)
-     * @param int $perPage Items per page
-     * @param bool $includeInactive Include soft-deleted users
-     * @param string $searchTerm Search in name and email
-     * @param string|null $role Filter by role
-     * @param string|null $status Filter by status
+     * @param int         $page            Page number (1-based)
+     * @param int         $perPage         Items per page
+     * @param bool        $includeInactive Include soft-deleted users
+     * @param string      $searchTerm      Search in name and email
+     * @param string|null $role            Filter by role
+     * @param string|null $status          Filter by status
      * @return array{data: array<User>, total: int, page: int, perPage: int, totalPages: int}
      */
     public function findPaginated(
@@ -304,6 +353,7 @@ readonly class UserRepository implements UserRepositoryInterface
 
     /**
      * @param array<int|string, mixed> $row Raw database row from CI4 Model::find / first / getResultArray
+     * @return User
      */
     private function toDomainEntity(array $row): User
     {
@@ -326,6 +376,7 @@ readonly class UserRepository implements UserRepositoryInterface
     }
 
     /**
+     * @param User $user
      * @return array<string, scalar|null>
      */
     private function toArray(User $user): array
@@ -341,6 +392,15 @@ readonly class UserRepository implements UserRepositoryInterface
         ];
     }
 
+    /**
+     * logQuery.
+     *
+     * @param string $method
+     * @param float  $durationMs
+     * @param bool   $found
+     * @return void
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     private function logQuery(string $method, float $durationMs, bool $found): void
     {
         $isSlowQuery = $durationMs > $this->loggingConfig->slowQueryThresholdMs;

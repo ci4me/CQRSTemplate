@@ -19,6 +19,12 @@ namespace App\Infrastructure\Projections;
  */
 interface ProjectionInterface
 {
+    /**
+     * name.
+     *
+     * @return string
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function name(): string;
 
     /**
@@ -31,12 +37,17 @@ interface ProjectionInterface
     /**
      * Apply an event to the projection. Implementations must be idempotent
      * — the same event may be replayed during a rebuild.
+     *
+     * @param object $event
+     * @return void
      */
     public function apply(object $event): void;
 
     /**
      * Drop every row in this projection's table. Called by
      * `projections:rebuild` before replaying.
+     *
+     * @return void
      */
     public function truncate(): void;
 
@@ -44,7 +55,8 @@ interface ProjectionInterface
      * Rebuild the projection from the current state of the source
      * aggregates (when event history isn't available).
      *
-     * @param callable(self): void $progressCallback optional progress hook
+     * @param callable|null $progressCallback * @param callable(self): void $progressCallback optional progress hook
+     * @return void
      */
     public function rebuildFromSource(?callable $progressCallback = null): void;
 }

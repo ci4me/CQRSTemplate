@@ -58,6 +58,9 @@ final class ApiResponse
     /**
      * Success response with optional HTTP status (defaults to 200).
      *
+     * @param mixed $data
+     * @param int   $status
+     * @return ResponseInterface
      */
     public static function ok(mixed $data = null, int $status = 200): ResponseInterface
     {
@@ -72,6 +75,9 @@ final class ApiResponse
     /**
      * Created response (201) for a newly persisted resource.
      *
+     * @param mixed       $data
+     * @param string|null $location
+     * @return ResponseInterface
      */
     public static function created(mixed $data, ?string $location = null): ResponseInterface
     {
@@ -86,6 +92,11 @@ final class ApiResponse
      * Paginated success.
      *
      * @param list<mixed> $data
+     * @param int         $page
+     * @param int         $perPage
+     * @param int         $total
+     * @param int         $lastPage
+     * @return ResponseInterface
      */
     public static function paginated(
         array $data,
@@ -110,6 +121,8 @@ final class ApiResponse
 
     /**
      * Empty 204 No Content.
+     *
+     * @return ResponseInterface
      */
     public static function noContent(): ResponseInterface
     {
@@ -119,7 +132,12 @@ final class ApiResponse
     /**
      * RFC 7807 problem+json error.
      *
-     * @param array<string, mixed> $errors  Optional per-field validation errors
+     * @param int                  $status
+     * @param string               $title
+     * @param string               $detail
+     * @param array<string, mixed> $errors Optional per-field validation errors
+     * @param string               $type
+     * @return ResponseInterface
      */
     public static function problem(
         int $status,
@@ -155,6 +173,8 @@ final class ApiResponse
      * 422 validation error helper.
      *
      * @param array<string, mixed> $errors
+     * @param string               $detail
+     * @return ResponseInterface
      */
     public static function validationFailed(array $errors, string $detail = ''): ResponseInterface
     {
@@ -163,6 +183,9 @@ final class ApiResponse
 
     /**
      * 404 not-found helper.
+     *
+     * @param string $detail
+     * @return ResponseInterface
      */
     public static function notFound(string $detail = ''): ResponseInterface
     {
@@ -171,6 +194,9 @@ final class ApiResponse
 
     /**
      * 409 conflict helper (e.g. optimistic-locking, duplicate).
+     *
+     * @param string $detail
+     * @return ResponseInterface
      */
     public static function conflict(string $detail = ''): ResponseInterface
     {
@@ -179,6 +205,8 @@ final class ApiResponse
 
     /**
      * @param array<string, mixed> $body
+     * @param int                  $status
+     * @return ResponseInterface
      */
     private static function respond(array $body, int $status): ResponseInterface
     {

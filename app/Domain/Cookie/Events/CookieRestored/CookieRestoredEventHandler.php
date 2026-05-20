@@ -13,11 +13,24 @@ use Psr\Log\LoggerInterface;
  */
 final readonly class CookieRestoredEventHandler
 {
+    /**
+     * __construct.
+     *
+     * @param LoggerInterface $logger
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function __construct(
         private LoggerInterface $logger,
     ) {
     }
 
+    /**
+     * __invoke.
+     *
+     * @param CookieRestoredEvent $event
+     * @return void
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function __invoke(CookieRestoredEvent $event): void
     {
         $this->logger->info('Cookie restored', [

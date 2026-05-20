@@ -11,6 +11,14 @@ use App\Domain\Shared\Events\DomainEventInterface;
  */
 final readonly class CookieRestoredEvent implements DomainEventInterface
 {
+    /**
+     * __construct.
+     *
+     * @param int    $cookieId
+     * @param int    $restoredBy
+     * @param string $restoredAt
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function __construct(
         public int $cookieId,
         public int $restoredBy,

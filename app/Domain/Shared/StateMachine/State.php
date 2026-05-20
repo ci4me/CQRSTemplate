@@ -18,5 +18,11 @@ namespace App\Domain\Shared\StateMachine;
  */
 interface State
 {
+    /**
+     * stateName.
+     *
+     * @return string
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function stateName(): string;
 }

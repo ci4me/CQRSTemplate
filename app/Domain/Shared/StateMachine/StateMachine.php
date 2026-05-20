@@ -41,7 +41,7 @@ namespace App\Domain\Shared\StateMachine;
 final readonly class StateMachine
 {
     /**
-     * @param string $entityName  Used in error messages.
+     * @param string                      $entityName  Used in error messages.
      * @param array<string, list<string>> $transitions
      *        Map of current-state -> list of states reachable from it.
      *        Terminal states map to an empty list.
@@ -54,6 +54,11 @@ final readonly class StateMachine
 
     /**
      * Throws {@see InvalidTransition} if the move is not in the table.
+     *
+     * @param State|string $from
+     * @param State|string $to
+     * @return void
+     * @throws InvalidTransition
      */
     public function transition(State|string $from, State|string $to): void
     {
@@ -70,6 +75,14 @@ final readonly class StateMachine
         }
     }
 
+    /**
+     * canTransition.
+     *
+     * @param State|string $from
+     * @param State|string $to
+     * @return bool
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function canTransition(State|string $from, State|string $to): bool
     {
         try {
@@ -81,6 +94,7 @@ final readonly class StateMachine
     }
 
     /**
+     * @param State|string $from
      * @return list<string>
      */
     public function allowedFrom(State|string $from): array
@@ -88,11 +102,25 @@ final readonly class StateMachine
         return $this->transitions[$this->nameOf($from)] ?? [];
     }
 
+    /**
+     * isTerminal.
+     *
+     * @param State|string $state
+     * @return bool
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function isTerminal(State|string $state): bool
     {
         return $this->allowedFrom($state) === [];
     }
 
+    /**
+     * nameOf.
+     *
+     * @param State|string $value
+     * @return string
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     private function nameOf(State|string $value): string
     {
         if (is_string($value)) {

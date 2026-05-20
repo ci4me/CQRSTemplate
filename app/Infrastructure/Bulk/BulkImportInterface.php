@@ -22,6 +22,8 @@ interface BulkImportInterface
     /**
      * Stable identifier for the import — used in logs and the summary
      * (e.g. "cookies.import").
+     *
+     * @return string
      */
     public function name(): string;
 
@@ -38,6 +40,7 @@ interface BulkImportInterface
      * Throw to skip the row with an error captured in the summary.
      *
      * @param array<string, string> $row
+     * @return object
      */
     public function mapRow(array $row): object;
 
@@ -45,6 +48,9 @@ interface BulkImportInterface
      * Execute the command produced by mapRow(). The default implementation
      * dispatches through the CommandBus, but importers can override to
      * call services directly (e.g. for bulk inserts).
+     *
+     * @param object $command
+     * @return void
      */
     public function process(object $command): void;
 }

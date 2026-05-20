@@ -15,6 +15,15 @@ namespace App\Domain\User\Commands\CreateUser;
  */
 final readonly class CreateUserCommand
 {
+    /**
+     * __construct.
+     *
+     * @param string $name
+     * @param string $email
+     * @param string $password
+     * @param string $role
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function __construct(
         public string $name,
         public string $email,

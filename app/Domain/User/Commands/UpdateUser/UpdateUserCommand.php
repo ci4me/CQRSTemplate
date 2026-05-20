@@ -23,6 +23,17 @@ use App\Domain\Shared\ValueObjects\Actor;
  */
 final readonly class UpdateUserCommand
 {
+    /**
+     * __construct.
+     *
+     * @param int    $userId
+     * @param string $name
+     * @param string $email
+     * @param string $role
+     * @param string $status
+     * @param Actor  $updatedBy
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function __construct(
         public int $userId,
         public string $name,

@@ -72,6 +72,8 @@ final class UserController extends ResourceController
      *     "totalPages": 5
      *   }
      * }
+     *
+     * @return ResponseInterface
      */
     public function index(): ResponseInterface
     {
@@ -122,6 +124,7 @@ final class UserController extends ResourceController
     }
 
     /**
+     * @param UserDTO $user
      * @return array{id: ?int, name: string, email: string, role: string, status: string, failed_login_attempts: int, locked_until: ?string, created_at: string, updated_at: ?string}
      */
     private static function userToArray(UserDTO $user): array
@@ -145,6 +148,7 @@ final class UserController extends ResourceController
      * GET /api/v1/users/{id}
      *
      * @param mixed $id User ID
+     * @return ResponseInterface
      *
      * Response: 200 OK
      * {
@@ -203,6 +207,8 @@ final class UserController extends ResourceController
      *   "message": "Validation failed",
      *   "errors": {...}
      * }
+     *
+     * @return ResponseInterface
      */
     public function create(): ResponseInterface
     {
@@ -238,6 +244,7 @@ final class UserController extends ResourceController
      * PUT /api/v1/users/{id}
      *
      * @param mixed $id User ID
+     * @return ResponseInterface
      *
      * Request Body:
      * {
@@ -296,6 +303,7 @@ final class UserController extends ResourceController
      * DELETE /api/v1/users/{id}
      *
      * @param mixed $id User ID
+     * @return ResponseInterface
      *
      * Response: 200 OK
      * {
@@ -334,6 +342,7 @@ final class UserController extends ResourceController
      * POST /api/v1/users/{id}/reset-password
      *
      * @param int $id User ID
+     * @return ResponseInterface
      *
      * Request Body:
      * {

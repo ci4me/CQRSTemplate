@@ -56,6 +56,13 @@ final class RedactingProcessor
         'cvv',
     ];
 
+    /**
+     * isSensitive.
+     *
+     * @param int|string $key
+     * @return bool
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public static function isSensitive(int|string $key): bool
     {
         $needle = strtolower((string) $key);
@@ -67,6 +74,13 @@ final class RedactingProcessor
         return false;
     }
 
+    /**
+     * __invoke.
+     *
+     * @param LogRecord $record
+     * @return LogRecord
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function __invoke(LogRecord $record): LogRecord
     {
         return $record->with(

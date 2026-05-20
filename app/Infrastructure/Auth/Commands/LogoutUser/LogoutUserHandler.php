@@ -8,8 +8,21 @@ use App\Domain\User\Ports\TokenBlacklistInterface;
 use App\Infrastructure\Auth\Services\SessionManagementService;
 use Psr\Log\LoggerInterface;
 
+/**
+ * LogoutUserHandler.
+ *
+ * @todo Auto-generated docblock — review and replace this description.
+ */
 final readonly class LogoutUserHandler
 {
+    /**
+     * __construct.
+     *
+     * @param TokenBlacklistInterface  $blacklistService
+     * @param SessionManagementService $sessionManager
+     * @param LoggerInterface          $logger
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function __construct(
         private TokenBlacklistInterface $blacklistService,
         private SessionManagementService $sessionManager,
@@ -17,6 +30,13 @@ final readonly class LogoutUserHandler
     ) {
     }
 
+    /**
+     * handle.
+     *
+     * @param LogoutUserCommand $command
+     * @return void
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function handle(LogoutUserCommand $command): void
     {
         // SECURITY: Blacklist access token (prevent immediate reuse)

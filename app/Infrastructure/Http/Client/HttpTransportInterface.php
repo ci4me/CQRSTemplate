@@ -17,7 +17,12 @@ namespace App\Infrastructure\Http\Client;
 interface HttpTransportInterface
 {
     /**
+     * @param string                $method
+     * @param string                $url
      * @param array<string, string> $headers
+     * @param string                $body
+     * @param float                 $timeoutSeconds
+     * @return HttpResponse
      */
     public function send(string $method, string $url, array $headers, string $body, float $timeoutSeconds): HttpResponse;
 }

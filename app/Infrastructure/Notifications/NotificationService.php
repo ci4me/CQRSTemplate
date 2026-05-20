@@ -42,7 +42,16 @@ final class NotificationService
     }
 
     /**
+     * @param int                  $userId
+     * @param string               $type
+     * @param string               $title
+     * @param string|null          $body
      * @param array<string, mixed> $data
+     * @param string|null          $url
+     * @param NotificationLevel    $level
+     * @param int|null             $tenantId
+     * @return int
+     * @throws \InvalidArgumentException
      */
     public function notify(
         int $userId,
@@ -81,6 +90,9 @@ final class NotificationService
     }
 
     /**
+     * @param int  $userId
+     * @param bool $unreadOnly
+     * @param int  $limit
      * @return list<Notification>
      */
     public function listFor(int $userId, bool $unreadOnly = false, int $limit = 50): array
@@ -106,6 +118,13 @@ final class NotificationService
         return array_map(fn(array $row): Notification => $this->hydrate($row), $rows);
     }
 
+    /**
+     * countUnread.
+     *
+     * @param int $userId
+     * @return int
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function countUnread(int $userId): int
     {
         return (int) $this->connection()
@@ -117,6 +136,10 @@ final class NotificationService
 
     /**
      * Returns true if the row was found AND owned by the supplied user.
+     *
+     * @param int $notificationId
+     * @param int $userId
+     * @return bool
      */
     public function markRead(int $notificationId, int $userId): bool
     {
@@ -130,6 +153,13 @@ final class NotificationService
         return $this->connection()->affectedRows() === 1;
     }
 
+    /**
+     * markAllRead.
+     *
+     * @param int $userId
+     * @return int
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function markAllRead(int $userId): int
     {
         $this->connection()
@@ -143,6 +173,7 @@ final class NotificationService
 
     /**
      * @param array<string, mixed> $row
+     * @return Notification
      */
     private function hydrate(array $row): Notification
     {

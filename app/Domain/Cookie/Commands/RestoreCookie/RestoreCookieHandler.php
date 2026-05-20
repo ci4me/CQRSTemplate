@@ -11,8 +11,21 @@ use App\Domain\Shared\Exceptions\DomainException;
 use App\Infrastructure\Bus\EventDispatcherInterface;
 use Psr\Log\LoggerInterface;
 
+/**
+ * RestoreCookieHandler.
+ *
+ * @todo Auto-generated docblock — review and replace this description.
+ */
 final readonly class RestoreCookieHandler
 {
+    /**
+     * __construct.
+     *
+     * @param CookieRepositoryInterface $repository
+     * @param EventDispatcherInterface  $eventDispatcher
+     * @param LoggerInterface           $logger
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function __construct(
         private CookieRepositoryInterface $repository,
         private EventDispatcherInterface $eventDispatcher,
@@ -20,6 +33,15 @@ final readonly class RestoreCookieHandler
     ) {
     }
 
+    /**
+     * handle.
+     *
+     * @param RestoreCookieCommand $command
+     * @return void
+     * @throws DomainException
+     * @throws \RuntimeException
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function handle(RestoreCookieCommand $command): void
     {
         $cookie = $this->repository->findByIdWithTrashed($command->cookieId);

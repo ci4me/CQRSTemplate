@@ -36,9 +36,9 @@ final readonly class UpdateCookieHandler
     /**
      * Create a new UpdateCookieHandler.
      *
-     * @param CookieRepositoryInterface $repository For persistence operations
-     * @param EventDispatcherInterface $eventDispatcher For dispatching domain events
-     * @param LoggerInterface $logger For logging command execution (channel: cookie.command.update)
+     * @param CookieRepositoryInterface $repository      For persistence operations
+     * @param EventDispatcherInterface  $eventDispatcher For dispatching domain events
+     * @param LoggerInterface           $logger          For logging command execution (channel: cookie.command.update)
      */
     public function __construct(
         private CookieRepositoryInterface $repository,
@@ -51,6 +51,7 @@ final readonly class UpdateCookieHandler
      * Handle the UpdateCookieCommand.
      *
      * @param UpdateCookieCommand $command The update command
+     * @return void
      * @throws DomainException If cookie not found or business rules violated
      */
     public function handle(UpdateCookieCommand $command): void
@@ -148,6 +149,13 @@ final readonly class UpdateCookieHandler
         }
     }
 
+    /**
+     * determineErrorCode.
+     *
+     * @param \Throwable $e
+     * @return int
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     private function determineErrorCode(\Throwable $e): int
     {
         if ($e instanceof ValidationException && $e->getErrorCode() !== 0) {

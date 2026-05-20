@@ -25,8 +25,8 @@ use App\Domain\Shared\Events\DomainEventInterface;
 final readonly class UserDeletedEvent implements DomainEventInterface
 {
     /**
-     * @param int $userId User ID that was deleted
-     * @param int $deletedBy Admin user ID who deleted
+     * @param int    $userId    User ID that was deleted
+     * @param int    $deletedBy Admin user ID who deleted
      * @param string $deletedAt ISO 8601 timestamp of deletion
      */
     public function __construct(

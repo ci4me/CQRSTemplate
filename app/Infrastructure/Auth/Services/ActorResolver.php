@@ -31,6 +31,13 @@ use CodeIgniter\Session\Session;
  */
 final class ActorResolver
 {
+    /**
+     * resolve.
+     *
+     * @param RequestInterface|null $request
+     * @return Actor
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function resolve(?RequestInterface $request = null): Actor
     {
         $userId = $this->extractUserId($request);
@@ -42,11 +49,25 @@ final class ActorResolver
         return Actor::system();
     }
 
+    /**
+     * resolveOrSystem.
+     *
+     * @param string $systemLabel
+     * @return Actor
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function resolveOrSystem(string $systemLabel = 'system'): Actor
     {
         return Actor::system($systemLabel);
     }
 
+    /**
+     * extractUserId.
+     *
+     * @param RequestInterface|null $request
+     * @return int|null
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     private function extractUserId(?RequestInterface $request): ?int
     {
         $fromRequest = $this->extractFromRequest($request);
@@ -58,6 +79,13 @@ final class ActorResolver
         return $this->extractFromSession();
     }
 
+    /**
+     * extractFromRequest.
+     *
+     * @param RequestInterface|null $request
+     * @return int|null
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     private function extractFromRequest(?RequestInterface $request): ?int
     {
         if ($request === null) {
@@ -75,6 +103,12 @@ final class ActorResolver
         return null;
     }
 
+    /**
+     * extractFromSession.
+     *
+     * @return int|null
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     private function extractFromSession(): ?int
     {
         if (!function_exists('session')) {

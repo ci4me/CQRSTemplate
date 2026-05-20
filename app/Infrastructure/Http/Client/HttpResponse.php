@@ -14,7 +14,9 @@ namespace App\Infrastructure\Http\Client;
 final readonly class HttpResponse
 {
     /**
-     * @param array<string, string> $headers Lowercased header name -> first value.
+     * @param int                   $statusCode
+     * @param string                $body
+     * @param array<string, string> $headers    Lowercased header name -> first value.
      */
     public function __construct(
         public int $statusCode,
@@ -23,21 +25,46 @@ final readonly class HttpResponse
     ) {
     }
 
+    /**
+     * isSuccessful.
+     *
+     * @return bool
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function isSuccessful(): bool
     {
         return $this->statusCode >= 200 && $this->statusCode < 300;
     }
 
+    /**
+     * isClientError.
+     *
+     * @return bool
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function isClientError(): bool
     {
         return $this->statusCode >= 400 && $this->statusCode < 500;
     }
 
+    /**
+     * isServerError.
+     *
+     * @return bool
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function isServerError(): bool
     {
         return $this->statusCode >= 500 && $this->statusCode < 600;
     }
 
+    /**
+     * header.
+     *
+     * @param string $name
+     * @return string|null
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     public function header(string $name): ?string
     {
         return $this->headers[strtolower($name)] ?? null;

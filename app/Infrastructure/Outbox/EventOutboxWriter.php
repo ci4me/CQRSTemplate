@@ -33,10 +33,11 @@ final class EventOutboxWriter
     /**
      * Append a single event row.
      *
-     * @param object $event           The domain event being recorded.
-     * @param string $aggregateType   FQCN of the aggregate (e.g. Cookie::class).
-     * @param int|string|null $aggregateId Identifier of the aggregate, if known.
+     * @param object                  $event         The domain event being recorded.
+     * @param string                  $aggregateType FQCN of the aggregate (e.g. Cookie::class).
+     * @param int|string|null         $aggregateId   Identifier of the aggregate, if known.
      * @param \DateTimeImmutable|null $availableAt
+     * @return void
      *                                If provided, the relay won't pick this row
      *                                up until that wall-clock time. Defaults to
      *                                "now" — typical for events emitted by a
@@ -72,7 +73,10 @@ final class EventOutboxWriter
      * Bulk-append a set of events for the same aggregate (typical flow:
      * `$writer->appendAll($cookie->pullEvents(), Cookie::class, $cookie->getId())`).
      *
-     * @param list<object> $events
+     * @param list<object>    $events
+     * @param string          $aggregateType
+     * @param int|string|null $aggregateId
+     * @return void
      */
     public function appendAll(array $events, string $aggregateType, int|string|null $aggregateId): void
     {
@@ -81,6 +85,13 @@ final class EventOutboxWriter
         }
     }
 
+    /**
+     * serialiseEvent.
+     *
+     * @param object $event
+     * @return string
+     * @todo Auto-generated docblock — review and replace this description.
+     */
     private function serialiseEvent(object $event): string
     {
         if (method_exists($event, 'toArray')) {
@@ -95,6 +106,7 @@ final class EventOutboxWriter
 
     /**
      * @param array<int|string, mixed> $data
+     * @return string
      */
     private function jsonEncode(array $data): string
     {
