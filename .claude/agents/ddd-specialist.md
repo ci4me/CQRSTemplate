@@ -17,7 +17,6 @@ tools: Read, Edit
 - Use `declare(strict_types=1)`
 - Full type hints
 - DocBlocks for all public APIs
-- Use DomainLogger for validation failures
 
 **Real Example from Cookie Domain:**
 
@@ -28,7 +27,6 @@ namespace App\Domain\Cookie\ValueObjects;
 
 use App\Domain\Cookie\ErrorCodes;
 use App\Domain\Shared\Exceptions\ValidationException;
-use App\Infrastructure\Logging\DomainLogger;
 
 /**
  * Value Object representing a Cookie name.
@@ -50,35 +48,16 @@ final readonly class CookieName
         $normalized = trim($name);
 
         if ($normalized === '') {
-            DomainLogger::logValidation('Cookie', 'CookieName', [
-                'attempted_value' => $name,
-                'validation_rule' => 'required',
-                'error_code' => ErrorCodes::COOKIE_VALIDATION_NAME,
-            ]);
             throw ValidationException::required('name', ErrorCodes::COOKIE_VALIDATION_NAME);
         }
 
         $length = mb_strlen($normalized);
 
         if ($length < self::MIN_LENGTH) {
-            DomainLogger::logValidation('Cookie', 'CookieName', [
-                'attempted_value' => $name,
-                'validation_rule' => 'min_length',
-                'min_length' => self::MIN_LENGTH,
-                'actual_length' => $length,
-                'error_code' => ErrorCodes::COOKIE_VALIDATION_NAME,
-            ]);
             throw ValidationException::fieldTooShort('name', self::MIN_LENGTH, $length, ErrorCodes::COOKIE_VALIDATION_NAME);
         }
 
         if ($length > self::MAX_LENGTH) {
-            DomainLogger::logValidation('Cookie', 'CookieName', [
-                'attempted_value' => $name,
-                'validation_rule' => 'max_length',
-                'max_length' => self::MAX_LENGTH,
-                'actual_length' => $length,
-                'error_code' => ErrorCodes::COOKIE_VALIDATION_NAME,
-            ]);
             throw ValidationException::fieldTooLong('name', self::MAX_LENGTH, $length, ErrorCodes::COOKIE_VALIDATION_NAME);
         }
 
@@ -118,7 +97,6 @@ final readonly class CookieName
 - Protect invariants (business rules)
 - Command methods, not setters
 - Use value objects for properties
-- Use DomainLogger for business rule violations
 
 **Real Example from Cookie Domain:**
 
@@ -131,7 +109,6 @@ use App\Domain\Cookie\ErrorCodes;
 use App\Domain\Cookie\ValueObjects\CookieName;
 use App\Domain\Cookie\ValueObjects\CookiePrice;
 use App\Domain\Shared\Exceptions\DomainException;
-use App\Infrastructure\Logging\DomainLogger;
 
 /**
  * Cookie Domain Entity (Aggregate Root).
@@ -210,13 +187,6 @@ final class Cookie
         $newStock = $this->stock - $quantity;
 
         if ($newStock < 0) {
-            DomainLogger::logBusinessRule('Cookie', 'Cookie', [
-                'business_rule' => 'stock_cannot_be_negative',
-                'current_stock' => $this->stock,
-                'attempted_decrease' => $quantity,
-                'would_result_in' => $newStock,
-                'error_code' => ErrorCodes::COOKIE_BUSINESS_RULE_STOCK_NEGATIVE,
-            ]);
             throw DomainException::businessRuleViolation(
                 'Stock cannot be negative',
                 sprintf('Attempted to decrease stock by %d when only %d available', $quantity, $this->stock),
@@ -230,11 +200,6 @@ final class Cookie
     private function setStock(int $stock): void
     {
         if ($stock < 0) {
-            DomainLogger::logValidation('Cookie', 'Cookie', [
-                'attempted_value' => $stock,
-                'validation_rule' => 'stock_cannot_be_negative',
-                'error_code' => ErrorCodes::COOKIE_VALIDATION_STOCK,
-            ]);
             throw ValidationException::tooSmall('stock', 0, $stock, ErrorCodes::COOKIE_VALIDATION_STOCK);
         }
 

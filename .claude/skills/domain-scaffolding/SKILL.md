@@ -22,8 +22,9 @@ Before starting, confirm with user:
 ## Step 1: Create Directory Structure
 
 ```bash
-mkdir -p app/Domain/{Domain}/{Commands,Queries,Events,Entities,ValueObjects}
+mkdir -p app/Domain/{Domain}/{Commands,Queries,Events,Entities,ValueObjects,DTOs,Ports}
 mkdir -p app/Models/{Domain}
+mkdir -p app/Infrastructure/Persistence/Repositories
 mkdir -p app/Controllers/Domain/{Domain}
 mkdir -p app/Views/{entities}
 mkdir -p tests/Unit/Domain/{Domain}/{ValueObjects,Entities,Commands,Queries,Events}
@@ -142,7 +143,7 @@ Critical:
 - Set $table, $allowedFields, timestamps, soft deletes
 
 **Repository:**
-- Reference: `app/Models/Cookie/CookieRepository.php`
+- Reference: `app/Infrastructure/Persistence/Repositories/CookieRepository.php`
 - save(), findById(), delete() methods
 - toDomainEntity() private method with array shape annotation
 

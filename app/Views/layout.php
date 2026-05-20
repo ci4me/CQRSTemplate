@@ -13,7 +13,9 @@
             <ul class="navbar-nav me-auto">
                 <li class="nav-item"><a class="nav-link" href="/dashboard">Dashboard</a></li>
                 <li class="nav-item"><a class="nav-link" href="/cookies">Cookies</a></li>
+                <?php if (session()->get('role') === 'admin'): ?>
                 <li class="nav-item"><a class="nav-link" href="/admin/users">Users</a></li>
+                <?php endif; ?>
             </ul>
             <form action="/auth/logout" method="POST" class="d-inline">
                 <?= csrf_field() ?>

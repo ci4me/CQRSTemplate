@@ -142,31 +142,20 @@ try {
 
 ### Value Objects & Entities
 
-**✅ LOG BEFORE THROWING EXCEPTIONS:**
-- Validation failures (value objects)
-- Business rule violations (entities)
+**✅ THROW EXCEPTIONS FROM DOMAIN OBJECTS:**
+- Validation failures (value objects) — throw ValidationException
+- Business rule violations (entities) — throw DomainException
+- Logging is handled by the command handler's catch block, not inside domain objects
 
-**Use static helper to avoid constructor injection:**
+**Domain objects stay free of infrastructure dependencies:**
 ```php
-// Value Object
+// Value Object — throw exception (handler logs it)
 if ($normalized === '') {
-    DomainLogger::logValidation('Cookie', 'CookieName', [
-        'attempted_value' => $name,
-        'validation_rule' => 'required',
-        'error_code' => ErrorCodes::COOKIE_VALIDATION_NAME,
-    ]);
     throw ValidationException::required('name', ErrorCodes::COOKIE_VALIDATION_NAME);
 }
 
-// Entity
+// Entity — throw exception (handler logs it)
 if ($newStock < 0) {
-    DomainLogger::logBusinessRule('Cookie', 'Cookie', [
-        'business_rule' => 'stock_cannot_be_negative',
-        'current_stock' => $this->stock,
-        'attempted_decrease' => $quantity,
-        'would_result_in' => $newStock,
-        'error_code' => ErrorCodes::COOKIE_BUSINESS_RULE_STOCK_NEGATIVE,
-    ]);
     throw DomainException::businessRuleViolation(
         'Stock cannot be negative',
         sprintf('Attempted to decrease stock by %d when only %d available', $quantity, $this->stock),
@@ -476,7 +465,7 @@ $duration = round((microtime(true) - $startTime) * 1000, 2); // ms with 2 decima
 
 ### Lazy Initialization
 
-**DomainLogger uses lazy loading to avoid overhead:**
+**LoggerFactory uses lazy loading to avoid overhead:**
 ```php
 private static function getLogger(): LoggerInterface
 {
@@ -719,7 +708,7 @@ The **Cookie domain** is the reference implementation for all logging patterns. 
 - `app/Domain/Cookie/Commands/*/Create*Handler.php`
 - `app/Domain/Cookie/Queries/*/Get*Handler.php`
 - `app/Domain/Cookie/Events/*/*EventHandler.php`
-- `app/Models/Cookie/CookieRepository.php`
+- `app/Infrastructure/Persistence/Repositories/CookieRepository.php`
 - `app/Domain/Cookie/ValueObjects/CookieName.php`
 - `app/Domain/Cookie/Entities/Cookie.php`
 - `app/Domain/Cookie/ErrorCodes.php`

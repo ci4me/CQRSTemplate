@@ -121,8 +121,8 @@ JWT_SECRET_KEY='<new-secret>'
 **Current Status:**
 ```php
 // app/Config/Security.php
-public string $csrfProtection = 'cookie';
-public bool $tokenRandomize = false;  // ⚠️ Should be true
+public string $csrfProtection = 'session';
+public bool $tokenRandomize = true;
 public bool $regenerate = true;       // ✅ Good
 ```
 

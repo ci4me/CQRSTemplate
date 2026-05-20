@@ -47,7 +47,7 @@ When adding a new domain to this CQRS template, you create **45 files total** (a
 
 ### Persistence (2 files)
 23. `app/Models/{Domain}/{Entity}Model.php`
-24. `app/Models/{Domain}/{Entity}Repository.php`
+24. `app/Infrastructure/Persistence/Repositories/{Entity}Repository.php`
 
 ---
 

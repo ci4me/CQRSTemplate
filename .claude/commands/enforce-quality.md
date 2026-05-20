@@ -72,7 +72,7 @@ Quality Metrics:
    - Error: preg_replace() might return null
    - Fix: Add null check
 
-   app/Models/Cookie/CookieRepository.php:78
+   app/Infrastructure/Persistence/Repositories/CookieRepository.php:78
    - Error: Missing array shape annotation
    - Fix: Add @param array{id: int, ...} $data
 
