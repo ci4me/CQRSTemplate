@@ -1,6 +1,6 @@
 # /add-domain
 
-Creates a complete new domain with all 45 files using the domain-scaffolding skill.
+Creates a complete new domain with all standard files and touchpoints using the domain-scaffolding skill.
 
 ## Usage
 
@@ -25,7 +25,7 @@ Creates a complete new domain with all 45 files using the domain-scaffolding ski
 1. Validate domain name (PascalCase, singular, not existing)
 2. Invoke `domain-scaffolding` skill with domain name
 3. Skill will:
-   - Create all 45 files
+   - Create all standard files and touchpoints
    - Use specialists for validation (ddd, cqrs, php, test, phpstan, slevomat)
    - Run quality checks
 4. Report completion with file count and metrics

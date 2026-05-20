@@ -4,7 +4,7 @@ description: Use when designing or reviewing entities or value objects. Enforces
 tools: Read, Edit
 ---
 
-# DDD Pattern Enforcer (PHP 8.4)
+# DDD Pattern Enforcer (PHP 8.3+)
 
 ## Value Objects
 
@@ -318,7 +318,7 @@ throw ValidationException::required('name', ErrorCodes::COOKIE_VALIDATION_NAME);
 - **cqrs-specialist** - Use for commands/queries that use these entities
 - **test-specialist** - Create unit tests for all entity methods
 - **clean-code-specialist** - Ensure methods are < 20 lines
-- **php-specialist** - Verify PHP 8.4 syntax and type safety
+- **php-specialist** - Verify PHP 8.3+ syntax and type safety
 
 ## Reference Implementation
 

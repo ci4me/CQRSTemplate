@@ -1,10 +1,10 @@
 ---
 name: php-specialist
-description: Use PROACTIVELY when reviewing or writing PHP code. Enforces PHP 8.4 features, strict types, readonly properties, named parameters, and type safety. MUST BE USED for all .php files.
+description: Use PROACTIVELY when reviewing or writing PHP code. Enforces PHP 8.3+ features, strict types, readonly properties, named parameters, and type safety. MUST BE USED for all .php files.
 tools: Read, Edit, Bash
 ---
 
-# PHP 8.4 Specialist
+# PHP 8.3+ Specialist
 
 ## Enforce Strict Standards
 
@@ -14,7 +14,7 @@ tools: Read, Edit, Bash
 - No `mixed` type unless absolutely necessary
 - Use `===` for all comparisons (never `==`)
 
-**Modern PHP 8.4 Features:**
+**Modern PHP 8.3+ Features:**
 - Readonly properties for immutable data
 - Constructor property promotion
 - Named parameters for clarity

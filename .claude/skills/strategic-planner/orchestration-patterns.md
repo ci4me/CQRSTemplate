@@ -73,12 +73,12 @@ ls -1 .claude/skills/*/SKILL.md
 **Task:** "Create value object template"
 
 **Primary Agent:** `php-specialist`
-**Why:** PHP 8.4 syntax, readonly properties, type declarations
+**Why:** PHP 8.3+ syntax, readonly properties, type declarations
 
 **Prompt Pattern:**
 ```
 Create a value object template at {path} following these requirements:
-- PHP 8.4 syntax with declare(strict_types=1)
+- PHP 8.3+ syntax with declare(strict_types=1)
 - Readonly class with private constructor
 - Static factory method (fromString/fromFloat/etc.)
 - getValue() and equals() methods

@@ -53,7 +53,7 @@ Example: `/add-property Cookie flavor string`
 7. Update relevant queries if property affects filtering
 
 **Infrastructure Layer (2 files):**
-8. Update repository: `app/Models/{Domain}/{Entity}Repository.php`
+8. Update repository: `app/Infrastructure/Persistence/Repositories/{Entity}Repository.php`
 9. Update model: `app/Models/{Domain}/{Entity}Model.php`
 
 **Database Layer (1 file):**

@@ -11,7 +11,7 @@
 
 ✅ **Overall Status: ALIGNED** with minor documentation clarifications needed
 
-All Serena-related files are now properly aligned with PHP 8.4 and the Cookie domain reference implementation. The `serena-code-generator` skill has been recently updated to include real Cookie domain examples alongside generic templates.
+All Serena-related files are now properly aligned with PHP 8.3+ and the Cookie domain reference implementation. The `serena-code-generator` skill has been recently updated to include real Cookie domain examples alongside generic templates.
 
 **Key Findings:**
 - ✅ `serena-code-assistant.md` - Fully aligned, production-ready
@@ -33,7 +33,7 @@ All Serena-related files are now properly aligned with PHP 8.4 and the Cookie do
   - `UserController`, `CreateUserCommand`, `CreateUserCommandHandler`
   - Value Objects: `Email`, `UserName`
   - Repositories: `UserRepository`
-- Symbol patterns align with PHP 8.4 features
+- Symbol patterns align with PHP 8.3+ features
 - Properly references PSR-4 namespace structure
 - Examples follow CQRS patterns
 - Integration section correctly mentions:
@@ -243,7 +243,7 @@ Add a note to the Entity template explaining:
    - Covers all Serena requirements
 
 **Examples are Production-Quality:**
-All code examples in this document are syntactically correct, follow PSR-12, use PHP 8.4 features, and align with the project's CQRS/DDD architecture.
+All code examples in this document are syntactically correct, follow PSR-12, use PHP 8.3+ features, and align with the project's CQRS/DDD architecture.
 
 **Verdict:** No changes needed. This is the definitive reference.
 
@@ -368,7 +368,7 @@ final readonly class CreateUserCommandHandler
    - `CreateCookieCommand.php` (Command)
    - `Cookie.php` (Entity)
 3. **Cross-referenced patterns** ✅
-4. **Verified PHP 8.4 syntax** ✅
+4. **Verified PHP 8.3+ syntax** ✅
 5. **Checked PSR-4/PSR-12 compliance** ✅
 
 ### Automated Checks (Recommended)
@@ -390,11 +390,11 @@ composer test     # Should pass all tests
 
 ### Summary
 
-✅ **All Serena-related files are aligned with PHP 8.4 and project patterns**
+✅ **All Serena-related files are aligned with PHP 8.3+ and project patterns**
 
 The `serena-code-generator` skill has been recently updated with:
 - Real Cookie domain examples
-- Proper PHP 8.4 syntax (`final readonly class`)
+- Proper PHP 8.3+ syntax (`final readonly class`)
 - DomainLogger and ErrorCodes integration
 - Validation patterns matching the project
 

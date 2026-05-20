@@ -4,7 +4,7 @@ description: Use PROACTIVELY when adding features or modifying code. Enforces te
 tools: Read, Write, Bash
 ---
 
-# Test Coverage Enforcer (PHP 8.4 + PHPUnit 12.4)
+# Test Coverage Enforcer (PHP 8.3+ + PHPUnit 12.5)
 
 ## Test Pyramid
 
@@ -143,21 +143,21 @@ namespace Tests\Unit\Domain\Cookie\Commands\CreateCookie;
 use App\Domain\Cookie\Commands\CreateCookie\CreateCookieCommand;
 use App\Domain\Cookie\Commands\CreateCookie\CreateCookieHandler;
 use App\Domain\Cookie\Events\CookieCreated\CookieCreatedEvent;
-use App\Infrastructure\Bus\EventDispatcher;
-use App\Models\Cookie\CookieRepository;
+use App\Domain\Cookie\Ports\CookieRepositoryInterface;
+use App\Infrastructure\Bus\EventDispatcherInterface;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\NullLogger;
 
 final class CreateCookieHandlerTest extends TestCase
 {
-    private CookieRepository $repository;
-    private EventDispatcher $eventDispatcher;
+    private CookieRepositoryInterface $repository;
+    private EventDispatcherInterface $eventDispatcher;
     private CreateCookieHandler $handler;
 
     protected function setUp(): void
     {
-        $this->repository = $this->createMock(CookieRepository::class);
-        $this->eventDispatcher = $this->createMock(EventDispatcher::class);
+        $this->repository = $this->createMock(CookieRepositoryInterface::class);
+        $this->eventDispatcher = $this->createMock(EventDispatcherInterface::class);
 
         $this->handler = new CreateCookieHandler(
             $this->repository,
@@ -230,7 +230,8 @@ namespace Tests\Integration\Repositories;
 use App\Domain\Cookie\Entities\Cookie;
 use App\Domain\Cookie\ValueObjects\CookieName;
 use App\Domain\Cookie\ValueObjects\CookiePrice;
-use App\Models\Cookie\CookieRepository;
+use App\Infrastructure\Logging\LoggerFactory;
+use App\Infrastructure\Persistence\Repositories\CookieRepository;
 use CodeIgniter\Test\CIUnitTestCase;
 use CodeIgniter\Test\DatabaseTestTrait;
 
@@ -244,7 +245,10 @@ final class CookieRepositoryTest extends CIUnitTestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->repository = new CookieRepository();
+        $this->repository = new CookieRepository(
+            LoggerFactory::create('test.cookie.repository'),
+            config('Logging')
+        );
     }
 
     public function test_save_inserts_new_cookie(): void
@@ -381,7 +385,7 @@ try {
 
 **Using Mocks:**
 ```php
-$repository = $this->createMock(CookieRepository::class);
+$repository = $this->createMock(CookieRepositoryInterface::class);
 $repository
     ->expects($this->once())
     ->method('save')
@@ -416,7 +420,7 @@ vendor/bin/phpunit --coverage-text --coverage-filter=app/Domain/Cookie
 
 - **cqrs-specialist** - Test all command/query handlers
 - **ddd-specialist** - Test all value objects and entities
-- **php-specialist** - Ensure tests use PHP 8.4 features
+- **php-specialist** - Ensure tests use PHP 8.3+ features
 - **clean-code-specialist** - Keep test methods focused and < 20 lines
 
 ## Reference Implementation
