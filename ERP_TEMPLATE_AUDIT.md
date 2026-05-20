@@ -517,12 +517,20 @@ Test suite now at **525 tests / 1337 assertions**. All gates green.
 - **D17 [DONE]** — bulk CSV import/export. New `CsvReader`/`CsvWriter` (streaming, BOM-safe, column-count-strict), `BulkImportInterface` (name/requiredColumns/mapRow/process), `BulkImportRunner` (fail-fast header validation, per-row error collection, dry-run mode), `ImportSummary` DTO. 14 unit tests.
 - **D18 [DONE]** — outbound HTTP client. New `HttpResponse`/`HttpException`/`HttpTransportInterface`/`CurlHttpTransport` and the high-level `OutboundHttpClient` with: retry on 408/425/429/5xx with exponential backoff, auto Idempotency-Key for POST/PUT/PATCH/DELETE, X-Correlation-Id propagation, structured per-call logging (never the payload), `get`/`getJson`/`postJson`/`request`. 11 unit tests using a recording transport double.
 
+### Sprint 5 — fifth batch
+
+Test suite now at **546 tests / 1381 assertions**. All gates green.
+
+- **D8 [DONE]** — i18n surface. `LocaleResolver` (session > query > user pref > Accept-Language > default), `LocaleMiddleware` (filter alias `locale`, sets `$request->setLocale()` + `Vary: Accept-Language`). Tag matching prefers the exact lowercased tag (`pt-BR` → `pt-br`) then falls back to the primary subtag (`en-US` → `en`). Translation files for `en` and `pt-BR` cover the shell, common verbs, flash messages, and pagination. 9 unit tests.
+- **E3 [DONE]** — view-layer permission gating helpers. `app/Helpers/auth_ui_helper.php` (autoloaded via BaseController) adds `can($name)`, `cannot($name)`, `any_of(...)`, `all_of(...)`, and `current_actor()`. Backend remains the source of truth via PermissionMiddleware; the helpers stop us from rendering buttons users can't click. 8 integration tests.
+- **E1 [DONE]** — ERP shell. `app/Views/layout.php` (and the `layouts/shell` alias) now carries a real top bar + sidebar layout: brand, notification bell, locale switcher, sign-out form, permission-gated module nav, breadcrumbs slot, flash slot, content slot. Existing views keep extending `layout` and inherit it for free.
+- **E2 [DONE]** — reusable view partials under `app/Views/partials/`: `_flash`, `_form_field` (text/number/email/password/textarea/select with consistent error rendering), `_pagination` (Bootstrap sliding-window, preserves filter query params), `_breadcrumbs`, `_sidebar` (with `can()` gating), `_user_menu`. 2 feature tests verify the shell renders for /dashboard and /cookies including the bell + locale switcher.
+- **E4 [DONE]** — shared auth-view layout. New `layouts/auth.php`; `login` and `register` views migrate to extend it. Each view is now ~30 lines (down from ~42), and the `<style>` blocks / per-page flash blocks are gone. 2 feature tests assert auth.css link + no inline `<style>` regression.
+
 ### Still Open
 
 - **D7** — Full Money/Currency rollout to every monetary field (CookiePrice still operates on its own minor-units representation, parallel to `Money`).
-- **D8** — i18n surface beyond the empty `app/Language/en/`.
 - **D15** — Read-model projections separate from write tables.
-- **E1–E4** — ERP layout shell, reusable view partials, permission-aware UI, auth-view layout.
 
 ## Verdict on `Cookie` as the Entity Template
 
