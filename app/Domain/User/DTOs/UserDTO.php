@@ -25,6 +25,7 @@ final readonly class UserDTO
         public ?string $lockedUntil,
         public string $createdAt,
         public ?string $updatedAt,
+        public ?string $deletedAt = null,
     ) {
     }
 
@@ -40,6 +41,7 @@ final readonly class UserDTO
             lockedUntil: $user->getLockedUntil()?->format('Y-m-d H:i:s'),
             createdAt: $user->getCreatedAt()->format('Y-m-d H:i:s'),
             updatedAt: $user->getUpdatedAt()?->format('Y-m-d H:i:s'),
+            deletedAt: $user->getDeletedAt()?->format('Y-m-d H:i:s'),
         );
     }
 }

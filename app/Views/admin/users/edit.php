@@ -124,7 +124,7 @@
         <div class="card bg-light mt-3">
             <div class="card-body">
                 <h5 class="card-title">Danger Zone</h5>
-                <form method="post" action="/admin/users/<?= $user->getId() ?>/delete"
+                <form method="post" action="/admin/users/<?= $user->id ?>/delete"
                       data-confirm="Are you sure you want to delete this user? This action can be reversed by an administrator.">
                     <?= csrf_field() ?>
                     <button type="submit" class="btn btn-danger w-100">

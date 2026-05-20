@@ -81,8 +81,8 @@
                     <a href="/admin/users/<?= $user->id ?>/reset-password" class="btn btn-warning">
                         <i class="bi bi-key"></i> Reset Password
                     </a>
-                    <?php if (!$user->getDeletedAt()): ?>
-                        <form method="post" action="/admin/users/<?= $user->getId() ?>/delete"
+                    <?php if (!$user->deletedAt): ?>
+                        <form method="post" action="/admin/users/<?= $user->id ?>/delete"
                               data-confirm="Are you sure you want to delete this user?">
                             <?= csrf_field() ?>
                             <button type="submit" class="btn btn-danger w-100">
