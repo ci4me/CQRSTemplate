@@ -98,8 +98,8 @@ final readonly class CreateCookieHandler
                 isActive: $command->isActive
             );
 
-            // Persist to database
-            $cookieId = $this->repository->save($cookie);
+            // Persist to database; stamp created_by/updated_by audit columns.
+            $cookieId = $this->repository->save($cookie, $command->createdBy);
 
             // Dispatch domain event
             $this->eventDispatcher->dispatch(new CookieCreatedEvent(

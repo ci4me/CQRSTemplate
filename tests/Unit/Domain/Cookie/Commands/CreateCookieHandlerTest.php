@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Unit\Domain\Cookie\Commands;
 
 use App\Domain\Cookie\Commands\CreateCookie\CreateCookieCommand;
+use App\Domain\Shared\ValueObjects\Actor;
 use App\Domain\Cookie\Commands\CreateCookie\CreateCookieHandler;
 use App\Domain\Cookie\Events\CookieCreated\CookieCreatedEvent;
 use App\Domain\Cookie\Ports\CookieRepositoryInterface;
@@ -41,7 +42,8 @@ final class CreateCookieHandlerTest extends UnitTestCase
             description: 'Delicious',
             price: '2.99',
             stock: 100,
-            isActive: true
+            createdBy: Actor::system('test'),
+        isActive: true
         );
 
         $this->repository
@@ -72,7 +74,8 @@ final class CreateCookieHandlerTest extends UnitTestCase
             description: null,
             price: '2.99',
             stock: 100,
-            isActive: true
+            createdBy: Actor::system('test'),
+        isActive: true
         );
 
         $this->repository
@@ -98,7 +101,8 @@ final class CreateCookieHandlerTest extends UnitTestCase
             description: null,
             price: '2.99',
             stock: 100,
-            isActive: true
+            createdBy: Actor::system('test'),
+        isActive: true
         );
 
         $this->expectException(\Exception::class);
@@ -113,7 +117,8 @@ final class CreateCookieHandlerTest extends UnitTestCase
             description: null,
             price: '0.00',
             stock: 100,
-            isActive: true
+            createdBy: Actor::system('test'),
+        isActive: true
         );
 
         $this->expectException(\Exception::class);
@@ -128,7 +133,8 @@ final class CreateCookieHandlerTest extends UnitTestCase
             description: null,
             price: '2.99',
             stock: -10,
-            isActive: true
+            createdBy: Actor::system('test'),
+        isActive: true
         );
 
         $this->expectException(\Exception::class);
@@ -143,7 +149,8 @@ final class CreateCookieHandlerTest extends UnitTestCase
             description: 'Fresh',
             price: '3.50',
             stock: 75,
-            isActive: true
+            createdBy: Actor::system('test'),
+        isActive: true
         );
 
         $this->repository
@@ -175,7 +182,8 @@ final class CreateCookieHandlerTest extends UnitTestCase
             description: null,
             price: '1.99',
             stock: 50,
-            isActive: true
+            createdBy: Actor::system('test'),
+        isActive: true
         );
 
         $this->repository
@@ -198,7 +206,8 @@ final class CreateCookieHandlerTest extends UnitTestCase
             description: 'Not yet ready',
             price: '2.99',
             stock: 0,
-            isActive: false
+            createdBy: Actor::system('test'),
+        isActive: false
         );
 
         $this->repository

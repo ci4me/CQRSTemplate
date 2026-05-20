@@ -85,8 +85,8 @@ final readonly class DeleteCookieHandler
                 'cookieName' => $cookieName,
             ]);
 
-            // Perform soft delete
-            $this->repository->delete($command->id);
+            // Perform soft delete; stamps deleted_by audit column.
+            $this->repository->delete($command->id, $command->deletedBy);
 
             // Dispatch domain event
             $this->eventDispatcher->dispatch(new CookieDeletedEvent(

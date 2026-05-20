@@ -133,6 +133,7 @@ class CookieController extends BaseController
                 description: $description,
                 price: $price,
                 stock: $stock,
+                createdBy: Services::actorResolver()->resolve($this->request),
                 isActive: $isActive
             );
 
@@ -205,7 +206,8 @@ class CookieController extends BaseController
                 description: $description,
                 price: $price,
                 stock: $stock,
-                isActive: $isActive
+                isActive: $isActive,
+                updatedBy: Services::actorResolver()->resolve($this->request)
             );
 
             $commandBus->dispatch($command);
@@ -235,7 +237,10 @@ class CookieController extends BaseController
         $commandBus = Services::commandBus();
 
         try {
-            $command = new DeleteCookieCommand(id: $id);
+            $command = new DeleteCookieCommand(
+                id: $id,
+                deletedBy: Services::actorResolver()->resolve($this->request)
+            );
             $commandBus->dispatch($command);
 
             return redirect()->to('/cookies')

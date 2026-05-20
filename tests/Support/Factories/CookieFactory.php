@@ -73,7 +73,8 @@ final class CookieFactory
             isActive: $data['isActive'],
             createdAt: $data['createdAt'],
             updatedAt: $data['updatedAt'],
-            deletedAt: $data['deletedAt']
+            deletedAt: $data['deletedAt'],
+            version: 1
         );
     }
 

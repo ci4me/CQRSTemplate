@@ -52,16 +52,25 @@ class ContentSecurityPolicy extends BaseConfig
     /**
      * Lists allowed scripts' URLs.
      *
+     * jsDelivr is allowed because the shared shell layout loads
+     * Bootstrap bundle JS from cdn.jsdelivr.net (see layout.php).
+     * The integrity attribute on the script tag is what actually
+     * pins the bytes — this list just authorises the origin.
+     *
      * @var list<string>|string
      */
-    public $scriptSrc = 'self';
+    public $scriptSrc = ['self', 'https://cdn.jsdelivr.net'];
 
     /**
      * Lists allowed stylesheets' URLs.
      *
+     * Same rationale as scriptSrc — Bootstrap CSS ships from
+     * cdn.jsdelivr.net. Inline styles are NOT in the allowlist;
+     * all per-page styles have been moved to public/assets/css/.
+     *
      * @var list<string>|string
      */
-    public $styleSrc = 'self';
+    public $styleSrc = ['self', 'https://cdn.jsdelivr.net'];
 
     /**
      * Defines the origins from which images can be loaded.

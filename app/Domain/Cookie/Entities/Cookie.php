@@ -152,8 +152,8 @@ final class Cookie
         bool $isActive,
         ?string $createdAt,
         ?string $updatedAt,
-        ?string $deletedAt = null,
-        int $version = 0
+        ?string $deletedAt,
+        int $version
     ): self {
         $cookie = new self($name, $description, $price, $stock, $isActive);
         $cookie->id = $id;

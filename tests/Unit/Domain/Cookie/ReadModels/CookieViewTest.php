@@ -99,7 +99,9 @@ final class CookieViewTest extends UnitTestCase
                 stock: 0,
                 isActive: true,
                 createdAt: null,
-                updatedAt: null
+                updatedAt: null,
+            deletedAt: null,
+            version: 1
             ),
             Cookie::reconstitute(
                 id: 2,
@@ -109,7 +111,9 @@ final class CookieViewTest extends UnitTestCase
                 stock: 5,
                 isActive: true,
                 createdAt: null,
-                updatedAt: null
+                updatedAt: null,
+            deletedAt: null,
+            version: 1
             ),
         ];
 
@@ -132,7 +136,8 @@ final class CookieViewTest extends UnitTestCase
             isActive: false,
             createdAt: null,
             updatedAt: null,
-            deletedAt: '2024-05-01 00:00:00'
+            deletedAt: '2024-05-01 00:00:00',
+            version: 1
         );
 
         $view = CookieView::detail($cookie);

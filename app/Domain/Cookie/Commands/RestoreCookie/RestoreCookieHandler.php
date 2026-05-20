@@ -36,7 +36,7 @@ final readonly class RestoreCookieHandler
             );
         }
 
-        $restored = $this->repository->restore($command->cookieId);
+        $restored = $this->repository->restore($command->cookieId, $command->restoredBy);
 
         if (!$restored) {
             $this->logger->error('Cookie restore failed', [

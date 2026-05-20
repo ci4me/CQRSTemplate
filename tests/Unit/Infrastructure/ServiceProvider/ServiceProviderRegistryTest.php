@@ -126,7 +126,7 @@ final class ServiceProviderRegistryTest extends UnitTestCase
     {
         return [
             'cookieRepository' => new class implements \App\Domain\Cookie\Ports\CookieRepositoryInterface {
-                public function save(\App\Domain\Cookie\Entities\Cookie $cookie): int
+                public function save(\App\Domain\Cookie\Entities\Cookie $cookie, ?\App\Domain\Shared\ValueObjects\Actor $actor = null): int
                 {
                     return 1;
                 }
@@ -150,11 +150,11 @@ final class ServiceProviderRegistryTest extends UnitTestCase
                 {
                     return false;
                 }
-                public function delete(int $id): bool
+                public function delete(int $id, ?\App\Domain\Shared\ValueObjects\Actor $actor = null): bool
                 {
                     return true;
                 }
-                public function restore(int $id): bool
+                public function restore(int $id, ?\App\Domain\Shared\ValueObjects\Actor $actor = null): bool
                 {
                     return true;
                 }

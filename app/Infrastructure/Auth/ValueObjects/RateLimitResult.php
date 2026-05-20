@@ -4,80 +4,18 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Auth\ValueObjects;
 
+use App\Domain\Shared\ValueObjects\RateLimitResult as DomainRateLimitResult;
+
 /**
- * Rate Limit Result DTO.
+ * Back-compat shim — the canonical {@see DomainRateLimitResult} now lives
+ * in the domain layer so {@see \App\Domain\User\Ports\RateLimitInterface}
+ * can type-hint it without violating the dependency-direction rule
+ * (domain MUST NOT depend on infrastructure). All existing call sites
+ * that import this class keep compiling because `RateLimitResult`
+ * extends the domain class and adds no new behaviour.
  *
- * Immutable data transfer object containing rate limit check results.
+ * @deprecated Prefer {@see DomainRateLimitResult} for new code.
  */
-final readonly class RateLimitResult
+final class RateLimitResult extends DomainRateLimitResult
 {
-    /**
-     * Create a new rate limit result.
-     *
-     * @param bool $allowed Whether the request is allowed
-     * @param int $attemptsRemaining Number of attempts remaining in the current window
-     * @param int $resetTime Unix timestamp when the rate limit will reset
-     */
-    public function __construct(
-        private bool $allowed,
-        private int $attemptsRemaining,
-        private int $resetTime
-    ) {
-        if ($attemptsRemaining < 0) {
-            throw new \InvalidArgumentException('Attempts remaining cannot be negative');
-        }
-
-        if ($resetTime < 0) {
-            throw new \InvalidArgumentException('Reset time cannot be negative');
-        }
-    }
-
-    /**
-     * Check if the request is allowed.
-     */
-    public function isAllowed(): bool
-    {
-        return $this->allowed;
-    }
-
-    /**
-     * Get the number of attempts remaining.
-     */
-    public function getAttemptsRemaining(): int
-    {
-        return $this->attemptsRemaining;
-    }
-
-    /**
-     * Get the Unix timestamp when the rate limit will reset.
-     */
-    public function getResetTime(): int
-    {
-        return $this->resetTime;
-    }
-
-    /**
-     * Get the number of seconds until the rate limit resets.
-     */
-    public function getSecondsUntilReset(): int
-    {
-        $now = time();
-        $diff = $this->resetTime - $now;
-        return max(0, $diff);
-    }
-
-    /**
-     * Convert to array representation.
-     *
-     * @return array{allowed: bool, attemptsRemaining: int, resetTime: int, secondsUntilReset: int}
-     */
-    public function toArray(): array
-    {
-        return [
-            'allowed' => $this->allowed,
-            'attemptsRemaining' => $this->attemptsRemaining,
-            'resetTime' => $this->resetTime,
-            'secondsUntilReset' => $this->getSecondsUntilReset(),
-        ];
-    }
 }

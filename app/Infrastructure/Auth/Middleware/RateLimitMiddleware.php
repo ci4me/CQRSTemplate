@@ -136,9 +136,9 @@ final readonly class RateLimitMiddleware implements FilterInterface
      *
      * @param string $identifier Request identifier
      * @param RequestInterface $request Current request
-     * @param \App\Infrastructure\Auth\ValueObjects\RateLimitResult $result Rate limit result
+     * @param \App\Domain\Shared\ValueObjects\RateLimitResult $result Rate limit result
      */
-    private function logViolation(string $identifier, RequestInterface $request, \App\Infrastructure\Auth\ValueObjects\RateLimitResult $result): void
+    private function logViolation(string $identifier, RequestInterface $request, \App\Domain\Shared\ValueObjects\RateLimitResult $result): void
     {
         assert($request instanceof IncomingRequest);
 
@@ -158,10 +158,10 @@ final readonly class RateLimitMiddleware implements FilterInterface
     /**
      * Create 429 Too Many Requests response.
      *
-     * @param \App\Infrastructure\Auth\ValueObjects\RateLimitResult $result Rate limit result
+     * @param \App\Domain\Shared\ValueObjects\RateLimitResult $result Rate limit result
      */
     private function createRateLimitResponse(
-        \App\Infrastructure\Auth\ValueObjects\RateLimitResult $result,
+        \App\Domain\Shared\ValueObjects\RateLimitResult $result,
         int $maxAttempts
     ): ResponseInterface {
         $response = service('response');

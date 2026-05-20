@@ -10,6 +10,7 @@ use App\Domain\Cookie\Ports\CookieRepositoryInterface;
 use App\Domain\Cookie\ValueObjects\CookieName;
 use App\Domain\Cookie\ValueObjects\CookiePrice;
 use App\Domain\Shared\Exceptions\DomainException;
+use App\Domain\Shared\ValueObjects\Actor;
 use App\Infrastructure\Bus\EventDispatcher;
 use App\Infrastructure\Outbox\EventOutboxWriter;
 use App\Models\Cookie\Traits\BusinessMetricsLogging;
@@ -90,13 +91,14 @@ class CookieRepository implements CookieRepositoryInterface
      * Save a cookie (create or update).
      *
      * @param Cookie $cookie The cookie to save
+     * @param Actor|null $actor Stamps `created_by` (insert) / `updated_by` (update)
      * @return int The cookie ID
      */
-    public function save(Cookie $cookie): int
+    public function save(Cookie $cookie, ?Actor $actor = null): int
     {
         try {
             $oldPrice = $this->getOldPrice($cookie);
-            $cookieId = $this->performSave($cookie);
+            $cookieId = $this->performSave($cookie, $actor);
             $this->logBusinessMetrics($cookie, $cookieId, $oldPrice);
 
             // C4: drain any events the aggregate accumulated during the
@@ -266,14 +268,24 @@ class CookieRepository implements CookieRepositoryInterface
      * Soft delete a cookie.
      *
      * @param int $id The cookie ID
+     * @param Actor|null $actor Stamps `deleted_by` on the row before soft-delete
      * @return bool True if successful, false if cookie doesn't exist
      */
-    public function delete(int $id): bool
+    public function delete(int $id, ?Actor $actor = null): bool
     {
         try {
             $cookie = $this->findById($id);
             if ($cookie === null) {
                 return false;
+            }
+
+            if ($actor !== null) {
+                // Stamp deleted_by BEFORE the soft-delete so the audit trail
+                // captures who removed the row. CI4's softDelete sets only
+                // `deleted_at`; the column write here is the audit side.
+                $this->model->builder()
+                    ->where('id', $id)
+                    ->update(['deleted_by' => $actor->id]);
             }
 
             $result = $this->model->delete($id);
@@ -287,8 +299,11 @@ class CookieRepository implements CookieRepositoryInterface
 
     /**
      * Restore a previously soft-deleted cookie.
+     *
+     * @param int $id The cookie ID
+     * @param Actor|null $actor Stamps `updated_by` on the restored row
      */
-    public function restore(int $id): bool
+    public function restore(int $id, ?Actor $actor = null): bool
     {
         try {
             $cookie = $this->findByIdWithTrashed($id);
@@ -296,9 +311,18 @@ class CookieRepository implements CookieRepositoryInterface
                 return false;
             }
 
+            $update = [
+                'deleted_at' => null,
+                'deleted_by' => null,
+            ];
+            if ($actor !== null) {
+                $update['updated_by'] = $actor->id;
+                $update['updated_at'] = date('Y-m-d H:i:s');
+            }
+
             return $this->model->builder()
                 ->where('id', $id)
-                ->update(['deleted_at' => null]);
+                ->update($update);
         } catch (\Throwable $e) {
             $this->logDeleteError($e);
             throw $e;
@@ -365,7 +389,7 @@ class CookieRepository implements CookieRepositoryInterface
      * (someone else wrote concurrently) and we throw a domain-level
      * concurrent-modification exception.
      */
-    private function performSave(Cookie $cookie): int
+    private function performSave(Cookie $cookie, ?Actor $actor = null): int
     {
         $data = [
             'name' => $cookie->getName()->getValue(),
@@ -377,7 +401,7 @@ class CookieRepository implements CookieRepositoryInterface
 
         $id = $cookie->getId();
         if ($id !== null) {
-            $this->updateWithOptimisticLock($cookie, $data);
+            $this->updateWithOptimisticLock($cookie, $data, $actor);
             $cookie->bumpVersion();
 
             return $id;
@@ -387,6 +411,13 @@ class CookieRepository implements CookieRepositoryInterface
         // bump in lock-step so DB and in-memory version always agree.
         $cookie->bumpVersion();
         $data['version'] = $cookie->getVersion();
+        if ($actor !== null) {
+            // Audit trail (B10): stamp the creator on first insert. Without
+            // this every cloned domain inherits a Cookie that silently
+            // forgets who created a row.
+            $data['created_by'] = $actor->id;
+            $data['updated_by'] = $actor->id;
+        }
 
         $newId = (int) $this->model->insert($data);
         // Hydrate the entity so subsequent saves take the UPDATE path and
@@ -399,12 +430,15 @@ class CookieRepository implements CookieRepositoryInterface
     /**
      * @param array<string, scalar|null> $data
      */
-    private function updateWithOptimisticLock(Cookie $cookie, array $data): void
+    private function updateWithOptimisticLock(Cookie $cookie, array $data, ?Actor $actor = null): void
     {
         $expectedVersion = $cookie->getVersion();
         $now = date('Y-m-d H:i:s');
         $data['version'] = $expectedVersion + 1;
         $data['updated_at'] = $now;
+        if ($actor !== null) {
+            $data['updated_by'] = $actor->id;
+        }
 
         $builder = $this->model->builder();
         $builder->where('id', $cookie->getId())

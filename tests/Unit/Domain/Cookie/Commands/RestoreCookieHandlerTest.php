@@ -92,7 +92,8 @@ final class RestoreCookieHandlerTest extends UnitTestCase
             isActive: false,
             createdAt: '2024-01-01 00:00:00',
             updatedAt: '2024-01-02 00:00:00',
-            deletedAt: '2024-01-03 00:00:00'
+            deletedAt: '2024-01-03 00:00:00',
+        version: 1
         );
     }
 
@@ -107,7 +108,8 @@ final class RestoreCookieHandlerTest extends UnitTestCase
             isActive: true,
             createdAt: '2024-01-01 00:00:00',
             updatedAt: null,
-            deletedAt: null
+            deletedAt: null,
+        version: 1
         );
     }
 }

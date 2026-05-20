@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Unit\Domain\Cookie\Commands;
 
 use App\Domain\Cookie\Commands\DeleteCookie\DeleteCookieCommand;
+use App\Domain\Shared\ValueObjects\Actor;
 use App\Domain\Cookie\Commands\DeleteCookie\DeleteCookieHandler;
 use App\Domain\Cookie\Events\CookieDeleted\CookieDeletedEvent;
 use App\Domain\Cookie\Ports\CookieRepositoryInterface;
@@ -33,7 +34,7 @@ final class DeleteCookieHandlerTest extends UnitTestCase
 
     public function test_deletes_cookie_successfully(): void
     {
-        $command = new DeleteCookieCommand(id: 1);
+        $command = new DeleteCookieCommand(id: 1, deletedBy: Actor::system('test'));
         $existing = CookieFactory::createPersistedCookie(['id' => 1]);
 
         $this->repository->expects($this->once())
@@ -55,7 +56,7 @@ final class DeleteCookieHandlerTest extends UnitTestCase
 
     public function test_throws_exception_if_cookie_not_found(): void
     {
-        $command = new DeleteCookieCommand(id: 999);
+        $command = new DeleteCookieCommand(id: 999, deletedBy: Actor::system('test'));
 
         $this->repository->expects($this->once())
             ->method('findById')

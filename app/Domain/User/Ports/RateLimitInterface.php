@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\User\Ports;
 
-use App\Infrastructure\Auth\ValueObjects\RateLimitResult;
+use App\Domain\Shared\ValueObjects\RateLimitResult;
 
 /**
  * Rate Limit Interface.

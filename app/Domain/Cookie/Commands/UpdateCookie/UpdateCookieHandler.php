@@ -107,8 +107,8 @@ final readonly class UpdateCookieHandler
 
             $newState = $this->snapshot($cookie);
 
-            // Persist changes
-            $this->repository->save($cookie);
+            // Persist changes; stamps updated_by on the row.
+            $this->repository->save($cookie, $command->updatedBy);
 
             // Dispatch domain event with structured before/after diff
             $this->eventDispatcher->dispatch(new CookieUpdatedEvent(
