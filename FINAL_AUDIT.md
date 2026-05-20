@@ -87,7 +87,7 @@ What remains: a small set of architectural decisions on top of working code — 
 
 22. ~~**[LOW]** `CookieReadModelProjection` incomplete: only listens to StockChanged.~~ **NEVER WAS** — `subscribesTo()` always returned all 5 events (Created/Updated/Deleted/Restored/StockChanged). Round-1 misread the event list.
 
-23. **[LOW]** `Currency::usd()` hardcoded default; no `Currency::default()` reader service. Multi-currency deploy must set env, no central source of truth. **r04:N6** — inject default via config or runtime service.
+23. ~~**[LOW]** `Currency::usd()` hardcoded default; no `Currency::default()`.~~ **CLOSED in p4-batch13** — `Currency::default()` reads `DEFAULT_CURRENCY` env var, falls back to USD on missing/malformed value. `CookiePrice::defaultCurrency()` switched to `Currency::default()` so the single source of truth flows through every Cookie price construction. 3 new tests pin the contract.
 
 24. **[LOW]** Keybinding file `.claude/keybindings.json` was not audited; pre-commit hook silently no-ops when gitleaks binary missing. **r14** — verify pre-commit hook, gitleaks, composer scripts; document setup.
 

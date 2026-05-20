@@ -73,6 +73,29 @@ final readonly class Currency
         return self::fromIso('BRL', 'R$');
     }
 
+    /**
+     * Deployment-wide default currency.
+     *
+     * Reads the `DEFAULT_CURRENCY` env var (canonical 3-letter ISO code,
+     * e.g. `USD`, `EUR`, `BRL`). Falls back to `USD` so existing tests
+     * and single-currency deploys aren't broken. Use this anywhere a
+     * "default currency" decision is being made (e.g. CookiePrice when
+     * the request doesn't specify one) so the choice has a single
+     * source of truth.
+     */
+    public static function default(): self
+    {
+        $env = getenv('DEFAULT_CURRENCY');
+        if (!is_string($env) || $env === '') {
+            return self::usd();
+        }
+        $iso = strtoupper(trim($env));
+        if (preg_match('/^[A-Z]{3}$/', $iso) !== 1) {
+            return self::usd();
+        }
+        return self::fromIso($iso);
+    }
+
     public function equals(self $other): bool
     {
         return $this->iso === $other->iso;

@@ -75,4 +75,33 @@ final class CurrencyTest extends UnitTestCase
         $c = Currency::fromIso('USD', 'US$');
         $this->assertSame('US$', $c->symbol);
     }
+
+    public function test_default_falls_back_to_usd_when_env_unset(): void
+    {
+        // Ensure no stale env from a previous test affects this one.
+        putenv('DEFAULT_CURRENCY');
+        $c = Currency::default();
+        $this->assertSame('USD', $c->iso);
+    }
+
+    public function test_default_reads_from_env_when_set(): void
+    {
+        putenv('DEFAULT_CURRENCY=EUR');
+        try {
+            $c = Currency::default();
+            $this->assertSame('EUR', $c->iso);
+        } finally {
+            putenv('DEFAULT_CURRENCY');
+        }
+    }
+
+    public function test_default_falls_back_to_usd_for_malformed_env(): void
+    {
+        putenv('DEFAULT_CURRENCY=abc123');
+        try {
+            $this->assertSame('USD', Currency::default()->iso);
+        } finally {
+            putenv('DEFAULT_CURRENCY');
+        }
+    }
 }

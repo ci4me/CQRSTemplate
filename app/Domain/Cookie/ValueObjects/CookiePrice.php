@@ -234,6 +234,10 @@ final readonly class CookiePrice
      */
     private static function defaultCurrency(): Currency
     {
-        return Currency::usd();
+        // Read from the deployment-wide source of truth so a multi-
+        // currency rollout doesn't have to fork CookiePrice. Falls back
+        // to USD when DEFAULT_CURRENCY env isn't set, matching the
+        // pre-existing single-currency behaviour.
+        return Currency::default();
     }
 }
