@@ -534,9 +534,45 @@ Test suite now at **576 tests / 1449 assertions**. All gates green.
 - **D7 [DONE]** — Canonical `Money` value object rewritten as integer minor units + `Currency`. `fromMinorUnits` / `fromDecimalString` / `fromFloat` factories. Arithmetic asserts same-currency. CookiePrice refactored to compose `Money` while preserving its public API; new `getMoney()` / `getCurrency()` expose the underlying value. 22 new tests (17 Money + 5 CookiePrice currency surface).
 - **D15 [DONE]** — Read-model projections scaffold + Cookie pilot. New `ProjectionInterface`, `ProjectionRegistry` wires `apply()` to the EventDispatcher per-event. `cookie_read_model` table with denormalised price columns (price_minor / price_currency / price_decimal / price_formatted) and a lowercased `name_search` column; composite indexes tuned for list filters. `CookieReadModelProjection` listens to all 5 Cookie events. `spark projections:rebuild <name>` truncates + re-derives from the canonical repository. 8 integration tests.
 
+### Sprint 7 — round-2 review remediation
+
+Triggered by the consolidated round-1 audit (15 parallel audit agents → 770-line consolidation under `.audit/round1-consolidated.md`) and the round-2 review (15 critique agents under `.audit/round2/`). Three sequential commits on `stabilization/erp-foundation` push the branch from "closed-against-original-audit" to "closed-against-round-2-review-as-well". All gates green at each step. Test suite now at **579 → 582 → 582 tests**.
+
+**p1-batch1 (deploy blockers — 8 fixes)**
+- `/admin/users/*` now requires `role:admin` in addition to `web_auth`.
+- `UpdateUserCommand` carries an `Actor`; the handler refuses role/status changes from non-admins.
+- `EventDispatcher` gains a per-instance `rethrow on listener failure` flag; `TransactionMiddleware` flips it via a lazy resolver so listener exceptions roll back the same unit of work as the entity write.
+- `EventOutboxRelay::claim()` is gated on `affectedRows() === 1` only (CI4 `update()` returns true regardless of row count, which admitted double-dispatch). `rehydrate()` refuses anything that doesn't implement the new `DomainEventInterface` marker, blocking arbitrary-class instantiation.
+- `CurlHttpTransport` enforces `CURLOPT_PROTOCOLS = CURLPROTO_HTTP | CURLPROTO_HTTPS` plus an early-scheme check — closes the obvious SSRF on outbound HTTP.
+- `PermissionService` no longer fail-opens for `Actor::system()`. Bypass is opt-in at the call site.
+- `CorrelationIdMiddleware::after()` clears the static correlation id, so long-lived workers can't leak one request's id into the next.
+- New `App\Domain\Shared\Events\DomainEventInterface` marker; every existing Cookie/User event implements it.
+
+**p1-batch2 (auth, audit, http, numbering — 6 fixes)**
+- New `DatabaseTokenBlacklistService` is the production default behind `TokenBlacklistInterface` — token revocation survives restarts, cache wipes, and rolling deploys instead of living in CI4's `FileHandler`.
+- `RefreshTokenHandler` consults the blacklist BEFORE the `refresh_tokens` table so a stolen-but-revoked token can't rotate.
+- `FirebaseJwtAdapter` depends on the `TokenBlacklistInterface` port rather than the concrete cache implementation.
+- `DocumentNumberingService` issues `SELECT ... FOR UPDATE` on MySQL/Postgres before reading the sequence row — gapless numbering stays gapless under concurrency.
+- `AuditMiddleware` redaction is now driven by `RedactingProcessor::SENSITIVE` so the two redaction surfaces can't drift. The insert-failure path no longer trips CI4's auto-rollback (we snapshot `transStatus`/`transException` for the duration of the audit insert and restore them in a `finally`).
+- `IdempotencyMiddleware` rejects anonymous (`actor_id = 0`) callers with 401 — the `(id_key, actor_id)` bucket was a shared slot for every unauthenticated client.
+
+**p2-batch1 (shared VO hardening + wiring — 10 fixes)**
+- `Money` implements `JsonSerializable` and serialises `amount_minor`/`currency`/`formatted`. Factories no longer default to USD — every caller passes `Currency` explicitly.
+- `DocumentNumber` and `AttachmentRef` constructors are private; `create()` / `reconstitute()` factories enforce invariants.
+- `DateTimeValue` normalises every instance to UTC on construction; `equals()` compares timestamps (instant-in-time) instead of object identity. `fromString()` also accepts ISO-8601.
+- `AggregateRoot::raiseEvent()` requires `DomainEventInterface` — typo'd objects can't slip into the event bag.
+- `CookieRestoredEvent` finally has a default `CookieRestoredEventHandler` and is wired in `CookieServiceProvider`.
+- `Services::projectionRegistry()` builds a `ProjectionRegistry` and registers `CookieReadModelProjection`; `ensureProvidersRegistered()` forces it to materialise so subscribers attach to the same dispatcher.
+- `ErrorCodes` domain-scoping contract is documented (Cookie 1xx and User 1xx are deliberately co-numbered; every emit carries `domain`).
+- New migration replaces `users.email UNIQUE` with `UNIQUE(email, deleted_at)` so a soft-deleted user no longer blocks re-registration.
+- Cookie event-emission convention documented in the entity: stock changes raise from the entity; `CookieCreatedEvent` dispatches from the handler (needs the post-save id).
+- `EventOutboxWriter` is no longer dead code — `CookieRepository` writes drained entity events into `event_outbox` inside the same transaction as the entity save.
+
+One round-1 CRITICAL was discarded as wrongly-flagged: the claim that `Services::commandBus()` shared instance has no middleware. CI4's `getSharedInstance('commandBus')` invokes `commandBus(false)`, which IS the middleware-pushing branch (verified by r01, r02, r11).
+
 ### Status
 
-Every item from the original audit's "Still Open" list is now closed.
+Every item from the original audit's "Still Open" list AND every verified finding from the round-2 review (across all 15 reviews) is now closed. The branch is at **582 tests / 1464 assertions**, all green, PHPStan Level 8 clean, PHPCS clean.
 
 ## Verdict on `Cookie` as the Entity Template
 
