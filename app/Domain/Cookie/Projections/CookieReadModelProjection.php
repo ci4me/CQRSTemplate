@@ -33,10 +33,16 @@ final class CookieReadModelProjection implements ProjectionInterface
 {
     /**
      * @param BaseConnection<object|resource|false, object|resource|false>|null $db
+     * @param \App\Infrastructure\Tenancy\TenantContext|null $tenantContext
+     *        Stamps `tenant_id` on every projected row so the read repo's
+     *        tenant filter has something to match against. Null falls
+     *        back to TenantContext::DEFAULT_TENANT_ID (1), keeping the
+     *        sentinel consistent with what CookieRepository writes.
      */
     public function __construct(
         private readonly CookieRepositoryInterface $repository,
-        private readonly ?BaseConnection $db = null
+        private readonly ?BaseConnection $db = null,
+        private readonly ?\App\Infrastructure\Tenancy\TenantContext $tenantContext = null
     ) {
     }
 
@@ -297,8 +303,16 @@ final class CookieReadModelProjection implements ProjectionInterface
         $price = $cookie->getPrice();
         $now = date('Y-m-d H:i:s');
 
+        // Stamp the tenant id from the active context so the read-side
+        // filter (CookieReadModelRepository::applyTenantFilter) actually
+        // matches. Fallback to the sentinel default keeps single-tenant
+        // deploys aligned with what CookieRepository writes on the source.
+        $tenantId = $this->tenantContext !== null
+            ? $this->tenantContext->currentTenantId()
+            : \App\Infrastructure\Tenancy\TenantContext::DEFAULT_TENANT_ID;
+
         return [
-            'tenant_id' => null,
+            'tenant_id' => $tenantId,
             'name' => $cookie->getName()->getValue(),
             'name_search' => strtolower($cookie->getName()->getValue()),
             'description' => $cookie->getDescription(),

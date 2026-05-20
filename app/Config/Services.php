@@ -189,7 +189,11 @@ class Services extends BaseService
         // Services because Cookie is the reference domain that demonstrates
         // the wiring end-to-end.
         $registry->register(
-            new \App\Domain\Cookie\Projections\CookieReadModelProjection(self::cookieRepository())
+            new \App\Domain\Cookie\Projections\CookieReadModelProjection(
+                self::cookieRepository(),
+                null,
+                self::tenantContext()
+            )
         );
 
         return $registry;
@@ -286,7 +290,7 @@ class Services extends BaseService
             return static::getSharedInstance('cookieReadModelRepository');
         }
 
-        return new CookieReadModelRepository();
+        return new CookieReadModelRepository(null, self::tenantContext());
     }
 
     /**

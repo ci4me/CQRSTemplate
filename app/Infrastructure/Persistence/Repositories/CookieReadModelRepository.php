@@ -6,6 +6,7 @@ namespace App\Infrastructure\Persistence\Repositories;
 
 use App\Domain\Cookie\DTOs\CookieDTO;
 use App\Domain\Cookie\Ports\CookieReadModelRepositoryInterface;
+use App\Infrastructure\Tenancy\TenantContext;
 use CodeIgniter\Database\BaseConnection;
 use Config\Database;
 
@@ -30,19 +31,28 @@ final class CookieReadModelRepository implements CookieReadModelRepositoryInterf
 
     /**
      * @param BaseConnection<object|resource|false, object|resource|false>|null $db
+     * @param TenantContext|null $tenantContext When provided, every read
+     *        is scoped to the current tenant via a WHERE tenant_id = ?
+     *        clause. Null preserves the legacy "single-tenant deploy"
+     *        behaviour where every row is visible — used by tests that
+     *        don't go through Services.
      */
-    public function __construct(private readonly ?BaseConnection $db = null)
-    {
+    public function __construct(
+        private readonly ?BaseConnection $db = null,
+        private readonly ?TenantContext $tenantContext = null
+    ) {
     }
 
     public function findById(int $cookieId): ?CookieDTO
     {
-        $result = $this->connection()
+        $builder = $this->connection()
             ->table(self::TABLE)
             ->where('cookie_id', $cookieId)
-            ->where('deleted_at', null)
-            ->get();
+            ->where('deleted_at', null);
 
+        $this->applyTenantFilter($builder);
+
+        $result = $builder->get();
         if ($result === false) {
             return null;
         }
@@ -61,6 +71,8 @@ final class CookieReadModelRepository implements CookieReadModelRepositoryInterf
         if (!$includeInactive) {
             $builder->where('is_active', 1);
         }
+
+        $this->applyTenantFilter($builder);
 
         $result = $builder->get();
         if ($result === false) {
@@ -88,6 +100,8 @@ final class CookieReadModelRepository implements CookieReadModelRepositoryInterf
         if (!$includeInactive) {
             $builder->where('is_active', 1);
         }
+
+        $this->applyTenantFilter($builder);
 
         if ($searchTerm !== null && $searchTerm !== '') {
             // The projection maintains `name_search` as a lower-cased copy
@@ -142,5 +156,24 @@ final class CookieReadModelRepository implements CookieReadModelRepositoryInterf
     private function connection(): BaseConnection
     {
         return $this->db ?? Database::connect();
+    }
+
+    /**
+     * Scope a query builder to the active tenant.
+     *
+     * When `tenantContext` is null (legacy single-tenant tests), this is a
+     * no-op and every row stays visible. When wired through Services, the
+     * filter restricts reads to the current tenant's slice — the write
+     * side stamps `tenant_id` on every insert (see CookieRepository) so
+     * the columns line up.
+     *
+     * @param \CodeIgniter\Database\BaseBuilder $builder
+     */
+    private function applyTenantFilter(\CodeIgniter\Database\BaseBuilder $builder): void
+    {
+        if ($this->tenantContext === null) {
+            return;
+        }
+        $builder->where('tenant_id', $this->tenantContext->currentTenantId());
     }
 }
