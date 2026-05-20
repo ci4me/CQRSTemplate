@@ -527,10 +527,16 @@ Test suite now at **546 tests / 1381 assertions**. All gates green.
 - **E2 [DONE]** — reusable view partials under `app/Views/partials/`: `_flash`, `_form_field` (text/number/email/password/textarea/select with consistent error rendering), `_pagination` (Bootstrap sliding-window, preserves filter query params), `_breadcrumbs`, `_sidebar` (with `can()` gating), `_user_menu`. 2 feature tests verify the shell renders for /dashboard and /cookies including the bell + locale switcher.
 - **E4 [DONE]** — shared auth-view layout. New `layouts/auth.php`; `login` and `register` views migrate to extend it. Each view is now ~30 lines (down from ~42), and the `<style>` blocks / per-page flash blocks are gone. 2 feature tests assert auth.css link + no inline `<style>` regression.
 
-### Still Open
+### Sprint 6 — sixth batch
 
-- **D7** — Full Money/Currency rollout to every monetary field (CookiePrice still operates on its own minor-units representation, parallel to `Money`).
-- **D15** — Read-model projections separate from write tables.
+Test suite now at **576 tests / 1449 assertions**. All gates green.
+
+- **D7 [DONE]** — Canonical `Money` value object rewritten as integer minor units + `Currency`. `fromMinorUnits` / `fromDecimalString` / `fromFloat` factories. Arithmetic asserts same-currency. CookiePrice refactored to compose `Money` while preserving its public API; new `getMoney()` / `getCurrency()` expose the underlying value. 22 new tests (17 Money + 5 CookiePrice currency surface).
+- **D15 [DONE]** — Read-model projections scaffold + Cookie pilot. New `ProjectionInterface`, `ProjectionRegistry` wires `apply()` to the EventDispatcher per-event. `cookie_read_model` table with denormalised price columns (price_minor / price_currency / price_decimal / price_formatted) and a lowercased `name_search` column; composite indexes tuned for list filters. `CookieReadModelProjection` listens to all 5 Cookie events. `spark projections:rebuild <name>` truncates + re-derives from the canonical repository. 8 integration tests.
+
+### Status
+
+Every item from the original audit's "Still Open" list is now closed.
 
 ## Verdict on `Cookie` as the Entity Template
 
