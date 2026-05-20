@@ -6,6 +6,8 @@ namespace App\Domain\User;
 
 use App\Domain\User\Commands\ChangeUserPassword\ChangeUserPasswordCommand;
 use App\Domain\User\Commands\ChangeUserPassword\ChangeUserPasswordHandler;
+use App\Domain\User\Commands\CreateUser\CreateUserCommand;
+use App\Domain\User\Commands\CreateUser\CreateUserHandler;
 use App\Domain\User\Commands\DeleteUser\DeleteUserCommand;
 use App\Domain\User\Commands\DeleteUser\DeleteUserHandler;
 use App\Domain\User\Commands\RegisterUser\RegisterUserCommand;
@@ -31,6 +33,7 @@ use App\Domain\User\Queries\SearchUsers\SearchUsersQuery;
 use App\Infrastructure\Attributes\DomainServiceProvider;
 use App\Infrastructure\Bus\CommandBus;
 use App\Infrastructure\Bus\EventDispatcher;
+use App\Infrastructure\Bus\EventDispatcherInterface;
 use App\Infrastructure\Bus\QueryBus;
 use App\Infrastructure\Persistence\Repositories\PasswordHistoryRepository;
 use App\Infrastructure\Persistence\Repositories\UserRepository;
@@ -62,7 +65,7 @@ final class UserServiceProvider implements DomainServiceProviderInterface
         if (
             !$repository instanceof UserRepository
             || !$passwordHistory instanceof PasswordHistoryRepository
-            || !$eventDispatcher instanceof EventDispatcher
+            || !$eventDispatcher instanceof EventDispatcherInterface
             || !$logger instanceof LoggerInterface
         ) {
             throw new \RuntimeException('Invalid dependencies injected');
@@ -87,13 +90,19 @@ final class UserServiceProvider implements DomainServiceProviderInterface
             ChangeUserPasswordCommand::class,
             new ChangeUserPasswordHandler($repository, $passwordHistory, $eventDispatcher, $logger)
         );
+
+        $commandBus->register(
+            CreateUserCommand::class,
+            new CreateUserHandler($repository, $eventDispatcher, $logger)
+        );
     }
 
     public function registerQueries(QueryBus $queryBus): void
     {
         $repository = $this->getRepository('userRepository');
         $logger = $this->getRepository('logger');
-        $loggingConfig = new Logging();
+        $loggingConfig = $this->getRepository('loggingConfig');
+        assert($loggingConfig instanceof Logging);
 
         if (!$repository instanceof UserRepository || !$logger instanceof LoggerInterface) {
             throw new \RuntimeException('Invalid repository or logger injected');
@@ -160,6 +169,7 @@ final class UserServiceProvider implements DomainServiceProviderInterface
             'eventDispatcher',
             'passwordHasher',
             'logger',
+            'loggingConfig',
         ];
     }
 

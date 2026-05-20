@@ -12,7 +12,7 @@ use App\Domain\User\ValueObjects\Email;
 use App\Domain\User\ValueObjects\HashedPassword;
 use App\Domain\User\ValueObjects\UserName;
 use App\Domain\User\ValueObjects\UserRole;
-use App\Infrastructure\Bus\EventDispatcher;
+use App\Infrastructure\Bus\EventDispatcherInterface;
 use App\Infrastructure\Persistence\Repositories\UserRepository;
 use Psr\Log\LoggerInterface;
 
@@ -20,7 +20,7 @@ final readonly class RegisterUserHandler
 {
     public function __construct(
         private UserRepository $repository,
-        private EventDispatcher $eventDispatcher,
+        private EventDispatcherInterface $eventDispatcher,
         private LoggerInterface $logger,
     ) {
     }

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Cookie\Queries\GetCookieById;
 
+use App\Domain\Cookie\DTOs\CookieDTO;
 use App\Domain\Cookie\Entities\Cookie;
 use App\Domain\Cookie\Ports\CookieRepositoryInterface;
 use Config\Logging;
@@ -49,9 +50,9 @@ final readonly class GetCookieByIdHandler
      * Handle the GetCookieByIdQuery.
      *
      * @param GetCookieByIdQuery $query The query
-     * @return Cookie|null The cookie or null if not found
+     * @return CookieDTO|null The cookie DTO or null if not found
      */
-    public function handle(GetCookieByIdQuery $query): ?Cookie
+    public function handle(GetCookieByIdQuery $query): ?CookieDTO
     {
         $startTime = microtime(true);
 
@@ -61,7 +62,7 @@ final readonly class GetCookieByIdHandler
 
         $this->logQueryExecution($query->id, $cookie, $durationMs);
 
-        return $cookie;
+        return $cookie !== null ? CookieDTO::fromEntity($cookie) : null;
     }
 
     /**

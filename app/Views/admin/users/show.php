@@ -8,7 +8,7 @@
         <a href="/admin/users" class="btn btn-secondary">
             <i class="bi bi-arrow-left"></i> Back to List
         </a>
-        <a href="/admin/users/<?= $user->getId() ?>/edit" class="btn btn-primary">
+        <a href="/admin/users/<?= $user->id ?>/edit" class="btn btn-primary">
             <i class="bi bi-pencil"></i> Edit User
         </a>
     </div>
@@ -25,28 +25,28 @@
                     <tbody>
                         <tr>
                             <th width="30%">User ID</th>
-                            <td><?= $user->getId() ?></td>
+                            <td><?= $user->id ?></td>
                         </tr>
                         <tr>
                             <th>Name</th>
-                            <td><?= esc($user->getName()) ?></td>
+                            <td><?= esc($user->name) ?></td>
                         </tr>
                         <tr>
                             <th>Email</th>
-                            <td><?= esc($user->getEmail()->getValue()) ?></td>
+                            <td><?= esc($user->email) ?></td>
                         </tr>
                         <tr>
                             <th>Role</th>
                             <td>
-                                <span class="badge bg-<?= $user->getRole()->getValue() === 'admin' ? 'danger' : 'primary' ?>">
-                                    <?= esc(ucfirst($user->getRole()->getValue())) ?>
+                                <span class="badge bg-<?= $user->role === 'admin' ? 'danger' : 'primary' ?>">
+                                    <?= esc(ucfirst($user->role)) ?>
                                 </span>
                             </td>
                         </tr>
                         <tr>
                             <th>Status</th>
                             <td>
-                                <?php if ($user->getStatus()->getValue() === 'active'): ?>
+                                <?php if ($user->status === 'active'): ?>
                                     <span class="badge bg-success">Active</span>
                                 <?php else: ?>
                                     <span class="badge bg-secondary">Inactive</span>
@@ -55,22 +55,12 @@
                         </tr>
                         <tr>
                             <th>Created At</th>
-                            <td><?= $user->getCreatedAt()->format('Y-m-d H:i:s') ?></td>
+                            <td><?= $user->createdAt ?></td>
                         </tr>
                         <tr>
                             <th>Updated At</th>
-                            <td><?= $user->getUpdatedAt()->format('Y-m-d H:i:s') ?></td>
+                            <td><?= $user->updatedAt ?></td>
                         </tr>
-                        <?php if ($user->getDeletedAt()): ?>
-                            <tr>
-                                <th>Deleted At</th>
-                                <td>
-                                    <span class="badge bg-danger">
-                                        <?= $user->getDeletedAt()->format('Y-m-d H:i:s') ?>
-                                    </span>
-                                </td>
-                            </tr>
-                        <?php endif; ?>
                     </tbody>
                 </table>
             </div>
@@ -85,14 +75,14 @@
             </div>
             <div class="card-body">
                 <div class="d-grid gap-2">
-                    <a href="/admin/users/<?= $user->getId() ?>/edit" class="btn btn-primary">
+                    <a href="/admin/users/<?= $user->id ?>/edit" class="btn btn-primary">
                         <i class="bi bi-pencil"></i> Edit User
                     </a>
-                    <a href="/admin/users/<?= $user->getId() ?>/reset-password" class="btn btn-warning">
+                    <a href="/admin/users/<?= $user->id ?>/reset-password" class="btn btn-warning">
                         <i class="bi bi-key"></i> Reset Password
                     </a>
-                    <?php if (!$user->getDeletedAt()): ?>
-                        <form method="post" action="/admin/users/<?= $user->getId() ?>/delete"
+                    <?php if ($user->status === 'active'): ?>
+                        <form method="post" action="/admin/users/<?= $user->id ?>/delete"
                               onsubmit="return confirm('Are you sure you want to delete this user?');">
                             <?= csrf_field() ?>
                             <button type="submit" class="btn btn-danger w-100">
@@ -101,7 +91,7 @@
                         </form>
                     <?php else: ?>
                         <button class="btn btn-secondary w-100" disabled>
-                            <i class="bi bi-trash"></i> User Deleted
+                            <i class="bi bi-trash"></i> User Deleted/Inactive
                         </button>
                     <?php endif; ?>
                 </div>
@@ -117,18 +107,22 @@
                 <p class="small mb-2">
                     <strong>Account Age:</strong><br>
                     <?php
-                        $accountAge = $user->getCreatedAt()->diff(new DateTimeImmutable());
+                        $accountAge = (new DateTimeImmutable($user->createdAt))->diff(new DateTimeImmutable());
                         echo $accountAge->days . ' days';
                     ?>
                 </p>
                 <p class="small mb-2">
                     <strong>Last Updated:</strong><br>
                     <?php
-                        $lastUpdate = $user->getUpdatedAt()->diff(new DateTimeImmutable());
-                        if ($lastUpdate->days === 0) {
-                            echo 'Today';
+                        if ($user->updatedAt !== null) {
+                            $lastUpdate = (new DateTimeImmutable($user->updatedAt))->diff(new DateTimeImmutable());
+                            if ($lastUpdate->days === 0) {
+                                echo 'Today';
+                            } else {
+                                echo $lastUpdate->days . ' days ago';
+                            }
                         } else {
-                            echo $lastUpdate->days . ' days ago';
+                            echo 'Never';
                         }
                     ?>
                 </p>

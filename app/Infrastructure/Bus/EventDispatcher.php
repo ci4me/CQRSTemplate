@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Bus;
 
+use Psr\Log\LoggerInterface;
+
 /**
  * Event Dispatcher for domain events.
  *
@@ -37,7 +39,7 @@ namespace App\Infrastructure\Bus;
  *
  * @package App\Infrastructure\Bus
  */
-class EventDispatcher
+final class EventDispatcher implements EventDispatcherInterface
 {
     /**
      * Map of event class names to arrays of listener callables.
@@ -45,6 +47,11 @@ class EventDispatcher
      * @var array<string, array<callable>> Format: [EventClassName => [callable, callable, ...]]
      */
     private array $listeners = [];
+
+    public function __construct(
+        private ?LoggerInterface $logger = null
+    ) {
+    }
 
     /**
      * Register a listener for an event.
@@ -85,15 +92,15 @@ class EventDispatcher
             try {
                 $listener($event);
             } catch (\Throwable $e) {
-                // Log the error but don't stop other listeners
-                // In production, this should use a proper logger
-                error_log(
-                    sprintf(
-                        'Event listener failed for %s: %s',
-                        $eventClass,
-                        $e->getMessage()
-                    )
-                );
+                if ($this->logger !== null) {
+                    $this->logger->error('Event listener failed', [
+                        'event' => $eventClass,
+                        'exception' => $e->getMessage(),
+                        'exception_class' => $e::class,
+                    ]);
+                } else {
+                    error_log(sprintf('Event listener failed for %s: %s', $eventClass, $e->getMessage()));
+                }
             }
         }
     }

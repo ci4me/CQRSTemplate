@@ -5,6 +5,8 @@ namespace Config;
 use App\Infrastructure\Auth\Middleware\JwtAuthenticationMiddleware;
 use App\Infrastructure\Auth\Middleware\RateLimitMiddleware;
 use App\Infrastructure\Auth\Middleware\RoleAuthorizationMiddleware;
+use App\Infrastructure\Auth\Middleware\SessionAuthMiddleware;
+use App\Infrastructure\Auth\Middleware\SessionRoleMiddleware;
 use CodeIgniter\Config\Filters as BaseFilters;
 use CodeIgniter\Filters\Cors;
 use CodeIgniter\Filters\CSRF;
@@ -40,6 +42,8 @@ class Filters extends BaseFilters
         'jwt'           => JwtAuthenticationMiddleware::class,
         'ratelimit'     => RateLimitMiddleware::class,
         'role'          => RoleAuthorizationMiddleware::class,
+        'sessionauth'   => SessionAuthMiddleware::class,
+        'sessionrole'   => SessionRoleMiddleware::class,
     ];
 
     /**
@@ -80,8 +84,9 @@ class Filters extends BaseFilters
         'before' => [
             // 'honeypot',
             // SECURITY: CSRF protection enabled (except in testing environment for feature tests)
-            // Testing environment bypass allows feature tests to run, but security tests
-            // verify CSRF behavior separately (see tests/Integration/Security/)
+            // Testing environment bypass allows feature tests to run without CSRF tokens.
+            // Dedicated CSRF security tests exist in tests/Integration/Security/ that test
+            // CSRF behavior independently by temporarily re-enabling the filter.
             'csrf' => (ENVIRONMENT !== 'testing') ? [] : ['except' => ['*']],
             // 'invalidchars',
         ],
@@ -115,5 +120,11 @@ class Filters extends BaseFilters
      *
      * @var array<string, array<string, list<string>>>
      */
-    public array $filters = [];
+    /**
+     * @var array<string, array<string, list<string>>>
+     */
+    public array $filters = (ENVIRONMENT !== 'testing') ? [
+        'sessionauth' => ['before' => ['cookies', 'cookies/*', 'admin/*', 'dashboard']],
+        'sessionrole:admin' => ['before' => ['admin/*']],
+    ] : [];
 }

@@ -6,8 +6,9 @@ namespace App\Domain\User\Commands\DeleteUser;
 
 use App\Domain\User\ErrorCodes;
 use App\Domain\User\Events\UserDeleted\UserDeletedEvent;
-use App\Infrastructure\Bus\EventDispatcher;
-use App\Infrastructure\Persistence\Repositories\UserRepositoryInterface;
+use App\Domain\User\Ports\UserRepositoryInterface;
+use App\Infrastructure\Auth\AuthContext;
+use App\Infrastructure\Bus\EventDispatcherInterface;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -32,7 +33,7 @@ final readonly class DeleteUserHandler
 {
     public function __construct(
         private UserRepositoryInterface $repository,
-        private EventDispatcher $eventDispatcher,
+        private EventDispatcherInterface $eventDispatcher,
         private LoggerInterface $logger
     ) {
     }
@@ -78,7 +79,7 @@ final readonly class DeleteUserHandler
             // Dispatch event
             $event = new UserDeletedEvent(
                 userId: $command->userId,
-                deletedBy: 1, // TODO: Get current admin ID from auth context
+                deletedBy: AuthContext::getCurrentUserId(), // TODO: Get current admin ID from auth context
                 deletedAt: (new \DateTimeImmutable())->format('c')
             );
             $this->eventDispatcher->dispatch($event);

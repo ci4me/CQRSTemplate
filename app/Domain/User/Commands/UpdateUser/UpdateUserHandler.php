@@ -6,12 +6,12 @@ namespace App\Domain\User\Commands\UpdateUser;
 
 use App\Domain\User\ErrorCodes;
 use App\Domain\User\Events\UserUpdated\UserUpdatedEvent;
+use App\Domain\User\Ports\UserRepositoryInterface;
 use App\Domain\User\ValueObjects\Email;
 use App\Domain\User\ValueObjects\UserName;
 use App\Domain\User\ValueObjects\UserRole;
 use App\Domain\User\ValueObjects\UserStatus;
-use App\Infrastructure\Bus\EventDispatcher;
-use App\Infrastructure\Persistence\Repositories\UserRepositoryInterface;
+use App\Infrastructure\Bus\EventDispatcherInterface;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -37,7 +37,7 @@ final readonly class UpdateUserHandler
 {
     public function __construct(
         private UserRepositoryInterface $repository,
-        private EventDispatcher $eventDispatcher,
+        private EventDispatcherInterface $eventDispatcher,
         private LoggerInterface $logger
     ) {
     }

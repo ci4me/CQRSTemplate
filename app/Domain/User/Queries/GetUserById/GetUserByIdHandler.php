@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\User\Queries\GetUserById;
 
+use App\Domain\User\DTOs\UserDTO;
 use App\Domain\User\Entities\User;
 use App\Infrastructure\Persistence\Repositories\UserRepository;
 use Config\Logging;
@@ -18,7 +19,7 @@ final readonly class GetUserByIdHandler
     ) {
     }
 
-    public function handle(GetUserByIdQuery $query): ?User
+    public function handle(GetUserByIdQuery $query): ?UserDTO
     {
         $startTime = microtime(true);
         $user = $this->repository->findById($query->id);
@@ -26,7 +27,7 @@ final readonly class GetUserByIdHandler
 
         $this->logQueryExecution($query->id, $user, $durationMs);
 
-        return $user;
+        return $user !== null ? UserDTO::fromEntity($user) : null;
     }
 
     private function logQueryExecution(int $id, ?User $result, float $durationMs): void

@@ -90,9 +90,18 @@ final class GetCookiesPaginatedHandlerTest extends UnitTestCase
             includeInactive: true
         );
 
+        $expectedResult = [
+            'data' => [],
+            'total' => 0,
+            'page' => 1,
+            'perPage' => 20,
+            'lastPage' => 1,
+        ];
+
         $this->repository->expects($this->once())
             ->method('findPaginated')
-            ->with(1, 20, null, true);
+            ->with(1, 20, null, true)
+            ->willReturn($expectedResult);
 
         $this->handler->handle($query);
     }

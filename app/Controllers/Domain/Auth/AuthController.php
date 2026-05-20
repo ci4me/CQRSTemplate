@@ -78,6 +78,8 @@ final class AuthController extends BaseController
             $result = $commandBus->dispatch($command);
 
             if ($result->isSuccess()) {
+                $session->regenerate(true);
+
                 $session->set([
                     'user_id' => $result->user->getId(),
                     'email' => $result->user->getEmail()->getValue(),
@@ -100,9 +102,8 @@ final class AuthController extends BaseController
     {
         $session = session();
         assert($session instanceof Session);
-
         $session->destroy();
-        $session->setFlashdata('success', 'Logged out successfully');
-        return redirect()->to('/auth/login');
+
+        return redirect()->to('/auth/login')->with('success', 'Logged out successfully');
     }
 }

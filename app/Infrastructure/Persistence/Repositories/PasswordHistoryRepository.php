@@ -107,6 +107,30 @@ readonly class PasswordHistoryRepository
     }
 
     /**
+     * Check if plaintext password matches any hash in user's history.
+     *
+     * Uses password_verify() for proper Argon2id comparison since
+     * each hash has a unique salt, making direct hash comparison impossible.
+     *
+     * @param int $userId User ID
+     * @param string $plaintextPassword Plaintext password to check
+     * @return bool True if password found in history
+     */
+    public function containsPassword(int $userId, string $plaintextPassword): bool
+    {
+        $historyHashes = $this->getLastNHashes($userId);
+
+        $found = false;
+        foreach ($historyHashes as $historicHash) {
+            if (password_verify($plaintextPassword, $historicHash)) {
+                $found = true;
+            }
+        }
+
+        return $found;
+    }
+
+    /**
      * Prune old password history entries.
      *
      * Keeps only the last MAX_HISTORY_COUNT entries per user.

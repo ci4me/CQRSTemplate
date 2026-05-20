@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Infrastructure\Bus;
 
 use App\Domain\Shared\Exceptions\DomainException;
+use App\Infrastructure\Bus\Middleware\BusMiddlewareInterface;
 use RuntimeException;
 
 /**
@@ -50,6 +51,21 @@ final class CommandBus
     private array $handlers = [];
 
     /**
+     * Middleware pipeline.
+     *
+     * @var array<BusMiddlewareInterface>
+     */
+    private array $middleware = [];
+
+    /**
+     * Add middleware to the pipeline.
+     */
+    public function addMiddleware(BusMiddlewareInterface $middleware): void
+    {
+        $this->middleware[] = $middleware;
+    }
+
+    /**
      * Register a command handler.
      *
      * @param string $commandClass Fully qualified command class name
@@ -61,6 +77,12 @@ final class CommandBus
         if (isset($this->handlers[$commandClass])) {
             throw new RuntimeException(
                 sprintf('Handler for command "%s" is already registered', $commandClass)
+            );
+        }
+
+        if (!method_exists($handler, 'handle')) {
+            throw new RuntimeException(
+                sprintf('Handler for command "%s" must have a handle() method', $commandClass)
             );
         }
 
@@ -86,15 +108,20 @@ final class CommandBus
 
         $handler = $this->handlers[$commandClass];
 
-        // Verify handler has handle() method
-        if (!method_exists($handler, 'handle')) {
-            throw new DomainException(
-                sprintf('Handler for command "%s" does not have a handle() method', $commandClass)
-            );
+        $core = static function (object $command) use ($handler): mixed {
+            /** @phpstan-ignore method.notFound (handle() verified at registration time) */
+            return $handler->handle($command);
+        };
+
+        $pipeline = $core;
+        foreach (array_reverse($this->middleware) as $m) {
+            $next = $pipeline;
+            $pipeline = static function (object $command) use ($m, $next): mixed {
+                return $m->handle($command, $next);
+            };
         }
 
-        // Call the handler's handle() method
-        return $handler->handle($command);
+        return $pipeline($command);
     }
 
     /**

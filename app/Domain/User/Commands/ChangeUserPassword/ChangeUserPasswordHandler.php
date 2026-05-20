@@ -6,10 +6,11 @@ namespace App\Domain\User\Commands\ChangeUserPassword;
 
 use App\Domain\User\ErrorCodes;
 use App\Domain\User\Events\PasswordChanged\PasswordChangedEvent;
+use App\Domain\User\Ports\UserRepositoryInterface;
 use App\Domain\User\ValueObjects\HashedPassword;
-use App\Infrastructure\Bus\EventDispatcher;
+use App\Infrastructure\Auth\AuthContext;
+use App\Infrastructure\Bus\EventDispatcherInterface;
 use App\Infrastructure\Persistence\Repositories\PasswordHistoryRepository;
-use App\Infrastructure\Persistence\Repositories\UserRepositoryInterface;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -39,7 +40,7 @@ final readonly class ChangeUserPasswordHandler
     public function __construct(
         private UserRepositoryInterface $repository,
         private PasswordHistoryRepository $passwordHistory,
-        private EventDispatcher $eventDispatcher,
+        private EventDispatcherInterface $eventDispatcher,
         private LoggerInterface $logger
     ) {
     }
@@ -71,12 +72,8 @@ final readonly class ChangeUserPasswordHandler
                 );
             }
 
-            // Hash password with complexity validation
-            $hashedPassword = HashedPassword::fromPlaintext($command->newPassword);
-
             // SECURITY: Check password reuse (last 5 passwords)
-            $newHash = $hashedPassword->getHash();
-            if ($this->passwordHistory->containsHash($command->userId, $newHash)) {
+            if ($this->passwordHistory->containsPassword($command->userId, $command->newPassword)) {
                 $this->logger->warning('Password reuse attempt detected', [
                     'domain' => 'User',
                     'command' => 'ChangeUserPasswordCommand',
@@ -89,6 +86,9 @@ final readonly class ChangeUserPasswordHandler
                 );
             }
 
+            // Hash password with complexity validation
+            $hashedPassword = HashedPassword::fromPlaintext($command->newPassword);
+
             // Update password
             $user->changePassword($hashedPassword);
 
@@ -96,7 +96,7 @@ final readonly class ChangeUserPasswordHandler
             $this->repository->update($user);
 
             // Store password in history
-            $this->passwordHistory->store($command->userId, $newHash);
+            $this->passwordHistory->store($command->userId, $hashedPassword->getHash());
 
             $this->logger->info('Password changed successfully', [
                 'domain' => 'User',
@@ -108,7 +108,7 @@ final readonly class ChangeUserPasswordHandler
             // Dispatch security event
             $event = new PasswordChangedEvent(
                 userId: $command->userId,
-                changedBy: 1, // TODO: Get current admin ID from auth context
+                changedBy: AuthContext::getCurrentUserId(), // TODO: Get current admin ID from auth context
                 changedAt: (new \DateTimeImmutable())->format('c')
             );
             $this->eventDispatcher->dispatch($event);

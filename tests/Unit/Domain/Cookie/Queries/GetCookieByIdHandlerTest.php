@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Domain\Cookie\Queries;
 
+use App\Domain\Cookie\DTOs\CookieDTO;
 use App\Domain\Cookie\Queries\GetCookieById\GetCookieByIdHandler;
 use App\Domain\Cookie\Queries\GetCookieById\GetCookieByIdQuery;
 use App\Domain\Cookie\Ports\CookieRepositoryInterface;
@@ -38,7 +39,8 @@ final class GetCookieByIdHandlerTest extends UnitTestCase
 
         $result = $this->handler->handle($query);
 
-        $this->assertSame($expected, $result);
+        $this->assertInstanceOf(CookieDTO::class, $result);
+        $this->assertEquals(1, $result->id);
     }
 
     public function test_returns_null_when_not_found(): void

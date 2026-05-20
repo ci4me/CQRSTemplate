@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\User\Queries\GetUserByEmail;
 
+use App\Domain\User\DTOs\UserDTO;
 use App\Domain\User\Entities\User;
 use App\Domain\User\ValueObjects\Email;
 use App\Infrastructure\Persistence\Repositories\UserRepository;
@@ -19,7 +20,7 @@ final readonly class GetUserByEmailHandler
     ) {
     }
 
-    public function handle(GetUserByEmailQuery $query): ?User
+    public function handle(GetUserByEmailQuery $query): ?UserDTO
     {
         $startTime = microtime(true);
 
@@ -29,7 +30,7 @@ final readonly class GetUserByEmailHandler
         $durationMs = (microtime(true) - $startTime) * 1000;
         $this->logQueryExecution($email->getValue(), $user, $durationMs);
 
-        return $user;
+        return $user !== null ? UserDTO::fromEntity($user) : null;
     }
 
     private function logQueryExecution(string $email, ?User $result, float $durationMs): void
