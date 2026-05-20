@@ -14,7 +14,7 @@
 **Changes:**
 - ✅ Updated **Value Object Template** with real Cookie domain example
   - Added complete `CookieName` value object from Cookie domain
-  - Includes DomainLogger integration
+  - Includes ErrorCodes integration
   - Shows error code usage (ErrorCodes::COOKIE_VALIDATION_NAME)
   - Demonstrates validation with min/max length
   - Template now shows PHP 8.4 readonly class pattern
@@ -29,7 +29,7 @@
 **Before:**
 - Generic JavaScript-style examples
 - No real project references
-- Missing DomainLogger/ErrorCodes patterns
+- Missing ErrorCodes patterns
 
 **After:**
 - Real PHP 8.4 examples from Cookie domain
@@ -182,7 +182,7 @@ All examples now use actual project paths:
 - ✅ `app/Domain/Cookie/ValueObjects/CookieName.php`
 - ✅ `app/Domain/Cookie/Commands/CreateCookie/CreateCookieCommand.php`
 - ✅ `app/Domain/Cookie/Entities/Cookie.php`
-- ✅ `app/Models/Cookie/CookieRepository.php`
+- ✅ `app/Infrastructure/Persistence/Repositories/CookieRepository.php`
 - ✅ `app/Database/Migrations/2025_10_26_000001_AddFlavorToCookies.php`
 
 ### 2. PHP 8.4 Patterns Highlighted
@@ -193,7 +193,7 @@ All examples now use actual project paths:
 - ✅ Named arguments in method calls
 
 ### 3. CQRS/DDD Integration
-- ✅ Value Object validation with DomainLogger
+- ✅ Value Object validation with ErrorCodes
 - ✅ Error codes (ErrorCodes::COOKIE_VALIDATION_NAME)
 - ✅ Command handlers with dependency injection
 - ✅ Entity factory methods (create/reconstitute)
@@ -220,7 +220,7 @@ All examples now use actual project paths:
 - [x] Command template uses proper CQRS namespace
 - [x] Real CookieName example included
 - [x] Real CreateCookieCommand example included
-- [x] DomainLogger pattern shown
+- [x] ErrorCodes pattern shown
 - [x] Error codes demonstrated
 
 ### strategic-planner

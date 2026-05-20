@@ -187,7 +187,7 @@ Write all tasks to JSON file:
     "duration_minutes": 8,
     "depends_on": [],
     "risk": "low",
-    "specific_changes": "Create readonly class with fromString() factory, 3-50 char validation, DomainLogger integration",
+    "specific_changes": "Create readonly class with fromString() factory, 3-50 char validation, ErrorCodes integration",
     "success_criteria": "Value object validates flavor correctly with error codes",
     "blockers": ["none"],
     "verification_command": "vendor/bin/phpstan analyse app/Domain/Cookie/ValueObjects/CookieFlavor.php --level=8",
@@ -198,8 +198,7 @@ Write all tasks to JSON file:
       "Has private constructor with validation",
       "Has static fromString() factory method",
       "Validates length 3-50 characters",
-      "Uses DomainLogger for validation failures",
-      "Uses ErrorCodes::COOKIE_VALIDATION_FLAVOR",
+      "Throws ValidationException with ErrorCodes::COOKIE_VALIDATION_FLAVOR",
       "PHPStan Level 8 passes with 0 errors"
     ]
   },

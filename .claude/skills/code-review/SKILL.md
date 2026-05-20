@@ -82,7 +82,7 @@ Create violation report organized by:
   - Fix: Change to command method: updatePrice(CookiePrice $newPrice)
 
 ### PHPStan Specialist
-- [ ] app/Models/Cookie/CookieRepository.php:78 - Type safety violation
+- [ ] app/Infrastructure/Persistence/Repositories/CookieRepository.php:78 - Type safety violation
   - Issue: Mixed type returned from database
   - Fix: Add array shape annotation
 

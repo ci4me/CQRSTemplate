@@ -77,7 +77,8 @@ curl -s -c /tmp/reg.txt -b /tmp/reg.txt -X POST http://localhost:8080/auth/regis
 ### 3. Login and Session Regeneration (C-2)
 - Login with valid credentials (use seeded accounts or register a new user)
 - **Expected**: Redirect to `/dashboard`, Bootstrap-styled layout renders correctly
-- Navbar should show: ERP Template, Dashboard, Cookies, Users links + Logout button on the right
+- Navbar should show: ERP Template, Dashboard, Cookies links + Logout button on the right
+- The "Users" link only appears for admin users
 
 ### 4. Cookie CRUD with DTO Rendering (H-5)
 - Create a cookie via `/cookies/create`
@@ -87,7 +88,7 @@ curl -s -c /tmp/reg.txt -b /tmp/reg.txt -X POST http://localhost:8080/auth/regis
 ### 5. Role-Based Access (SessionRoleMiddleware)
 - Login as customer, navigate to `/admin/users`
 - **Expected**: Redirect to `/dashboard` with "You do not have permission to access this resource."
-- **Note**: The navbar shows "Users" link to all users, but the route is protected. Consider hiding it for non-admin users in a future update.
+- The "Users" link in the navbar is only visible to admin users.
 
 ### 6. Logout
 - Click the **Logout** button in the navbar (right side, styled as `btn-outline-light btn-sm`)

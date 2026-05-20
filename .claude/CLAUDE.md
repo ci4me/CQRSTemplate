@@ -881,24 +881,18 @@ private function shouldLog(Config\Logging $config, float $duration, mixed $resul
 
 ### Domain Objects Logging
 
-**Value Objects and Entities** use static helper to avoid constructor injection:
+**Value Objects and Entities** do NOT use DomainLogger directly. Validation exceptions thrown by value objects and entities are logged by the command handler's catch block. This keeps domain objects free of infrastructure dependencies.
 
-**DomainLogger** (`app/Infrastructure/Logging/DomainLogger.php`):
 ```php
-// Log validation failures in value objects
-DomainLogger::logValidation('Cookie', 'CookieName', [
-    'attempted_value' => $name,
-    'validation_rule' => 'required',
-    'error_code' => ErrorCodes::COOKIE_VALIDATION_NAME,
-]);
+// Value objects throw exceptions (logged by handler):
+throw ValidationException::required('name', ErrorCodes::COOKIE_VALIDATION_NAME);
 
-// Log business rule violations in entities
-DomainLogger::logBusinessRule('Cookie', 'Cookie', [
-    'business_rule' => 'stock_cannot_be_negative',
-    'current_stock' => $this->stock,
-    'attempted_decrease' => $quantity,
-    'error_code' => ErrorCodes::COOKIE_BUSINESS_RULE_STOCK_NEGATIVE,
-]);
+// Entities throw exceptions (logged by handler):
+throw DomainException::businessRuleViolation(
+    'Stock cannot be negative',
+    sprintf('Attempted to decrease stock by %d when only %d available', $quantity, $this->stock),
+    ErrorCodes::COOKIE_BUSINESS_RULE_STOCK_NEGATIVE
+);
 ```
 
 ### Cookie Domain: Logging Template
