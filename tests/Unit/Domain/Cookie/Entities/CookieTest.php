@@ -183,6 +183,8 @@ final class CookieTest extends UnitTestCase
             isActive: true
         );
 
+        $cookie->assignId(1);
+
         $cookie->increaseStock(25);
 
         $this->assertEquals(75, $cookie->getStock());
@@ -197,6 +199,7 @@ final class CookieTest extends UnitTestCase
             stock: 50,
             isActive: true
         );
+        $cookie->assignId(1);
 
         $this->expectException(ValidationException::class);
         $this->expectExceptionMessage('must be at least 1');
@@ -214,6 +217,8 @@ final class CookieTest extends UnitTestCase
             isActive: true
         );
 
+        $cookie->assignId(1);
+
         $cookie->decreaseStock(20);
 
         $this->assertEquals(30, $cookie->getStock());
@@ -228,6 +233,7 @@ final class CookieTest extends UnitTestCase
             stock: 10,
             isActive: true
         );
+        $cookie->assignId(1);
 
         $this->expectException(DomainException::class);
         $this->expectExceptionMessage('Stock cannot be negative');
@@ -245,6 +251,8 @@ final class CookieTest extends UnitTestCase
             isActive: true
         );
 
+        $cookie->assignId(1);
+
         $cookie->decreaseStock(10);
 
         $this->assertEquals(0, $cookie->getStock());
@@ -259,6 +267,7 @@ final class CookieTest extends UnitTestCase
             stock: 10,
             isActive: true
         );
+        $cookie->assignId(1);
 
         $this->assertFalse($cookie->hasPendingEvents(), 'fresh aggregate has no events');
 
@@ -283,6 +292,8 @@ final class CookieTest extends UnitTestCase
             stock: 5,
             isActive: true
         );
+
+        $cookie->assignId(1);
 
         $cookie->increaseStock(8);
 
@@ -334,6 +345,8 @@ final class CookieTest extends UnitTestCase
             isActive: false
         );
 
+        $cookie->assignId(1);
+
         $cookie->activate();
 
         $this->assertTrue($cookie->getIsActive());
@@ -348,6 +361,8 @@ final class CookieTest extends UnitTestCase
             stock: 10,
             isActive: true
         );
+
+        $cookie->assignId(1);
 
         $cookie->deactivate();
 

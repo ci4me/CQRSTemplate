@@ -239,6 +239,27 @@ final class Cookie
     }
 
     /**
+     * Refuse stock movements on an in-memory (pre-save) entity.
+     *
+     * Without this guard, decreaseStock/increaseStock would raise a
+     * CookieStockChangedEvent whose `cookieId` is null — the event
+     * lands in the outbox / dispatcher unroutable. The right shape is
+     * "save first, then move stock"; if a caller has a use case for
+     * pre-save stock manipulation it must be expressed as the entity's
+     * initial `stock` argument to {@see self::create()}.
+     */
+    private function assertPersisted(string $operation): void
+    {
+        if ($this->id === null) {
+            throw DomainException::invalidState(
+                'Cookie',
+                sprintf('%s requires a persisted entity (id is null)', $operation),
+                ErrorCodes::COOKIE_STATE_DELETED
+            );
+        }
+    }
+
+    /**
      * Decrease stock by a given quantity.
      *
      * Business Rule: Stock cannot go negative.
@@ -249,6 +270,7 @@ final class Cookie
     public function decreaseStock(int $quantity): void
     {
         $this->assertNotDeleted();
+        $this->assertPersisted('decreaseStock');
 
         if ($quantity <= 0) {
             throw ValidationException::tooSmall('quantity', 1, $quantity);
@@ -284,6 +306,7 @@ final class Cookie
     public function increaseStock(int $quantity): void
     {
         $this->assertNotDeleted();
+        $this->assertPersisted('increaseStock');
 
         if ($quantity <= 0) {
             throw ValidationException::tooSmall('quantity', 1, $quantity);
