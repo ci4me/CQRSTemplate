@@ -84,6 +84,14 @@ All code changes automatically:
 
 **See `.claude/CLAUDE.md` for complete agent documentation.**
 
+### Devin Integration
+
+[`.devin/skills/`](./.devin/skills/) provides Devin-specific skills mirroring the Claude workflows:
+- **cqrs-onboard** — onboard to the codebase in under 60 seconds
+- **add-domain** — scaffold a complete new CQRS domain (45 files)
+- **add-property** — add a property across all 20+ layers
+- **fix-bug** — layered bug-fix workflow with test-first approach
+
 ## Requirements
 
 - PHP 8.3+
