@@ -8,11 +8,13 @@
 
 ## TL;DR
 
-**Verdict: Safe for internal development. NOT yet safe to clone.**
+**Verdict: Safe for internal development. Not yet safe to clone, but the gap is closing fast.**
 
-The template has closed 40+ critical issues across auth, security, concurrency, and CQRS patterns (Sprints 1–7, batches p1-batch1 through p2-batch1). All tests pass (582 tests, 1464 assertions), static analysis is clean (PHPStan Level 8, PHPCS). However, cross-cutting patterns remain incomplete: event lifecycle is split between entity and handler, read-model projection is unwired, tenant scoping schema-only, and several secondary security/DDD contracts are still loose. The template teaches cloned domains these half-finished patterns by example — the Cookie reference domain must be fully hardened before any `/add-domain` run.
+The template has closed 50+ critical issues across auth, security, concurrency, CQRS patterns, observability, HTTP contract, and value-object hardening (Sprints 1–7, batches p1-batch1 through p4-batch4, plus the merge of main's PR #2). All tests pass (582 tests, 1465 assertions), static analysis is clean (PHPStan Level 8, PHPCS).
 
-**Clone-readiness status:** ~60% of blockers closed; 40% remain. Estimated effort to "golden module": 2–3 more focused sprints covering event consolidation, read-side wiring, tenant runtime, and DDD contracts.
+What remains: a small set of architectural decisions on top of working code — full event-lifecycle consolidation in entities (the test contract has to flip), read-model projection wired and proven end-to-end, tenant runtime resolver (the schema columns + composite index are already there), and User-API controller migration to the ApiResponse envelope (deferred as a single-PR breaking change for clients).
+
+**Clone-readiness status:** ~75% of blockers closed; 25% remain. Estimated effort to "golden module": 1–2 more focused sprints.
 
 ---
 

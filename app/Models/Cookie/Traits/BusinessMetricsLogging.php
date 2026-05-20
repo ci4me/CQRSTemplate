@@ -38,11 +38,31 @@ trait BusinessMetricsLogging
     }
 
     /**
-     * Log low stock alert if stock is below threshold.
+     * Read a metric threshold from the Logging config, with a safe
+     * fallback so cloned domains that haven't yet added their own slice
+     * still get a sensible default rather than a TypeError.
+     */
+    private function metricInt(string $key, int $default): int
+    {
+        $slice = $this->loggingConfig->metricsThresholds['cookie'] ?? [];
+        $value = $slice[$key] ?? $default;
+        return is_int($value) ? $value : $default;
+    }
+
+    private function metricFloat(string $key, float $default): float
+    {
+        $slice = $this->loggingConfig->metricsThresholds['cookie'] ?? [];
+        $value = $slice[$key] ?? $default;
+        return is_float($value) || is_int($value) ? (float) $value : $default;
+    }
+
+    /**
+     * Log low stock alert if stock is below the configured threshold.
      */
     private function logLowStockAlert(Cookie $cookie, int $cookieId): void
     {
-        if ($cookie->getStock() >= 10) {
+        $threshold = $this->metricInt('lowStockUnits', 10);
+        if ($cookie->getStock() >= $threshold) {
             return;
         }
 
@@ -51,7 +71,7 @@ trait BusinessMetricsLogging
             'repository' => 'CookieRepository',
             'cookieId' => $cookieId,
             'stock' => $cookie->getStock(),
-            'threshold' => 10,
+            'threshold' => $threshold,
         ]);
     }
 
@@ -72,8 +92,9 @@ trait BusinessMetricsLogging
         }
 
         $changePercent = abs(($newPrice->getMinorUnits() - $oldMinorUnits) / $oldMinorUnits * 100);
+        $threshold = $this->metricFloat('priceChangePercent', 10.0);
 
-        if ($changePercent <= 10) {
+        if ($changePercent <= $threshold) {
             return;
         }
 
@@ -84,6 +105,7 @@ trait BusinessMetricsLogging
             'oldPrice' => $oldPrice->toDecimalString(),
             'newPrice' => $newPrice->toDecimalString(),
             'changePercent' => round($changePercent, 2),
+            'threshold' => $threshold,
         ]);
     }
 
@@ -102,7 +124,8 @@ trait BusinessMetricsLogging
 
         $this->queryCount[$id]++;
 
-        if ($this->queryCount[$id] <= 100) {
+        $threshold = $this->metricInt('popularQueryCount', 100);
+        if ($this->queryCount[$id] <= $threshold) {
             return;
         }
 
@@ -111,6 +134,7 @@ trait BusinessMetricsLogging
             'repository' => 'CookieRepository',
             'cookieId' => $id,
             'queryCount' => $this->queryCount[$id],
+            'threshold' => $threshold,
         ]);
     }
 }

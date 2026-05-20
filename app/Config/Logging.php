@@ -107,4 +107,30 @@ final class Logging extends BaseConfig
      * Default: true (enables business observability)
      */
     public bool $businessMetricsEnabled = true;
+
+    /**
+     * Business-metrics thresholds.
+     *
+     * The {@see \App\Models\Cookie\Traits\BusinessMetricsLogging} trait
+     * reads these values instead of hard-coded constants so cloned
+     * domains can override per-entity without forking the trait.
+     *
+     * Cookie defaults (kept for backwards-compat with existing tests):
+     *  - lowStockUnits: 10 — warn when stock < 10.
+     *  - priceChangePercent: 10.0 — log when |change| > 10%.
+     *  - popularQueryCount: 100 — flag a hot row after 100 reads.
+     *
+     * New domains should add their own keys (e.g. `'order' => [...]`) and
+     * pass the matching slice into the trait via the `metricsThresholds`
+     * map below.
+     *
+     * @var array<string, array{lowStockUnits: int, priceChangePercent: float, popularQueryCount: int}>
+     */
+    public array $metricsThresholds = [
+        'cookie' => [
+            'lowStockUnits' => 10,
+            'priceChangePercent' => 10.0,
+            'popularQueryCount' => 100,
+        ],
+    ];
 }
