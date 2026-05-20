@@ -1,13 +1,12 @@
 {
-    "name": "codeigniter4/appstarter",
-    "description": "CodeIgniter4 starter app",
+    "name": "ci4me/cqrs-template",
+    "description": "CodeIgniter 4 CQRS + DDD project template",
     "license": "MIT",
     "type": "project",
-    "homepage": "https://codeigniter.com",
+    "homepage": "https://github.com/ci4me/CQRSTemplate",
     "support": {
-        "forum": "https://forum.codeigniter.com/",
-        "source": "https://github.com/codeigniter4/CodeIgniter4",
-        "slack": "https://codeigniterchat.slack.com"
+        "source": "https://github.com/ci4me/CQRSTemplate",
+        "issues": "https://github.com/ci4me/CQRSTemplate/issues"
     },
     "require": {
         "php": "^8.3",
@@ -27,8 +26,7 @@
     "autoload": {
         "psr-4": {
             "App\\": "app/",
-            "Config\\": "app/Config/",
-            "AbiSageIntacct\\": "app/Libraries/AbiSageIntacct/"
+            "Config\\": "app/Config/"
         },
         "exclude-from-classmap": [
             "**/Database/Migrations/**"

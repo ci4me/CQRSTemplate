@@ -4,13 +4,11 @@ declare(strict_types=1);
 
 namespace App\Domain\User\Entities;
 
-use App\Domain\User\ErrorCodes;
 use App\Domain\User\ValueObjects\Email;
 use App\Domain\User\ValueObjects\HashedPassword;
 use App\Domain\User\ValueObjects\UserName;
 use App\Domain\User\ValueObjects\UserRole;
 use App\Domain\User\ValueObjects\UserStatus;
-use App\Infrastructure\Logging\DomainLogger;
 
 /**
  * User Domain Entity (Aggregate Root).
@@ -267,18 +265,11 @@ final class User
      *
      * Business Rule: Suspended accounts require admin intervention to reactivate.
      *
-     * @param string $reason Reason for suspension (logged for audit)
+     * @param string $reason Reason for suspension (retained for domain event dispatch)
+     * @phpcsSuppress SlevomatCodingStandard.Functions.UnusedParameter.UnusedParameter
      */
     public function suspend(string $reason): void
     {
-        DomainLogger::logBusinessRule('User', 'User', [
-            'business_rule' => 'account_suspended',
-            'user_id' => $this->id,
-            'email' => $this->email->getValue(),
-            'reason' => $reason,
-            'error_code' => ErrorCodes::USER_BUSINESS_RULE_SUSPENDED,
-        ]);
-
         $this->status = UserStatus::Suspended;
         $this->updatedAt = new \DateTimeImmutable();
     }
@@ -325,15 +316,6 @@ final class User
     {
         $this->lockedUntil = (new \DateTimeImmutable())
             ->modify(sprintf('+%d minutes', self::LOCKOUT_DURATION_MINUTES));
-
-        DomainLogger::logBusinessRule('User', 'User', [
-            'business_rule' => 'account_locked',
-            'user_id' => $this->id,
-            'email' => $this->email->getValue(),
-            'failed_attempts' => $this->failedLoginAttempts,
-            'locked_until' => $this->lockedUntil->format('Y-m-d H:i:s'),
-            'error_code' => ErrorCodes::USER_BUSINESS_RULE_LOCKED,
-        ]);
     }
 
     // Getters

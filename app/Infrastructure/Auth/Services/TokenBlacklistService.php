@@ -99,20 +99,16 @@ final class TokenBlacklistService implements TokenBlacklistInterface
      */
     public function cleanup(): int
     {
-        // Note: This is a simple implementation that resets the counter.
-        // In production with very large blacklists, consider using a separate
-        // metadata store to track expiration times more efficiently.
-
-        // Since we can't efficiently iterate cache keys, we rely on automatic
-        // TTL expiration and reset the counter during cleanup
+        $previousCount = $this->getCounter();
         $this->cache->delete(self::COUNTER_KEY);
 
-        $this->logger->info('Token blacklist cleanup completed', [
+        $this->logger->info('Token blacklist counter reset', [
             'operation' => 'cleanup_completed',
-            'trigger' => 'manual',
+            'previous_counter' => $previousCount,
+            'note' => 'Actual entries expire via cache TTL; counter reset to 0',
         ]);
 
-        return 0;
+        return $previousCount;
     }
 
     private function cleanupIfNeeded(): void

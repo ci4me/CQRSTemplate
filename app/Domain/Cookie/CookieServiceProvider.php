@@ -26,6 +26,7 @@ use App\Domain\Cookie\Queries\GetCookiesPaginated\GetCookiesPaginatedQuery;
 use App\Infrastructure\Attributes\DomainServiceProvider;
 use App\Infrastructure\Bus\CommandBus;
 use App\Infrastructure\Bus\EventDispatcher;
+use App\Infrastructure\Bus\EventDispatcherInterface;
 use App\Infrastructure\Bus\QueryBus;
 use App\Infrastructure\Logging\LoggerFactory;
 use App\Infrastructure\ServiceProvider\DomainServiceProviderInterface;
@@ -82,7 +83,7 @@ final class CookieServiceProvider implements DomainServiceProviderInterface
 
         if (
             !$repository instanceof CookieRepositoryInterface
-            || !$eventDispatcher instanceof EventDispatcher
+            || !$eventDispatcher instanceof EventDispatcherInterface
             || !$logger instanceof LoggerInterface
         ) {
             throw new \RuntimeException('Invalid repository, event dispatcher or logger type injected');

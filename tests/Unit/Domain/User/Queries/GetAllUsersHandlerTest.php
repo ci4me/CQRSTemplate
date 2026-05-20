@@ -61,11 +61,11 @@ final class GetAllUsersHandlerTest extends UnitTestCase
         $this->assertArrayHasKey('total', $result);
         $this->assertArrayHasKey('page', $result);
         $this->assertArrayHasKey('perPage', $result);
-        $this->assertArrayHasKey('totalPages', $result);
+        $this->assertArrayHasKey('lastPage', $result);
         $this->assertEquals(100, $result['total']);
         $this->assertEquals(1, $result['page']);
         $this->assertEquals(20, $result['perPage']);
-        $this->assertEquals(5, $result['totalPages']);
+        $this->assertEquals(5, $result['lastPage']);
         $this->assertCount(3, $result['data']);
     }
 
@@ -95,7 +95,7 @@ final class GetAllUsersHandlerTest extends UnitTestCase
         $this->assertEquals(25, $result['total']);
         $this->assertEquals(2, $result['page']);
         $this->assertEquals(10, $result['perPage']);
-        $this->assertEquals(3, $result['totalPages']);
+        $this->assertEquals(3, $result['lastPage']);
         $this->assertCount(2, $result['data']);
     }
 
@@ -186,7 +186,7 @@ final class GetAllUsersHandlerTest extends UnitTestCase
         $this->assertIsArray($result);
         $this->assertEmpty($result['data']);
         $this->assertEquals(0, $result['total']);
-        $this->assertEquals(0, $result['totalPages']);
+        $this->assertEquals(0, $result['lastPage']);
     }
 
     public function test_pagination_metadata_structure(): void
@@ -216,14 +216,14 @@ final class GetAllUsersHandlerTest extends UnitTestCase
         $this->assertArrayHasKey('total', $result);
         $this->assertArrayHasKey('page', $result);
         $this->assertArrayHasKey('perPage', $result);
-        $this->assertArrayHasKey('totalPages', $result);
+        $this->assertArrayHasKey('lastPage', $result);
 
         // Verify data types
         $this->assertIsArray($result['data']);
         $this->assertIsInt($result['total']);
         $this->assertIsInt($result['page']);
         $this->assertIsInt($result['perPage']);
-        $this->assertIsInt($result['totalPages']);
+        $this->assertIsInt($result['lastPage']);
     }
 
     public function test_calculates_total_pages_correctly(): void
@@ -246,7 +246,7 @@ final class GetAllUsersHandlerTest extends UnitTestCase
 
         $result = $this->handler->handle($query);
 
-        $this->assertEquals(5, $result['totalPages']);
+        $this->assertEquals(5, $result['lastPage']);
     }
 
     public function test_throws_exception_on_repository_failure(): void

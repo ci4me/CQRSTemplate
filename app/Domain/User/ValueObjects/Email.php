@@ -6,7 +6,6 @@ namespace App\Domain\User\ValueObjects;
 
 use App\Domain\Shared\Exceptions\ValidationException;
 use App\Domain\User\ErrorCodes;
-use App\Infrastructure\Logging\DomainLogger;
 
 /**
  * Value Object representing an email address.
@@ -54,20 +53,10 @@ final readonly class Email
         $normalized = trim(strtolower($email));
 
         if ($normalized === '') {
-            DomainLogger::logValidation('User', 'Email', [
-                'attempted_value' => $email,
-                'validation_rule' => 'required',
-                'error_code' => ErrorCodes::USER_VALIDATION_EMAIL,
-            ]);
             throw ValidationException::required('email', ErrorCodes::USER_VALIDATION_EMAIL);
         }
 
         if (!$this->isValidFormat($normalized)) {
-            DomainLogger::logValidation('User', 'Email', [
-                'attempted_value' => $email,
-                'validation_rule' => 'email_format',
-                'error_code' => ErrorCodes::USER_VALIDATION_EMAIL,
-            ]);
             throw ValidationException::invalidFormat(
                 'email',
                 'valid email address (e.g., user@example.com)',

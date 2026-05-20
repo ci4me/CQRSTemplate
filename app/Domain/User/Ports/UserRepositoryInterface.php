@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Infrastructure\Persistence\Repositories;
+namespace App\Domain\User\Ports;
 
 use App\Domain\User\Entities\User;
 use App\Domain\User\ValueObjects\Email;
@@ -15,7 +15,7 @@ use App\Domain\User\ValueObjects\Email;
  * - Easy mocking in unit tests
  * - Potential for multiple implementations (different databases, caching, etc.)
  *
- * @package App\Infrastructure\Persistence\Repositories
+ * @package App\Domain\User\Ports
  */
 interface UserRepositoryInterface
 {

@@ -7,8 +7,8 @@ namespace App\Controllers\Api;
 use App\Domain\Shared\Exceptions\DomainException;
 use App\Domain\Shared\Exceptions\ValidationException;
 use App\Domain\User\Commands\ChangeUserPassword\ChangeUserPasswordCommand;
+use App\Domain\User\Commands\CreateUser\CreateUserCommand;
 use App\Domain\User\Commands\DeleteUser\DeleteUserCommand;
-use App\Domain\User\Commands\RegisterUser\RegisterUserCommand;
 use App\Domain\User\Commands\UpdateUser\UpdateUserCommand;
 use App\Domain\User\Queries\GetAllUsers\GetAllUsersQuery;
 use App\Domain\User\Queries\GetUserById\GetUserByIdQuery;
@@ -98,17 +98,17 @@ final class UserController extends ResourceController
 
             $result = $queryBus->ask($query);
 
-            // Transform users to API response format (excluding password)
+            // Transform DTOs to API response format
             $users = array_map(
-                fn ($user) => [
-                    'id' => $user->getId(),
-                    'email' => $user->getEmail()->getValue(),
-                    'role' => $user->getRole()->value,
-                    'status' => $user->getStatus()->value,
-                    'failed_login_attempts' => $user->getFailedLoginAttempts(),
-                    'locked_until' => $user->getLockedUntil()?->format('Y-m-d H:i:s'),
-                    'created_at' => $user->getCreatedAt()->format('Y-m-d H:i:s'),
-                    'updated_at' => $user->getUpdatedAt()?->format('Y-m-d H:i:s'),
+                static fn ($user) => [
+                    'id' => $user->id,
+                    'email' => $user->email,
+                    'role' => $user->role,
+                    'status' => $user->status,
+                    'failed_login_attempts' => $user->failedLoginAttempts,
+                    'locked_until' => $user->lockedUntil,
+                    'created_at' => $user->createdAt,
+                    'updated_at' => $user->updatedAt,
                 ],
                 $result['data']
             );
@@ -120,7 +120,7 @@ final class UserController extends ResourceController
                     'total' => $result['total'],
                     'page' => $result['page'],
                     'perPage' => $result['perPage'],
-                    'totalPages' => $result['totalPages'],
+                    'lastPage' => $result['lastPage'],
                 ],
             ]);
         } catch (\Throwable $e) {
@@ -162,14 +162,14 @@ final class UserController extends ResourceController
             return $this->respond([
                 'success' => true,
                 'data' => [
-                    'id' => $user->getId(),
-                    'email' => $user->getEmail()->getValue(),
-                    'role' => $user->getRole()->value,
-                    'status' => $user->getStatus()->value,
-                    'failed_login_attempts' => $user->getFailedLoginAttempts(),
-                    'locked_until' => $user->getLockedUntil()?->format('Y-m-d H:i:s'),
-                    'created_at' => $user->getCreatedAt()->format('Y-m-d H:i:s'),
-                    'updated_at' => $user->getUpdatedAt()?->format('Y-m-d H:i:s'),
+                    'id' => $user->id,
+                    'email' => $user->email,
+                    'role' => $user->role,
+                    'status' => $user->status,
+                    'failed_login_attempts' => $user->failedLoginAttempts,
+                    'locked_until' => $user->lockedUntil,
+                    'created_at' => $user->createdAt,
+                    'updated_at' => $user->updatedAt,
                 ],
             ]);
         } catch (\Throwable $e) {
@@ -214,7 +214,7 @@ final class UserController extends ResourceController
             $data = $this->request->getJSON(true);
             assert(is_array($data));
 
-            $command = new RegisterUserCommand(
+            $command = new CreateUserCommand(
                 name: $data['name'] ?? '',
                 email: $data['email'] ?? '',
                 password: $data['password'] ?? '',

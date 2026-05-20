@@ -4,7 +4,7 @@
 <!-- cookies/edit -->
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h1>Edit Cookie</h1>
-    <a href="/cookies/<?= $cookie->getId() ?>" class="btn btn-secondary">
+    <a href="/cookies/<?= $cookie->id ?>" class="btn btn-secondary">
         <i class="bi bi-arrow-left"></i> Back to Cookie
     </a>
 </div>
@@ -24,12 +24,12 @@
     <div class="col-md-8">
         <div class="card">
             <div class="card-body">
-                <form method="post" action="/cookies/<?= $cookie->getId() ?>">
+                <form method="post" action="/cookies/<?= $cookie->id ?>">
                     <?= csrf_field() ?>
                     <div class="mb-3">
                         <label for="name" class="form-label">Name <span class="text-danger">*</span></label>
                         <input type="text" class="form-control <?= session('errors.name') ? 'is-invalid' : '' ?>" 
-                               id="name" name="name" value="<?= esc(old('name', $cookie->getName()->getValue()), 'attr') ?>" required>
+                               id="name" name="name" value="<?= esc(old('name', $cookie->name), 'attr') ?>" required>
                         <?php if (session('errors.name')): ?>
                             <div class="invalid-feedback"><?= esc(session('errors.name')) ?></div>
                         <?php endif; ?>
@@ -38,7 +38,7 @@
                     <div class="mb-3">
                         <label for="description" class="form-label">Description</label>
                         <textarea class="form-control <?= session('errors.description') ? 'is-invalid' : '' ?>" 
-                                  id="description" name="description" rows="3"><?= esc(old('description', $cookie->getDescription())) ?></textarea>
+                                  id="description" name="description" rows="3"><?= esc(old('description', $cookie->description)) ?></textarea>
                         <?php if (session('errors.description')): ?>
                             <div class="invalid-feedback"><?= esc(session('errors.description')) ?></div>
                         <?php endif; ?>
@@ -52,7 +52,7 @@
                                     <span class="input-group-text">$</span>
                                     <input type="number" class="form-control <?= session('errors.price') ? 'is-invalid' : '' ?>" 
                                            id="price" name="price" step="0.01" min="0.01" 
-                                           value="<?= esc(old('price', $cookie->getPrice()->toDecimalString()), 'attr') ?>" required>
+                                           value="<?= esc(old('price', $cookie->price), 'attr') ?>" required>
                                     <?php if (session('errors.price')): ?>
                                         <div class="invalid-feedback"><?= esc(session('errors.price')) ?></div>
                                     <?php endif; ?>
@@ -64,7 +64,7 @@
                             <div class="mb-3">
                                 <label for="stock" class="form-label">Stock <span class="text-danger">*</span></label>
                                 <input type="number" class="form-control <?= session('errors.stock') ? 'is-invalid' : '' ?>" 
-                                       id="stock" name="stock" min="0" value="<?= esc(old('stock', $cookie->getStock()), 'attr') ?>" required>
+                                       id="stock" name="stock" min="0" value="<?= esc(old('stock', $cookie->stock), 'attr') ?>" required>
                                 <?php if (session('errors.stock')): ?>
                                     <div class="invalid-feedback"><?= esc(session('errors.stock')) ?></div>
                                 <?php endif; ?>
@@ -75,7 +75,7 @@
                     <div class="mb-3">
                         <div class="form-check form-switch">
                             <input class="form-check-input" type="checkbox" id="is_active" name="is_active" 
-                                   value="1" <?= old('is_active', $cookie->getIsActive()) ? 'checked' : '' ?>>
+                                   value="1" <?= old('is_active', $cookie->isActive) ? 'checked' : '' ?>>
                             <label class="form-check-label" for="is_active">
                                 Active (visible to customers)
                             </label>
@@ -86,7 +86,7 @@
                         <button type="submit" class="btn btn-primary">
                             <i class="bi bi-check-circle"></i> Update Cookie
                         </button>
-                        <a href="/cookies/<?= $cookie->getId() ?>" class="btn btn-secondary">Cancel</a>
+                        <a href="/cookies/<?= $cookie->id ?>" class="btn btn-secondary">Cancel</a>
                     </div>
                 </form>
             </div>
@@ -98,9 +98,9 @@
             <div class="card-body">
                 <h5 class="card-title">Cookie Information</h5>
                 <p class="card-text small">
-                    <strong>ID:</strong> <?= $cookie->getId() ?><br>
-                    <strong>Created:</strong> <?= $cookie->getCreatedAt() ?><br>
-                    <strong>Updated:</strong> <?= $cookie->getUpdatedAt() ?>
+                    <strong>ID:</strong> <?= $cookie->id ?><br>
+                    <strong>Created:</strong> <?= $cookie->createdAt ?><br>
+                    <strong>Updated:</strong> <?= $cookie->updatedAt ?>
                 </p>
             </div>
         </div>

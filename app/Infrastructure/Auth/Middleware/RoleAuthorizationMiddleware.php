@@ -60,7 +60,7 @@ final readonly class RoleAuthorizationMiddleware implements FilterInterface
         $userRole = $this->getUserRole($user);
         if (!$this->hasRequiredRole($userRole, $requiredRole)) {
             $this->logAuthorizationFailure($request, $user, $userRole, $requiredRole);
-            return $this->createForbiddenResponse($userRole, $requiredRole);
+            return $this->createForbiddenResponse();
         }
 
         // User authorized - allow request
@@ -235,19 +235,14 @@ final readonly class RoleAuthorizationMiddleware implements FilterInterface
 
     /**
      * Create 403 Forbidden response.
-     *
-     * @param string $userRole User's role
-     * @param string $requiredRole Required role
      */
-    private function createForbiddenResponse(string $userRole, string $requiredRole): ResponseInterface
+    private function createForbiddenResponse(): ResponseInterface
     {
         $response = service('response');
         $response->setStatusCode(403);
         $response->setJSON([
             'error' => 'Forbidden',
             'message' => 'Insufficient permissions to access this resource',
-            'your_role' => $userRole,
-            'required_role' => $requiredRole,
         ]);
 
         return $response;

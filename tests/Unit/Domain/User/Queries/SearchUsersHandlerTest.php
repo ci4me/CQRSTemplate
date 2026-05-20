@@ -7,7 +7,7 @@ namespace Tests\Unit\Domain\User\Queries;
 use App\Domain\User\Queries\SearchUsers\SearchUsersHandler;
 use App\Domain\User\Queries\SearchUsers\SearchUsersQuery;
 use App\Infrastructure\Logging\LoggerFactory;
-use App\Infrastructure\Persistence\Repositories\UserRepositoryInterface;
+use App\Domain\User\Ports\UserRepositoryInterface;
 use Config\Logging;
 use Tests\Support\Factories\UserFactory;
 use Tests\Support\UnitTestCase;
@@ -62,7 +62,7 @@ final class SearchUsersHandlerTest extends UnitTestCase
 
         $this->assertEquals(1, $result['total']);
         $this->assertCount(1, $result['data']);
-        $this->assertEquals('john@example.com', $result['data'][0]->getEmail()->getValue());
+        $this->assertEquals('john@example.com', $result['data'][0]->email);
     }
 
     public function test_searches_by_role_filter(): void
@@ -197,7 +197,7 @@ final class SearchUsersHandlerTest extends UnitTestCase
         $this->assertEquals(25, $result['total']);
         $this->assertEquals(2, $result['page']);
         $this->assertEquals(10, $result['perPage']);
-        $this->assertEquals(3, $result['totalPages']);
+        $this->assertEquals(3, $result['lastPage']);
         $this->assertCount(2, $result['data']);
     }
 
@@ -227,7 +227,7 @@ final class SearchUsersHandlerTest extends UnitTestCase
         $this->assertIsArray($result);
         $this->assertEmpty($result['data']);
         $this->assertEquals(0, $result['total']);
-        $this->assertEquals(0, $result['totalPages']);
+        $this->assertEquals(0, $result['lastPage']);
     }
 
     public function test_search_metadata_structure(): void
@@ -261,14 +261,14 @@ final class SearchUsersHandlerTest extends UnitTestCase
         $this->assertArrayHasKey('total', $result);
         $this->assertArrayHasKey('page', $result);
         $this->assertArrayHasKey('perPage', $result);
-        $this->assertArrayHasKey('totalPages', $result);
+        $this->assertArrayHasKey('lastPage', $result);
 
         // Verify data types
         $this->assertIsArray($result['data']);
         $this->assertIsInt($result['total']);
         $this->assertIsInt($result['page']);
         $this->assertIsInt($result['perPage']);
-        $this->assertIsInt($result['totalPages']);
+        $this->assertIsInt($result['lastPage']);
     }
 
     public function test_searches_without_filters(): void

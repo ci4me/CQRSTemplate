@@ -25,7 +25,7 @@ use App\Infrastructure\Persistence\Models\UserModel;
 use App\Infrastructure\Persistence\Repositories\PasswordHistoryRepository;
 use App\Infrastructure\Persistence\Repositories\UserRepository;
 use App\Infrastructure\ServiceProvider\ServiceProviderRegistry;
-use App\Models\Cookie\CookieRepository;
+use App\Infrastructure\Persistence\Repositories\CookieRepository;
 use CodeIgniter\Config\BaseService;
 use Psr\Log\LoggerInterface;
 
@@ -125,7 +125,7 @@ class Services extends BaseService
             return $dispatcher;
         }
 
-        return new EventDispatcher();
+        return new EventDispatcher(self::logger());
     }
 
     /**
@@ -148,6 +148,8 @@ class Services extends BaseService
         $queryBus = static::getSharedInstance('queryBus');
         $eventDispatcher = static::getSharedInstance('eventDispatcher');
 
+        assert($commandBus instanceof \App\Infrastructure\Bus\CommandBus);
+        $commandBus->addMiddleware(new \App\Infrastructure\Bus\Middleware\TransactionMiddleware(\Config\Database::connect()));
 
         // Register all domain providers
         ServiceProviderRegistry::registerAll(

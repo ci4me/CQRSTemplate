@@ -5,10 +5,10 @@
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h1>Reset User Password</h1>
     <div class="btn-group">
-        <a href="/admin/users/<?= $user->getId() ?>" class="btn btn-secondary">
+        <a href="/admin/users/<?= $user->id ?>" class="btn btn-secondary">
             <i class="bi bi-arrow-left"></i> Back
         </a>
-        <a href="/admin/users/<?= $user->getId() ?>/edit" class="btn btn-primary">
+        <a href="/admin/users/<?= $user->id ?>/edit" class="btn btn-primary">
             <i class="bi bi-pencil"></i> Edit User
         </a>
     </div>
@@ -36,7 +36,7 @@
             <div class="card-body">
                 <div class="alert alert-warning">
                     <strong>Admin Password Reset</strong><br>
-                    You are about to reset the password for user: <strong><?= esc($user->getName()) ?></strong> (<?= esc($user->getEmail()->getValue()) ?>).<br><br>
+                    You are about to reset the password for user: <strong><?= esc($user->name) ?></strong> (<?= esc($user->email) ?>).<br><br>
                     This action will:
                     <ul class="mb-0 mt-2">
                         <li>Be logged for security audit purposes</li>
@@ -45,7 +45,7 @@
                     </ul>
                 </div>
 
-                <form method="post" action="/admin/users/<?= $user->getId() ?>/reset-password">
+                <form method="post" action="/admin/users/<?= $user->id ?>/reset-password">
                     <?= csrf_field() ?>
 
                     <div class="mb-3">
@@ -80,7 +80,7 @@
                         <button type="submit" class="btn btn-warning">
                             <i class="bi bi-key"></i> Reset Password
                         </button>
-                        <a href="/admin/users/<?= $user->getId() ?>" class="btn btn-secondary">Cancel</a>
+                        <a href="/admin/users/<?= $user->id ?>" class="btn btn-secondary">Cancel</a>
                     </div>
                 </form>
             </div>
@@ -92,11 +92,11 @@
             <div class="card-body">
                 <h5 class="card-title">User Information</h5>
                 <p class="card-text small">
-                    <strong>User ID:</strong> <?= $user->getId() ?><br>
-                    <strong>Name:</strong> <?= esc($user->getName()) ?><br>
-                    <strong>Email:</strong> <?= esc($user->getEmail()->getValue()) ?><br>
-                    <strong>Role:</strong> <?= esc(ucfirst($user->getRole()->getValue())) ?><br>
-                    <strong>Status:</strong> <?= esc(ucfirst($user->getStatus()->getValue())) ?>
+                    <strong>User ID:</strong> <?= $user->id ?><br>
+                    <strong>Name:</strong> <?= esc($user->name) ?><br>
+                    <strong>Email:</strong> <?= esc($user->email) ?><br>
+                    <strong>Role:</strong> <?= esc(ucfirst($user->role)) ?><br>
+                    <strong>Status:</strong> <?= esc(ucfirst($user->status)) ?>
                 </p>
             </div>
         </div>

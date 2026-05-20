@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Cookie\Queries\GetCookiesPaginated;
 
+use App\Domain\Cookie\DTOs\CookieDTO;
 use App\Domain\Cookie\Entities\Cookie;
 use App\Domain\Cookie\Ports\CookieRepositoryInterface;
 use Config\Logging;
@@ -48,7 +49,7 @@ final readonly class GetCookiesPaginatedHandler
      * Handle the GetCookiesPaginatedQuery.
      *
      * @param GetCookiesPaginatedQuery $query The query
-     * @return array{data: array<int, Cookie>, total: int, page: int, perPage: int, lastPage: int} Pagination result
+     * @return array{data: array<int, CookieDTO>, total: int, page: int, perPage: int, lastPage: int} Pagination result
      */
     public function handle(GetCookiesPaginatedQuery $query): array
     {
@@ -64,6 +65,8 @@ final readonly class GetCookiesPaginatedHandler
         $durationMs = (microtime(true) - $startTime) * 1000;
 
         $this->logQueryExecution($query, $result, $durationMs);
+
+        $result['data'] = array_map(static fn(Cookie $cookie) => CookieDTO::fromEntity($cookie), $result['data']);
 
         return $result;
     }

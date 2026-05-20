@@ -41,7 +41,7 @@ class Database extends Config
         // PRODUCTION: Configure SSL certificates and set to array
         'encrypt'      => false,
         'compress'     => false,
-        'strictOn'     => false,
+        'strictOn'     => true,
         'failover'     => [],
         'port'         => 3306,
         'numberNative' => false,

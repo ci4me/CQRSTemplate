@@ -2,12 +2,13 @@
 
 declare(strict_types=1);
 
-namespace App\Models\Cookie;
+namespace App\Infrastructure\Persistence\Repositories;
 
 use App\Domain\Cookie\Entities\Cookie;
 use App\Domain\Cookie\Ports\CookieRepositoryInterface;
 use App\Domain\Cookie\ValueObjects\CookieName;
 use App\Domain\Cookie\ValueObjects\CookiePrice;
+use App\Models\Cookie\CookieModel;
 use App\Models\Cookie\Traits\BusinessMetricsLogging;
 use App\Models\Cookie\Traits\RepositoryLogging;
 use Config\Logging;
