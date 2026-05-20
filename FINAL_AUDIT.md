@@ -43,11 +43,11 @@ What remains: a small set of architectural decisions on top of working code — 
 [HIGH] — Before Cookie is considered reference-worthy.  
 [MEDIUM/LOW] — Before release.
 
-1. **[CRITICAL]** `EventDispatcher` swallows `\Throwable` to log only; `TransactionMiddleware` docblock claims listener failure rolls back — two dispatch modes needed (`dispatchOrFail()` + `dispatch()`). **r06:V2** — split dispatch or update docs; no production caller hit yet but pattern teaches wrong lesson.
+1. ~~**[CRITICAL]** `EventDispatcher` swallows `\Throwable` to log only.~~ **CLOSED in p1-batch1** — EventDispatcher gained a per-instance `setRethrowOnListenerFailure(bool)` toggle (added to EventDispatcherInterface during the merge). TransactionMiddleware flips it via a lazy resolver so listener exceptions cancel the same unit of work as the entity write.
 
 2. **[CRITICAL]** Cookie lifecycle events split: `decreaseStock()`/`increaseStock()` raise via `AggregateRoot`, but `update()`/`activate()`/`deactivate()` silent; `create()` handler-raised. Consolidate all into entity **before** read-model projection wires. **r08:1.1** — move #19 (lifecycle events) before #23 (wire projection).
 
-3. **[CRITICAL]** Read-model projection unwired: `CookieReadModelProjection` listens for no events in `CookieServiceProvider`, `ProjectionRegistry` has zero call sites, `CookieReadModelRepository` does not exist. **r08:2.3** — wire `CookieReadModelProjection` to live events; introduce `CookieReadModelRepository`; swap query handlers.
+3. ~~**[CRITICAL]** Read-model projection unwired.~~ **PARTIALLY CLOSED in p2-batch1** — `Services::projectionRegistry()` builds a `ProjectionRegistry` and registers `CookieReadModelProjection`; `subscribesTo()` returns all 5 lifecycle events. A dedicated `CookieReadModelRepository` (so queries don't reach into the source) is still tracked as a Phase 5 follow-up; query handlers presently use `CookieRepositoryInterface`.
 
 4. ~~**[CRITICAL]** Cookie stock-change events raised with `cookieId = null` on fresh entity.~~ **CLOSED in p4-batch7** — Cookie::decreaseStock/increaseStock call assertPersisted() before mutation; throws DomainException::invalidState when id is null. Existing tests updated to call assignId(1) after Cookie::create() to mirror the production flow.
 
@@ -85,7 +85,7 @@ What remains: a small set of architectural decisions on top of working code — 
 
 21. **[MEDIUM]** 14 of 21 migrations never opened (permissions schema, sessions, tokens, attachments, notifications unaudited). **r14** — schema-by-schema review of 14 migrations; MySQL/Postgres dialect check.
 
-22. **[LOW]** `CookieReadModelProjection` incomplete: only listens to StockChanged, misses Created/Updated/Deleted/Restored. **r13:2** — subscribe to all 5 events; backfill before cutover.
+22. ~~**[LOW]** `CookieReadModelProjection` incomplete: only listens to StockChanged.~~ **NEVER WAS** — `subscribesTo()` always returned all 5 events (Created/Updated/Deleted/Restored/StockChanged). Round-1 misread the event list.
 
 23. **[LOW]** `Currency::usd()` hardcoded default; no `Currency::default()` reader service. Multi-currency deploy must set env, no central source of truth. **r04:N6** — inject default via config or runtime service.
 
