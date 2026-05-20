@@ -149,6 +149,77 @@
 
     <!--
       ============================================================
+      AI-first strictness (Phase 1)
+      ============================================================
+      These rules tighten what static analysis can prove about the
+      codebase. Each one is here because AIs and IDEs benefit
+      directly: tighter types = better inference, no mixed = no
+      black holes, identity comparisons = no implicit coercion
+      surprises, final-by-default = no silent extension contracts.
+    -->
+
+    <!-- Ban `mixed` in the DOMAIN layer. Domain code dealing in
+         business concepts should never trade in untyped values. AIs
+         lose most inference power on `mixed`-typed parameters/returns,
+         and a domain entity accepting `mixed` is almost always a smell.
+
+         Boundary layers (HTTP, serialization, settings, test fixtures)
+         legitimately handle `mixed` because that's what crosses the
+         system boundary — they're not in scope. -->
+    <rule ref="SlevomatCodingStandard.TypeHints.DisallowMixedTypeHint">
+        <include-pattern>app/Domain/</include-pattern>
+        <!-- Ports that expose external system payloads (JWTs, webhook
+             bodies, RPC envelopes) genuinely deal in heterogeneous data
+             after deserialization. Converting to typed DTOs is a bigger
+             refactor than this rule should force. -->
+        <exclude-pattern>app/Domain/*/Ports/</exclude-pattern>
+        <!-- ServiceProviders are DI container wiring; the container holds
+             services of arbitrary type by design. -->
+        <exclude-pattern>app/Domain/*/*ServiceProvider.php</exclude-pattern>
+    </rule>
+
+    <!-- Identity-only comparisons. `==` allows coercion surprises that
+         AIs can't reason about ("0" == 0, [] == null on some PHP versions). -->
+    <rule ref="SlevomatCodingStandard.Operators.DisallowEqualOperators"/>
+
+    <!-- Every class is either `final` (default) or `abstract` (explicit
+         extension contract). Forbids the "could be extended someday" hedge
+         that makes inheritance silently OK throughout the codebase. -->
+    <rule ref="SlevomatCodingStandard.Classes.RequireAbstractOrFinal">
+        <!-- CodeIgniter framework subclasses (controllers, models) have
+             to extend specific parent classes; they aren't aggregate
+             leaves so we don't force `final` on them. -->
+        <exclude-pattern>app/Controllers/</exclude-pattern>
+        <exclude-pattern>app/Infrastructure/Persistence/Models/</exclude-pattern>
+        <exclude-pattern>app/Models/</exclude-pattern>
+        <exclude-pattern>app/Database/</exclude-pattern>
+        <!-- EventDispatcher is non-final on purpose (mock generator) -->
+        <exclude-pattern>app/Infrastructure/Bus/EventDispatcher.php</exclude-pattern>
+        <!-- Legitimate concrete base classes that are BOTH instantiated
+             directly AND extended. Marking them `abstract` would force
+             every `throw new DomainException(...)` / `new RateLimitResult(...)`
+             call site to switch to a concrete subclass; marking them
+             `final` (phpcbf's auto-pick) breaks the existing subclasses. -->
+        <exclude-pattern>app/Domain/Shared/Exceptions/DomainException.php</exclude-pattern>
+        <exclude-pattern>app/Domain/Shared/Exceptions/ValidationException.php</exclude-pattern>
+        <exclude-pattern>app/Domain/Shared/ValueObjects/RateLimitResult.php</exclude-pattern>
+        <!-- Concrete classes mocked directly in tests via PHPUnit's
+             createMock(). The right architectural fix is to mock the
+             interface they implement, but until those tests are
+             rewritten we leave the classes non-final. New code should
+             prefer interface-based mocking and stay `final`. -->
+        <exclude-pattern>app/Infrastructure/Persistence/Repositories/CookieRepository.php</exclude-pattern>
+        <exclude-pattern>app/Infrastructure/Persistence/Repositories/UserRepository.php</exclude-pattern>
+        <exclude-pattern>app/Infrastructure/Persistence/Repositories/PasswordHistoryRepository.php</exclude-pattern>
+        <exclude-pattern>app/Infrastructure/Auth/Services/PermissionService.php</exclude-pattern>
+        <exclude-pattern>app/Infrastructure/Auth/Services/DatabaseTokenBlacklistService.php</exclude-pattern>
+    </rule>
+
+    <!-- `int $x = null` is a PHP 8.1+ deprecation; force `?int $x = null`. -->
+    <rule ref="SlevomatCodingStandard.TypeHints.NullableTypeForNullDefaultValue"/>
+
+    <!--
+      ============================================================
       Required documentation (drives Intelephense / IDE autocomplete)
       ============================================================
       These rules MANDATE docblocks on every class, method, and
