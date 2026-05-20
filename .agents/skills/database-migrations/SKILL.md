@@ -73,7 +73,6 @@ public function up(): void
 ## Running Migrations
 
 ```bash
-php spark migrate          # Run pending migrations
 php spark migrate --all    # Run all namespaced migrations
 php spark migrate:rollback # Rollback last batch
 php spark migrate:status   # Check migration status

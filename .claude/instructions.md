@@ -131,7 +131,7 @@ Use for comprehensive code review:
 
 **Stage 2 - Quality:**
 - `clean-code-specialist` → Check method length, DRY
-- `php-specialist` → Check PHP 8.4 features
+- `php-specialist` → Check PHP 8.3+ features
 
 **Stage 3 - Compliance:**
 - `phpstan-specialist` → Type safety
@@ -153,7 +153,7 @@ After using specialists, **ALWAYS report:**
 ```
 ✅ Specialists Invoked:
 - ddd-specialist: Reviewed value object pattern
-- php-specialist: Verified PHP 8.4 features and type safety
+- php-specialist: Verified PHP 8.3+ features and type safety
 - test-specialist: Created 3 unit tests
 
 ✅ Quality Validation:

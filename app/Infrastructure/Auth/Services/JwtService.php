@@ -27,7 +27,7 @@ final readonly class JwtService implements TokenGeneratorInterface
         if ($jwtSecret === false || $jwtSecret === '') {
             throw new \RuntimeException(
                 'SECURITY ERROR: JWT_SECRET_KEY environment variable is not set. ' .
-                'Generate a strong secret with: openssl rand -base64 64'
+                'Generate a strong secret with: openssl rand -hex 48'
             );
         }
 
@@ -41,7 +41,7 @@ final readonly class JwtService implements TokenGeneratorInterface
         if ($this->isWeakSecret($this->secretKey)) {
             throw new \RuntimeException(
                 'SECURITY ERROR: Weak or default JWT secret detected. ' .
-                'Generate a strong secret with: openssl rand -base64 64'
+                'Generate a strong secret with: openssl rand -hex 48'
             );
         }
 
@@ -146,7 +146,7 @@ final readonly class JwtService implements TokenGeneratorInterface
      * ============================================
      * This method supports graceful secret rotation with a 7-day overlap period:
      *
-     * Day 0: Generate new secret: openssl rand -base64 64
+     * Day 0: Generate new secret: openssl rand -hex 48
      * Day 0: Set JWT_SECRET_KEY_OLD=<current secret>
      * Day 0: Set JWT_SECRET_KEY=<new secret>
      * Day 0-7: Both secrets valid (tokens issued with new, validated with both)

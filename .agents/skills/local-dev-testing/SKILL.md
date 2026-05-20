@@ -7,7 +7,7 @@ description: Set up and test the CQRSTemplate app locally. Use when starting the
 
 ## Prerequisites
 
-- PHP 8.4, MySQL 8.0, Composer installed
+- PHP 8.3+ (CI currently tests on 8.4), MySQL 8.0, Composer installed
 - Database `ci4_cqrs` created with user access
 
 ## Quick Start

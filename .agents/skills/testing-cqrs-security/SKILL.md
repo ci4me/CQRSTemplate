@@ -17,7 +17,7 @@ sudo systemctl start mysql
 Seed the database with test accounts and sample data:
 ```bash
 cd /home/ubuntu/repos/CQRSTemplate
-php spark migrate
+php spark migrate --all
 php spark db:seed DatabaseSeeder
 ```
 This creates:
@@ -106,7 +106,7 @@ curl -s -c /tmp/reg.txt -b /tmp/reg.txt -X POST http://localhost:8080/auth/regis
 ```bash
 composer phpstan   # PHPStan Level 8, expect 0 errors
 composer phpcs     # PHPCS, expect 0 violations
-composer test      # PHPUnit (58 JWT_SECRET_KEY errors are pre-existing in integration tests)
+composer test      # PHPUnit, expect all tests to pass
 ```
 
 ## Devin Secrets Needed

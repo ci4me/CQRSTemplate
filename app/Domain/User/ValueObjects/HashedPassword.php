@@ -101,7 +101,7 @@ final readonly class HashedPassword
         $complexity = PasswordComplexity::fromPlaintext($plaintext);
         $validated = $complexity->getValue();
 
-        // PHP 8.4+ guarantees password_hash returns non-empty-string with PASSWORD_ARGON2ID
+        // PASSWORD_ARGON2ID returns a non-empty hash for validated input
         $hash = password_hash($validated, PASSWORD_ARGON2ID);
 
         return new self($hash);

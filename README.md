@@ -5,7 +5,7 @@
 [![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/ci4me/CQRSTemplate/badge)](https://securityscorecards.dev/viewer/?uri=github.com/ci4me/CQRSTemplate)
 [![Conventional Commits](https://img.shields.io/badge/Conventional%20Commits-1.0.0-yellow.svg)](https://conventionalcommits.org)
 [![PHPStan Level 8](https://img.shields.io/badge/PHPStan-Level%208-brightgreen.svg)](phpstan.neon)
-[![PHP](https://img.shields.io/badge/PHP-8.4-777BB4?logo=php&logoColor=white)](composer.json)
+[![PHP](https://img.shields.io/badge/PHP-8.3%2B-777BB4?logo=php&logoColor=white)](composer.json)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 A production-ready CodeIgniter 4 project template implementing **CQRS** (Command Query Responsibility Segregation) with **Domain-Driven Design** principles, **AI-agent-enforced quality gates**, and **hardened git tooling** (signed commits, server-side ruleset, supply-chain scanning).
@@ -20,7 +20,7 @@ A production-ready CodeIgniter 4 project template implementing **CQRS** (Command
 ✅ **AI-Optimized** - Extensive documentation for AI agents
 ✅ **Value Objects** - Strong validation and type safety
 ✅ **Event-Driven** - Domain events for side effects
-✅ **Automated Quality Enforcement** - 10 specialized AI agents
+✅ **Automated Quality Enforcement** - 15 AI agent definitions (10 core quality agents + 5 utility/MCP agents)
 ✅ **Auto-Discovery** - Zero-configuration domain registration
 ✅ **Hardened Git Workflow** - Conventional Commits + signed commits + 3-layer enforcement
 ✅ **Supply-Chain Security** - Gitleaks · CodeQL · OpenSSF Scorecard · Dependabot · Dependency Review
@@ -29,8 +29,10 @@ A production-ready CodeIgniter 4 project template implementing **CQRS** (Command
 
 This template includes a comprehensive AI agent system for **autonomous code quality enforcement**:
 
-### 10 Specialized Agents
-- **php-specialist** - PHP 8.4 features, type safety, modern patterns
+### 15 AI Agent Definitions
+
+**Core quality agents:**
+- **php-specialist** - PHP 8.3+ features, type safety, modern patterns
 - **phpstan-specialist** - Level 8 static analysis enforcement
 - **clean-code-specialist** - SOLID, DRY, max 20 lines/method
 - **cqrs-specialist** - Command/Query/Event pattern enforcement
@@ -41,9 +43,16 @@ This template includes a comprehensive AI agent system for **autonomous code qua
 - **git-specialist** - Conventional Commits + signed commits + branch hygiene
 - **claude-code-specialist** - Creates new agents/skills/commands
 
+**Utility/MCP agents:**
+- **serena-code-assistant** - Symbol-level code navigation and editing
+- **chrome-devtools-expert** - Browser debugging and performance analysis
+- **playwright-automation** - End-to-end browser automation
+- **context7-docs** - Current library documentation retrieval
+- **markitdown-converter** - Document conversion to Markdown
+
 ### Quick Commands
 ```bash
-/add-domain Order           # Create complete 45-file domain
+/add-domain Order           # Create complete 45+ file/touchpoint domain
 /add-property Cookie flavor string  # Add property across all layers
 /add-business-rule Cookie   # Add business rule with tests
 /review-domain Cookie       # Comprehensive code review
@@ -69,7 +78,10 @@ User: "Add payment system"
 ```
 
 ### Reusable Skills
-- **domain-scaffolding** - Generate complete domain (45 files)
+
+Claude-specific skills live in `.claude/skills/` (10 total); Devin-specific reusable skills live in `.agents/skills/` (4 total).
+
+- **domain-scaffolding** - Generate complete domain (45+ files/touchpoints)
 - **property-addition** - Add property (20+ files modified)
 - **business-rule-addition** - Add rules with correct placement
 - **code-review** - Multi-specialist parallel review
@@ -136,8 +148,8 @@ mysql -u root -proot -e "CREATE DATABASE ci4_cqrs"
 ### 4. Run Migrations & Seed
 
 ```bash
-php spark migrate
-php spark db:seed CookieSeeder
+php spark migrate --all
+php spark db:seed DatabaseSeeder
 ```
 
 ### 5. Start Development Server
@@ -162,11 +174,12 @@ app/
 │   │   └── ValueObjects/  # Value objects (separate from entities)
 │   └── Shared/          # Shared domain code
 ├── Infrastructure/      # Technical implementation
-│   ├── Attributes/      # PHP 8.3 attributes for auto-discovery
+│   ├── Attributes/      # Native PHP attributes for auto-discovery
 │   ├── Bus/             # Command/Query buses, EventDispatcher
+│   ├── Persistence/     # Repository implementations and infrastructure models
 │   └── ServiceProvider/  # Auto-discovery system
-├── Models/              # Data persistence
-│   └── Cookie/          # Model + Repository per domain
+├── Models/              # CodeIgniter models and persistence traits
+│   └── Cookie/          # CookieModel + logging traits
 ├── Controllers/         # HTTP layer (thin controllers)
 │   └── Domain/
 │       └── Cookie/      # Controllers organized by domain
@@ -226,16 +239,16 @@ composer check               # Run all checks
 ### Database
 
 ```bash
-php spark migrate            # Run migrations
+php spark migrate --all      # Run all namespaced migrations
 php spark migrate:rollback   # Rollback last migration
-php spark db:seed CookieSeeder  # Seed data
+php spark db:seed DatabaseSeeder # Seed users and cookie data
 ```
 
 ## Adding a New Domain
 
 ### Zero-Configuration Auto-Discovery
 
-Thanks to PHP 8.3 attributes, adding a new domain is incredibly simple:
+Thanks to native PHP attributes, adding a new domain is incredibly simple:
 
 1. Create `app/Domain/YourDomain/` folder structure
 2. Create `YourDomainServiceProvider.php` with `#[DomainServiceProvider]` attribute
@@ -371,8 +384,9 @@ $routes->group('cookies', static function ($routes) {
 ### For AI Agents
 - **.claude/CLAUDE.md** - Project memory (auto-loads on startup)
 - **.claude/instructions.md** - Orchestrator pattern rules
-- **.claude/agents/** - 9 specialized agent definitions
-- **.claude/skills/** - 4 reusable workflow skills
+- **.claude/agents/** - 15 agent definitions
+- **.claude/skills/** - 10 Claude-specific workflow skills
+- **.agents/skills/** - 4 Devin-specific reusable skills
 - **.claude/commands/** - 6 slash commands
 - **.claude/documentation/** - 7 comprehensive protocol documents
   - COMPLETE_FILE_INVENTORY.md

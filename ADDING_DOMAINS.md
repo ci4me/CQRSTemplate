@@ -19,7 +19,7 @@ Use domain-scaffolding skill to create a complete Order domain
 ```
 
 This automated approach:
-- ✅ Creates all 45 required files (see `.claude/documentation/COMPLETE_FILE_INVENTORY.md`)
+- ✅ Creates all 45+ required files/touchpoints (see `.claude/documentation/COMPLETE_FILE_INVENTORY.md`)
 - ✅ Follows all CQRS/DDD patterns correctly
 - ✅ Passes PHPStan Level 8 validation
 - ✅ Passes Slevomat coding standards
@@ -77,6 +77,10 @@ app/Domain/Order/
 **File:** `app/Domain/Order/Entities/Order.php`
 
 ```php
+use App\Domain\Order\Ports\OrderRepositoryInterface;
+use App\Infrastructure\Logging\LoggerFactory;
+use App\Infrastructure\Persistence\Repositories\OrderRepository;
+
 <?php
 
 declare(strict_types=1);
@@ -161,14 +165,16 @@ namespace App\Domain\Order\Commands\CreateOrder;
 use App\Domain\Order\Entities\Order;
 use App\Domain\Order\ValueObjects\OrderNumber;
 use App\Domain\Order\ValueObjects\OrderTotal;
-use App\Infrastructure\Bus\EventDispatcher;
-use App\Models\Order\OrderRepository;
+use App\Domain\Order\Ports\OrderRepositoryInterface;
+use App\Infrastructure\Bus\EventDispatcherInterface;
+use Psr\Log\LoggerInterface;
 
 final class CreateOrderHandler
 {
     public function __construct(
-        private OrderRepository $repository,
-        private EventDispatcher $eventDispatcher
+        private OrderRepositoryInterface $repository,
+        private EventDispatcherInterface $eventDispatcher,
+        private LoggerInterface $logger
     ) {
     }
 
@@ -218,11 +224,11 @@ declare(strict_types=1);
 namespace App\Domain\Order\Queries\GetOrderById;
 
 use App\Domain\Order\Entities\Order;
-use App\Models\Order\OrderRepository;
+use App\Domain\Order\Ports\OrderRepositoryInterface;
 
 final class GetOrderByIdHandler
 {
-    public function __construct(private OrderRepository $repository) {
+    public function __construct(private OrderRepositoryInterface $repository) {
     }
 
     public function handle(GetOrderByIdQuery $query): ?Order
@@ -283,7 +289,7 @@ final class OrderCreatedEventHandler
 
 ### Step 6: Create Repository
 
-**Folder:** `app/Models/Order/`
+**Folder:** `app/Infrastructure/Persistence/Repositories/`
 
 **OrderRepository.php:**
 ```php
@@ -291,13 +297,15 @@ final class OrderCreatedEventHandler
 
 declare(strict_types=1);
 
-namespace App\Models\Order;
+namespace App\Infrastructure\Persistence\Repositories;
 
 use App\Domain\Order\Entities\Order;
+use App\Domain\Order\Ports\OrderRepositoryInterface;
 use App\Domain\Order\ValueObjects\OrderNumber;
 use App\Domain\Order\ValueObjects\OrderTotal;
+use App\Models\Order\OrderModel;
 
-class OrderRepository
+class OrderRepository implements OrderRepositoryInterface
 {
     private OrderModel $model;
 
@@ -365,8 +373,10 @@ use App\Domain\Order\Queries\GetOrderById\GetOrderByIdQuery;
 use App\Infrastructure\Attributes\DomainServiceProvider;
 use App\Infrastructure\Bus\CommandBus;
 use App\Infrastructure\Bus\EventDispatcher;
+use App\Infrastructure\Bus\EventDispatcherInterface;
 use App\Infrastructure\Bus\QueryBus;
 use App\Infrastructure\ServiceProvider\DomainServiceProviderInterface;
+use Psr\Log\LoggerInterface;
 
 #[DomainServiceProvider]  // <-- This attribute enables auto-discovery!
 final class OrderServiceProvider implements DomainServiceProviderInterface
@@ -377,10 +387,11 @@ final class OrderServiceProvider implements DomainServiceProviderInterface
     {
         $repository = $this->getRepository('orderRepository');
         $eventDispatcher = $this->getRepository('eventDispatcher');
+        $logger = $this->getRepository('logger');
 
         $commandBus->register(
             CreateOrderCommand::class,
-            new CreateOrderHandler($repository, $eventDispatcher)
+            new CreateOrderHandler($repository, $eventDispatcher, $logger)
         );
     }
 
@@ -404,7 +415,7 @@ final class OrderServiceProvider implements DomainServiceProviderInterface
 
     public function getRepositories(): array
     {
-        return ['orderRepository', 'eventDispatcher'];
+        return ['orderRepository', 'eventDispatcher', 'logger', 'loggingConfig'];
     }
 
     public function setRepositories(array $repositories): void
@@ -426,13 +437,16 @@ final class OrderServiceProvider implements DomainServiceProviderInterface
 **ONLY IF** you need a new repository. Add this method to `app/Config/Services.php`:
 
 ```php
-public static function orderRepository(bool $getShared = true): OrderRepository
+public static function orderRepository(bool $getShared = true): OrderRepositoryInterface
 {
     if ($getShared) {
         return static::getSharedInstance('orderRepository');
     }
 
-    return new OrderRepository();
+    return new OrderRepository(
+        LoggerFactory::create('order.repository'),
+        config('Logging')
+    );
 }
 ```
 
@@ -463,7 +477,7 @@ public function up(): void
 
 Run migration:
 ```bash
-php spark migrate
+php spark migrate --all
 ```
 
 ---
@@ -551,8 +565,9 @@ namespace Tests\Unit\Domain\Order\Commands;
 
 use App\Domain\Order\Commands\CreateOrder\CreateOrderCommand;
 use App\Domain\Order\Commands\CreateOrder\CreateOrderHandler;
-use App\Infrastructure\Bus\EventDispatcher;
-use App\Models\Order\OrderRepository;
+use App\Domain\Order\Ports\OrderRepositoryInterface;
+use App\Infrastructure\Bus\EventDispatcherInterface;
+use Psr\Log\NullLogger;
 use Tests\Support\UnitTestCase;
 
 final class CreateOrderHandlerTest extends UnitTestCase
@@ -560,14 +575,14 @@ final class CreateOrderHandlerTest extends UnitTestCase
     public function test_creates_order_successfully(): void
     {
         // Arrange
-        $repository = $this->createMock(OrderRepository::class);
-        $eventDispatcher = $this->createMock(EventDispatcher::class);
+        $repository = $this->createMock(OrderRepositoryInterface::class);
+        $eventDispatcher = $this->createMock(EventDispatcherInterface::class);
 
         $repository->expects($this->once())
             ->method('save')
             ->willReturn(1);
 
-        $handler = new CreateOrderHandler($repository, $eventDispatcher);
+        $handler = new CreateOrderHandler($repository, $eventDispatcher, new NullLogger());
         $command = new CreateOrderCommand(
             customerEmail: 'test@example.com',
             total: 99.99
@@ -601,7 +616,8 @@ namespace Tests\Integration\Repositories;
 use App\Domain\Order\Entities\Order;
 use App\Domain\Order\ValueObjects\OrderNumber;
 use App\Domain\Order\ValueObjects\OrderTotal;
-use App\Models\Order\OrderRepository;
+use App\Infrastructure\Logging\LoggerFactory;
+use App\Infrastructure\Persistence\Repositories\OrderRepository;
 use Tests\Support\IntegrationTestCase;
 
 final class OrderRepositoryTest extends IntegrationTestCase
@@ -611,7 +627,10 @@ final class OrderRepositoryTest extends IntegrationTestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->repository = new OrderRepository();
+        $this->repository = new OrderRepository(
+            LoggerFactory::create('test.order.repository'),
+            config('Logging')
+        );
     }
 
     public function test_save_inserts_new_order(): void

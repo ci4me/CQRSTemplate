@@ -20,7 +20,7 @@ exit;
 ### 2. Run Migrations
 
 ```bash
-php spark migrate
+php spark migrate --all
 ```
 
 Expected output:
@@ -32,7 +32,7 @@ Migrated: 2025-01-21-000001_CreateCookiesTable
 ### 3. Seed Sample Data
 
 ```bash
-php spark db:seed CookieSeeder
+php spark db:seed DatabaseSeeder
 ```
 
 This will create 10 sample cookies in your database.

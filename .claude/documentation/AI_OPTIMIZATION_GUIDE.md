@@ -33,7 +33,7 @@ This project is designed from the ground up to be **AI Agent-Optimized**, meanin
 - **Enforce code quality** (PHPStan, Slevomat, test coverage)
 - **Provide intelligent guidance** (specialized agents for different concerns)
 - **Reduce errors** (automated validation and rejection of non-compliant code)
-- **Accelerate development** (45-file domain creation in 2-3 minutes vs 30+ minutes manual)
+- **Accelerate development** (45+ file/touchpoint domain creation in 2-3 minutes vs 30+ minutes manual)
 
 ### Key Optimization Strategies
 
@@ -56,7 +56,7 @@ This project is designed from the ground up to be **AI Agent-Optimized**, meanin
 ├── CLAUDE.md                    # Auto-loads on startup (project memory)
 ├── instructions.md              # Global orchestrator rules
 ├── settings.json                # Team-shared permissions
-├── agents/                      # 9 specialized agents
+├── agents/                      # 15 agent definitions
 │   ├── php-specialist.md
 │   ├── phpstan-specialist.md
 │   ├── clean-code-specialist.md
@@ -65,12 +65,24 @@ This project is designed from the ground up to be **AI Agent-Optimized**, meanin
 │   ├── test-specialist.md
 │   ├── slevomat-specialist.md
 │   ├── codeigniter4-specialist.md
-│   └── claude-code-specialist.md
-├── skills/                      # 4 reusable workflows
+│   ├── git-specialist.md
+│   ├── claude-code-specialist.md
+│   ├── serena-code-assistant.md
+│   ├── chrome-devtools-expert.md
+│   ├── playwright-automation.md
+│   ├── context7-docs.md
+│   └── markitdown-converter.md
+├── skills/                      # 10 Claude-specific reusable workflows
 │   ├── domain-scaffolding/
 │   ├── property-addition/
 │   ├── business-rule-addition/
-│   └── code-review/
+│   ├── code-review/
+│   ├── serena-code-generator/
+│   ├── strategic-planner/
+│   ├── chrome-devtools-expert/
+│   ├── playwright-automation/
+│   ├── context7-docs/
+│   └── markitdown-converter/
 ├── commands/                    # 6 slash commands
 │   ├── add-domain.md
 │   ├── add-property.md
@@ -78,7 +90,7 @@ This project is designed from the ground up to be **AI Agent-Optimized**, meanin
 │   ├── review-domain.md
 │   ├── enforce-quality.md
 │   └── update-docs.md
-└── documentation/               # 8 comprehensive protocols
+└── documentation/               # comprehensive protocols and reports
     ├── COMPLETE_FILE_INVENTORY.md
     ├── DOMAIN_CREATION_PROTOCOL.md
     ├── PROPERTY_ADDITION_PROTOCOL.md
@@ -112,7 +124,7 @@ Each agent follows Claude Code best practices:
 ### Agent Roster
 
 #### 1. php-specialist
-**Purpose:** Enforces PHP 8.4 features and type safety
+**Purpose:** Enforces PHP 8.3+ features and type safety
 
 **Key Responsibilities:**
 - `declare(strict_types=1)` in all files
@@ -422,7 +434,7 @@ Each skill has:
 
 ### 1. domain-scaffolding
 
-**Purpose:** Create a complete 45-file domain from scratch
+**Purpose:** Create a complete 45+ file/touchpoint domain from scratch
 
 **Triggered by:** `/add-domain {DomainName}` command
 
@@ -585,7 +597,7 @@ Slash commands provide quick access to skills and workflows.
 
 #### 1. /add-domain {DomainName}
 
-**Purpose:** Create complete new domain with all 45 files
+**Purpose:** Create complete new domain with all standard files and touchpoints
 
 **Example:**
 ```
@@ -705,7 +717,7 @@ Slash commands provide quick access to skills and workflows.
 All located in `.claude/documentation/`:
 
 #### 1. COMPLETE_FILE_INVENTORY.md
-**Purpose:** Documents all 45 files created per domain
+**Purpose:** Documents all standard files and touchpoints created per domain
 
 **Structure:**
 - Domain Layer (22 files)
@@ -1020,7 +1032,7 @@ User: "Show me the Cookie entity"
 Claude: [Uses Read tool automatically]
 Claude: [Invokes php-specialist automatically]
 Claude: "Here's the Cookie entity. The php-specialist confirms it follows
-         PHP 8.4 best practices with strict types, readonly properties,
+         PHP 8.3+ best practices with strict types, readonly properties,
          and full type coverage."
 ```
 
@@ -1096,7 +1108,7 @@ This section documents which Claude Code best practices were researched and appl
 ```yaml
 ---
 name: php-specialist
-description: Use PROACTIVELY when reviewing or writing PHP code. Enforces PHP 8.4 features, strict types, readonly properties.
+description: Use PROACTIVELY when reviewing or writing PHP code. Enforces PHP 8.3+ features, strict types, readonly properties.
 tools: Read, Edit, Bash
 ---
 ```
@@ -1266,7 +1278,7 @@ Quality Metrics:
 Time: 2 minutes 34 seconds
 
 Next Steps:
-- Run migration: php spark migrate
+- Run migration: php spark migrate --all
 - Seed data: php spark db:seed OrderSeeder
 - Visit: http://localhost:8080/orders
 ```
@@ -1556,7 +1568,7 @@ Time: 1 minute 47 seconds
 ## Specialist Recommendations
 
 ### php-specialist
-✅ All PHP 8.4 best practices followed
+✅ All PHP 8.3+ best practices followed
 
 ### phpstan-specialist
 ✅ Level 8 compliance achieved (after array shape fix)
@@ -1647,7 +1659,7 @@ Cookie domain meets all quality standards for production.
 
 All located in `.claude/documentation/`:
 
-- **COMPLETE_FILE_INVENTORY.md** - 45 files per domain
+- **COMPLETE_FILE_INVENTORY.md** - 45+ files/touchpoints per domain
 - **DOMAIN_CREATION_PROTOCOL.md** - 15-step creation process
 - **PROPERTY_ADDITION_PROTOCOL.md** - 20+ file modification checklist
 - **BUSINESS_RULE_PROTOCOL.md** - Rule placement decision tree
@@ -1681,7 +1693,7 @@ This CodeIgniter 4 CQRS Template is fully optimized for AI agents and Claude Cod
 8. **Autonomous Behavior** - Proactive quality fixes without asking
 
 **Result:**
-- 45-file domain creation: **2-3 minutes** (vs 30+ minutes manual)
+- 45+ file/touchpoint domain creation: **2-3 minutes** (vs 30+ minutes manual)
 - 20+ file property addition: **1-2 minutes** (vs 20+ minutes manual)
 - Comprehensive code review: **2 minutes** (vs 20-30 minutes manual per specialist)
 - **Zero quality compromises** - PHPStan Level 8, Slevomat compliance, 90%+ test coverage

@@ -79,7 +79,7 @@ public function down(): void
 
 Run migration:
 ```bash
-php spark migrate
+php spark migrate --all
 ```
 
 ---
@@ -232,7 +232,7 @@ protected $validationRules = [
 
 #### ✅ 5. Infrastructure Layer - Repository
 
-**File:** `app/Models/Cookie/CookieRepository.php`
+**File:** `app/Infrastructure/Persistence/Repositories/CookieRepository.php`
 
 Update save() and toDomainEntity() methods:
 

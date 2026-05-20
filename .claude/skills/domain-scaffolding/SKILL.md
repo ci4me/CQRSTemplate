@@ -1,12 +1,12 @@
 ---
 name: domain-scaffolding
-description: Scaffolds a complete new domain from scratch with full CQRS structure (45 files: entities, value objects, commands, queries, events, handlers, repository, controller, views, tests). Use when user requests to create a new domain/module/bounded context. References Cookie domain as template.
+description: Scaffolds a complete new domain from scratch with full CQRS structure (45+ files/touchpoints: entities, value objects, DTOs, ports, commands, queries, events, handlers, repository, controller, views, tests). Use when user requests to create a new domain/module/bounded context. References Cookie domain as template.
 allowed-tools: [Read, Write, Edit, Glob, Grep, Bash, Task]
 ---
 
 # Domain Scaffolding Skill
 
-Automates creation of a complete domain with all 45 required files.
+Automates creation of a complete domain with all standard files and touchpoints.
 
 ---
 
@@ -80,7 +80,7 @@ Use `ddd-specialist` to create entity with:
 
 **Handler:**
 - Reference: `app/Domain/Cookie/Commands/CreateCookie/CreateCookieHandler.php`
-- Inject repository and event dispatcher
+- Inject repository interface, event dispatcher interface, and logger
 - handle() method with business logic
 - Dispatch events
 
@@ -98,7 +98,7 @@ Use `ddd-specialist` to create entity with:
 **Handler:**
 - Reference: `app/Domain/Cookie/Queries/GetCookieById/GetCookieByIdHandler.php`
 - Inject repository
-- handle() method returns entities
+- handle() method returns DTOs for presentation/API reads
 
 **Invoke:** `cqrs-specialist` to review
 
@@ -156,12 +156,15 @@ Critical:
 Add method to `app/Config/Services.php`:
 
 ```php
-public static function {entity}Repository(bool $getShared = true): {Entity}Repository
+public static function {entity}Repository(bool $getShared = true): {Entity}RepositoryInterface
 {
     if ($getShared) {
         return static::getSharedInstance('{entity}Repository');
     }
-    return new {Entity}Repository();
+    return new {Entity}Repository(
+        self::logger(),
+        config('Logging')
+    );
 }
 ```
 
@@ -290,7 +293,7 @@ If ANY check fails, fix violations before completing.
 
 ## Success Criteria
 
-✅ 45 files created
+✅ Standard domain files/touchpoints created
 ✅ All specialists invoked for their expertise
 ✅ All quality checks passing
 ✅ Domain functional and tested

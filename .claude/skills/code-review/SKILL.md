@@ -45,7 +45,7 @@ vendor/bin/phpunit tests/Unit/Domain/{Domain} --coverage-text
 ### Domain Layer Review
 - `ddd-specialist` → Review entities, value objects, aggregates
 - `cqrs-specialist` → Review commands, queries, events, handlers
-- `php-specialist` → Review PHP 8.4 usage, types, modern features
+- `php-specialist` → Review PHP 8.3+ usage, types, modern features
 - `clean-code-specialist` → Review method length, complexity, DRY
 - `phpstan-specialist` → Review type safety, annotations
 - `test-specialist` → Review test coverage, test quality

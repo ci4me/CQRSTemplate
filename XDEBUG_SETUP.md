@@ -7,7 +7,7 @@ This guide helps you install and configure Xdebug 3.x for debugging PHP code and
 ### Ubuntu/Debian
 
 ```bash
-# Install Xdebug for PHP 8.4
+# Install Xdebug for PHP 8.3+
 sudo apt update
 sudo apt install php8.4-xdebug
 

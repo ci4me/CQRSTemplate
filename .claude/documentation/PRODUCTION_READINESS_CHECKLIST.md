@@ -86,7 +86,7 @@ This comprehensive checklist covers all aspects required to deploy this CQRS tem
 **Rotation Procedure:**
 ```bash
 # 1. Generate new secret
-openssl rand -base64 64
+openssl rand -hex 48
 
 # 2. Set old secret (current value)
 JWT_SECRET_KEY_OLD='<current-secret>'
@@ -374,7 +374,7 @@ public int $ttl = 60;
 - [ ] 🔧 OPcache configured for production - **NEEDS TUNING**
 - [ ] ❌ OPcache preloading (PHP 7.4+) - **NOT CONFIGURED**
 
-**Current Status:** OPcache enabled (PHP 8.4.13) but not optimally configured
+**Current Status:** OPcache enabled but not optimally configured
 
 **Priority:** 🔵 **MEDIUM**
 
@@ -969,7 +969,7 @@ ssh "$SERVER_USER@$SERVER_HOST" << 'EOF'
     cd /var/www/html
     git pull origin main
     composer install --no-dev --optimize-autoloader
-    php spark migrate
+    php spark migrate --all
     php spark cache:clear
     php spark optimize:clear
     sudo systemctl reload php8.4-fpm
@@ -1047,7 +1047,7 @@ Create comprehensive deployment guide at `.claude/documentation/DEPLOYMENT_GUIDE
 
 **Required sections:**
 1. Server Requirements:
-   - PHP 8.4+
+   - PHP 8.3+ (CI currently tests on 8.4)
    - MySQL 8.0+ or MariaDB 10.3+
    - Nginx/Apache with mod_rewrite
    - Redis (for caching and sessions)
