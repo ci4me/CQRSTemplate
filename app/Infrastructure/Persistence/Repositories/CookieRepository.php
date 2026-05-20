@@ -64,6 +64,7 @@ class CookieRepository implements CookieRepositoryInterface
 
     private ?EventDispatcher $eventDispatcher;
     private ?EventOutboxWriter $outboxWriter;
+    private ?\App\Infrastructure\Tenancy\TenantContext $tenantContext;
 
     /**
      * Create a new CookieRepository.
@@ -73,19 +74,26 @@ class CookieRepository implements CookieRepositoryInterface
      * write (TransactionMiddleware wraps the whole command pipeline).
      * That gives us a durable audit trail and a retry surface — the
      * relay picks rows up out-of-band when synchronous dispatch failed.
+     *
+     * The optional TenantContext stamps `tenant_id` on every insert and
+     * scopes queries; the column is part of the composite UNIQUE so the
+     * default fallback (1) is what keeps the index meaningful on
+     * single-tenant deploys.
      */
     public function __construct(
         LoggerInterface $logger,
         Logging $loggingConfig,
         ?CookieModel $model = null,
         ?EventDispatcher $eventDispatcher = null,
-        ?EventOutboxWriter $outboxWriter = null
+        ?EventOutboxWriter $outboxWriter = null,
+        ?\App\Infrastructure\Tenancy\TenantContext $tenantContext = null
     ) {
         $this->model = $model ?? new CookieModel();
         $this->logger = $logger;
         $this->loggingConfig = $loggingConfig;
         $this->eventDispatcher = $eventDispatcher;
         $this->outboxWriter = $outboxWriter;
+        $this->tenantContext = $tenantContext;
     }
 
     /**
@@ -418,6 +426,13 @@ class CookieRepository implements CookieRepositoryInterface
             // forgets who created a row.
             $data['created_by'] = $actor->id;
             $data['updated_by'] = $actor->id;
+        }
+        // Tenant scoping (B11): stamp the active tenant on insert. The
+        // composite UNIQUE(tenant_id, name, deleted_at) relies on this
+        // being a real integer; falling back to the default (1) keeps
+        // the index enforcing uniqueness on single-tenant deploys.
+        if ($this->tenantContext !== null) {
+            $data['tenant_id'] = $this->tenantContext->currentTenantId();
         }
 
         $newId = (int) $this->model->insert($data);

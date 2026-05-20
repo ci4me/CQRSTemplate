@@ -39,6 +39,7 @@ use App\Infrastructure\Persistence\Repositories\UserRepository;
 use App\Infrastructure\ServiceProvider\ServiceProviderRegistry;
 use App\Infrastructure\Persistence\Repositories\CookieReadModelRepository;
 use App\Infrastructure\Persistence\Repositories\CookieRepository;
+use App\Infrastructure\Tenancy\TenantContext;
 use CodeIgniter\Config\BaseService;
 use Psr\Log\LoggerInterface;
 
@@ -269,7 +270,8 @@ class Services extends BaseService
             config('Logging'),
             null,
             null,
-            new EventOutboxWriter()
+            new EventOutboxWriter(),
+            self::tenantContext()
         );
     }
 
@@ -285,6 +287,25 @@ class Services extends BaseService
         }
 
         return new CookieReadModelRepository();
+    }
+
+    /**
+     * Active tenant for the current execution context (D11/B11).
+     *
+     * Cookie write/read paths consult this to stamp + filter the
+     * `tenant_id` column. The default fallback (1) is what keeps the
+     * composite UNIQUE(tenant_id, name, deleted_at) on `cookies` actually
+     * enforcing uniqueness on single-tenant deploys — without it MySQL
+     * treats NULL tenant_ids as distinct and lets duplicate names slip
+     * through.
+     */
+    public static function tenantContext(bool $getShared = true): TenantContext
+    {
+        if ($getShared) {
+            return static::getSharedInstance('tenantContext');
+        }
+
+        return new TenantContext(\Config\Services::request());
     }
 
     /**
