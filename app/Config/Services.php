@@ -25,6 +25,7 @@ use App\Infrastructure\Bus\Middleware\LoggingMiddleware;
 use App\Infrastructure\Bus\Middleware\TransactionMiddleware;
 use App\Infrastructure\Bus\QueryBus;
 use App\Infrastructure\Email\EmailService;
+use App\Infrastructure\I18n\LocaleResolver;
 use App\Infrastructure\Jobs\JobQueue;
 use App\Infrastructure\Logging\LoggerFactory;
 use App\Infrastructure\Logging\LoggingServiceProvider;
@@ -474,5 +475,19 @@ class Services extends BaseService
         }
 
         return new NotificationService();
+    }
+
+    /**
+     * Request locale resolver (D8). Supported locales mirror what we ship
+     * in app/Language/<locale>/. Add a code here only after the matching
+     * translation files exist.
+     */
+    public static function localeResolver(bool $getShared = true): LocaleResolver
+    {
+        if ($getShared) {
+            return static::getSharedInstance('localeResolver');
+        }
+
+        return new LocaleResolver(supported: ['en', 'pt-br'], default: 'en');
     }
 }

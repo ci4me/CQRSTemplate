@@ -8,6 +8,7 @@ use App\Infrastructure\Auth\Middleware\RateLimitMiddleware;
 use App\Infrastructure\Auth\Middleware\RoleAuthorizationMiddleware;
 use App\Infrastructure\Auth\Middleware\SessionAuthMiddleware;
 use App\Infrastructure\Http\Middleware\IdempotencyMiddleware;
+use App\Infrastructure\I18n\LocaleMiddleware;
 use App\Infrastructure\Logging\CorrelationIdMiddleware;
 use CodeIgniter\Config\Filters as BaseFilters;
 use CodeIgniter\Filters\Cors;
@@ -48,6 +49,7 @@ class Filters extends BaseFilters
         'correlation'   => CorrelationIdMiddleware::class,
         'idempotency'   => IdempotencyMiddleware::class,
         'permission'    => PermissionMiddleware::class,
+        'locale'        => LocaleMiddleware::class,
     ];
 
     /**
@@ -95,6 +97,8 @@ class Filters extends BaseFilters
             // OBSERVABILITY: adopt inbound X-Correlation-Id before any handler
             // runs so logs / commands / events share one trace id.
             'correlation',
+            // I18N: resolve and apply the request locale before any view/lang() call.
+            'locale',
         ],
         'after' => [
             // 'honeypot',
@@ -102,6 +106,8 @@ class Filters extends BaseFilters
             // OBSERVABILITY: echo the correlation id on the response so
             // downstream callers can include it in bug reports / further hops.
             'correlation',
+            // I18N: add a Vary: Accept-Language so caches respect locale choice.
+            'locale',
         ],
     ];
 
