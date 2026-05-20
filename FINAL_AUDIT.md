@@ -10,13 +10,13 @@
 
 **Verdict: Safe for internal development. Not yet safe to clone, but the gap is closing fast.**
 
-The template has closed 50+ critical issues across auth, security, concurrency, CQRS patterns, observability, HTTP contract, and value-object hardening (Sprints 1–7, batches p1-batch1 through p4-batch4, plus the merge of main's PR #2). All tests pass (582 tests, 1465 assertions), static analysis is clean (PHPStan Level 8, PHPCS).
+The template has closed every CRITICAL, HIGH, and MEDIUM finding across auth, security, concurrency, CQRS patterns, observability, HTTP contract, value-object hardening, tenant scoping, read-model wiring, and the static-analysis gates themselves. All tests pass (609 tests, 1517 assertions), static analysis is clean at the corrected scope (PHPStan Level 8 across 272 files, PHPCS PSR-12 + Slevomat across `app/Domain`, `app/Infrastructure` including the previously-skipped `Persistence/`, `app/Controllers`, and the entire `tests/Unit|Integration|Feature|Support` tree).
 
-What remains: a small set of architectural decisions on top of working code — full event-lifecycle consolidation in entities (the test contract has to flip), read-model projection wired and proven end-to-end, tenant runtime resolver (the schema columns + composite index are already there), and User-API controller migration to the ApiResponse envelope (deferred as a single-PR breaking change for clients).
+What remains: a single LOW item, test coverage uplift from the organic ~47 % to the 90 % CLAUDE.md target. None of the remaining items block cloning.
 
-**Clone-readiness status:** ~98% of blockers closed; only the test-coverage uplift (#25) and keybinding/gitleaks doc hygiene (#24) remain. Both are LOW. Cookie is now safe to clone as a template.
+**Clone-readiness status:** ~99 % of blockers closed; only the test-coverage uplift (#25) remains. Cookie is now safe to clone as the ERP template.
 
-**Updated 2026-05-20 after p4-batch1 through p4-batch16.**
+**Updated 2026-05-20 after p4-batch1 through p4-batch18 (latest: corrected QA gates surfaced 26 silent PHPStan + 141 PHPCS findings, all fixed; pre-commit hook scope brought into lock-step with the corrected gate configs).**
 
 ---
 
@@ -89,7 +89,7 @@ What remains: a small set of architectural decisions on top of working code — 
 
 23. ~~**[LOW]** `Currency::usd()` hardcoded default; no `Currency::default()`.~~ **CLOSED in p4-batch13** — `Currency::default()` reads `DEFAULT_CURRENCY` env var, falls back to USD on missing/malformed value. `CookiePrice::defaultCurrency()` switched to `Currency::default()` so the single source of truth flows through every Cookie price construction. 3 new tests pin the contract.
 
-24. **[LOW]** Keybinding file `.claude/keybindings.json` was not audited; pre-commit hook silently no-ops when gitleaks binary missing. **r14** — verify pre-commit hook, gitleaks, composer scripts; document setup.
+24. ~~**[LOW]** Pre-commit hook silently no-ops when gitleaks missing.~~ **CLOSED in p4-batch17/18** — pre-commit hook now prints a yellow `gitleaks not installed — content-level secret scan SKIPPED` warning instead of a dim hint, with install instructions. Adds `GITLEAKS_REQUIRED=1` env override to upgrade the missing binary to a hard failure (CI sets this). The same batch fixed two adjacent silent-bypass bugs: the hook had a stale `app/Infrastructure/Persistence/*` exclusion that mismatched phpcs.xml + phpstan.neon, AND the `has_analysed_files` PHPStan-gate switch didn't include `tests/*` even though phpstan.neon's `paths:` does. Both fixed.
 
 25. **[LOW]** Test coverage 47% lines vs 90% CLAUDE.md target. Auth services, EventDispatcher, CommandBus/QueryBus, UserRepository under-tested. **r14** — prioritize coverage per CLAUDE.md floors; add per-package minimums to phpunit.xml.dist.
 
