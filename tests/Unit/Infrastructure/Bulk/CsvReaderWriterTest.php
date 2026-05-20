@@ -76,7 +76,7 @@ final class CsvReaderWriterTest extends UnitTestCase
 
         // 'notes' is missing in the row — writer must emit it as empty string.
         $out = $writer->contents();
-        $lines = array_values(array_filter(explode("\n", $out)));
+        $lines = array_values(array_filter(explode("\n", $out), static fn(string $line): bool => $line !== ''));
         $this->assertSame('1,A,', $lines[1]);
     }
 

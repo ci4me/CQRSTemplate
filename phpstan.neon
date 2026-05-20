@@ -6,10 +6,19 @@ parameters:
         - app/Libraries
         - app/Models
         - app/Controllers
+        - tests
     excludePaths:
         - app/Config/Constants.php
         - app/Views
-        - app/Infrastructure/Persistence (?)
+        # CodeIgniter scaffolded test directories shipped with the framework
+        # template (tests/_support, tests/_skipped, tests/session, tests/database,
+        # tests/unit). They are example stubs, not our project tests; our
+        # tests live under tests/Unit, tests/Integration, tests/Feature.
+        - tests/_support
+        - tests/_skipped
+        - tests/session
+        - tests/database
+        - tests/unit
     reportUnmatchedIgnoredErrors: false
     ignoreErrors:
         -
@@ -36,12 +45,84 @@ parameters:
         -
             identifier: arrayFilter.strict
             path: app/Config/App.php
+        # Tests use the documented `$this->assertX()` PHPUnit pattern,
+        # but the underlying methods are static on Assert. phpstan-strict's
+        # staticMethod.dynamicCall fires on every assertion — it's a
+        # stylistic warning, not a real bug, so it's silenced for tests.
         -
-            message: '#.*#'
+            identifier: staticMethod.dynamicCall
             path: tests/
-            reportUnmatched: false
+        # `$this->assertTrue(true)` is fine in tests where the goal is
+        # the dispatch happened, not what the assertion proves.
+        -
+            identifier: method.alreadyNarrowedType
+            path: tests/
+        # PHPUnit's expectExceptionMessage/expectExceptionCode accept
+        # positional args; named-arg refactors are out of scope for tests.
+        -
+            identifier: argument.named
+            path: tests/
+        # Tests routinely set up mock objects and arrays that PHPStan can't
+        # type narrowly without exhaustive @phpstan-* annotations. We keep
+        # only the small set of identifiers that genuinely don't apply to
+        # tests; everything else MUST be fixed in the test source.
+        -
+            identifier: missingType.iterableValue
+            path: tests/
+        -
+            identifier: missingType.parameter
+            path: tests/
+        -
+            identifier: missingType.return
+            path: tests/
+        -
+            identifier: missingType.generics
+            path: tests/
+        -
+            identifier: property.notFound
+            path: tests/
+        -
+            identifier: method.notFound
+            path: tests/
+        -
+            identifier: method.nonObject
+            path: tests/
+        -
+            identifier: function.notFound
+            path: tests/
+        -
+            identifier: function.alreadyNarrowedType
+            path: tests/
+        -
+            identifier: offsetAccess.notFound
+            path: tests/
+        -
+            identifier: property.phpDocType
+            path: tests/
+        -
+            identifier: argument.type
+            path: tests/
+        -
+            identifier: return.type
+            path: tests/
+        -
+            identifier: ternary.shortNotAllowed
+            path: tests/
+        -
+            identifier: ternary.condNotBoolean
+            path: tests/
+        -
+            identifier: property.onlyWritten
+            path: tests/
+        # CodeIgniter's PSR-3 logger declarations exceed PHPStan's call-site
+        # type narrowing — the bus middleware uses `mixed` for log values.
+        -
+            identifier: argument.templateType
+            path: app/Infrastructure/Bus/Middleware/
     bootstrapFiles:
         - phpstan-bootstrap.php
 
 includes:
     - vendor/phpstan/phpstan-strict-rules/rules.neon
+    - vendor/phpstan/phpstan-phpunit/extension.neon
+    - vendor/phpstan/phpstan-phpunit/rules.neon

@@ -15,7 +15,15 @@
     <exclude-pattern>*/Config/*</exclude-pattern>
     <exclude-pattern>*/vendor/*</exclude-pattern>
     <exclude-pattern>*/writable/*</exclude-pattern>
-    <exclude-pattern>app/Infrastructure/Persistence/*</exclude-pattern>
+    <!-- NOTE: `app/Infrastructure/Persistence/*` used to be excluded here,
+         which silently skipped CookieRepository / UserRepository / the
+         CookieReadModelRepository / DatabaseTokenBlacklistService. The
+         exclusion is removed so the repositories are PSR-12 + Slevomat
+         clean. -->
+    <!-- CodeIgniter scaffolded test dirs (lowercase) shipped with the
+         framework template — example stubs, not our project tests.
+         The real test directories are PascalCase (tests/Unit,
+         tests/Integration, tests/Feature, tests/Support). -->
     <exclude-pattern>tests/_support/*</exclude-pattern>
     <exclude-pattern>tests/_skipped/*</exclude-pattern>
     <exclude-pattern>tests/session/*</exclude-pattern>
@@ -60,6 +68,11 @@
         <exclude-pattern>tests/Support/*TestCase.php</exclude-pattern>
         <!-- Exclude AbiSageIntacct library - third-party namespace with different conventions -->
         <exclude-pattern>app/Libraries/AbiSageIntacct/*</exclude-pattern>
+        <!-- CodeIgniter Model subclasses redeclare untyped parent properties
+             (e.g. $table, $allowedFields, $validationRules). Adding native
+             types here would break inheritance compatibility. -->
+        <exclude-pattern>app/Infrastructure/Persistence/Models/*</exclude-pattern>
+        <exclude-pattern>app/Models/*</exclude-pattern>
     </rule>
     <rule ref="SlevomatCodingStandard.TypeHints.ReturnTypeHint"/>
 

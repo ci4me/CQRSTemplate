@@ -52,8 +52,11 @@ trait BusinessMetricsLogging
     private function metricFloat(string $key, float $default): float
     {
         $slice = $this->loggingConfig->metricsThresholds['cookie'] ?? [];
-        $value = $slice[$key] ?? $default;
-        return is_float($value) || is_int($value) ? (float) $value : $default;
+        // The Logging config's array shape constrains the value to
+        // float|int, so the coalesce + cast covers every reachable
+        // shape (the default keeps the fallback safe even if a
+        // downstream override loosens the type).
+        return (float) ($slice[$key] ?? $default);
     }
 
     /**

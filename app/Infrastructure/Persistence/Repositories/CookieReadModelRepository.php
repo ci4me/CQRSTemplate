@@ -61,6 +61,9 @@ final class CookieReadModelRepository implements CookieReadModelRepositoryInterf
         return $row === null ? null : $this->toDto($row);
     }
 
+    /**
+     * @return list<CookieDTO>
+     */
     public function findAll(bool $includeInactive = false): array
     {
         $builder = $this->connection()
@@ -84,6 +87,9 @@ final class CookieReadModelRepository implements CookieReadModelRepositoryInterf
         return array_map(fn(array $row): CookieDTO => $this->toDto($row), $rows);
     }
 
+    /**
+     * @return array{data: list<CookieDTO>, total: int, page: int, perPage: int, lastPage: int}
+     */
     public function findPaginated(
         int $page = 1,
         int $perPage = 20,
@@ -121,11 +127,15 @@ final class CookieReadModelRepository implements CookieReadModelRepositoryInterf
         /** @var list<array<string, mixed>> $rows */
 
         $data = array_map(fn(array $row): CookieDTO => $this->toDto($row), $rows);
-        $lastPage = $perPage > 0 ? (int) ceil($total / $perPage) : 1;
+        // countAllResults is typed `int|string` upstream (CI4 quirk on
+        // some drivers); cast once for the math. $perPage is clamped to
+        // 1..100 above so no divide-by-zero is reachable.
+        $totalInt = (int) $total;
+        $lastPage = (int) ceil($totalInt / $perPage);
 
         return [
             'data' => $data,
-            'total' => $total,
+            'total' => $totalInt,
             'page' => $page,
             'perPage' => $perPage,
             'lastPage' => max(1, $lastPage),
@@ -167,7 +177,6 @@ final class CookieReadModelRepository implements CookieReadModelRepositoryInterf
      * side stamps `tenant_id` on every insert (see CookieRepository) so
      * the columns line up.
      *
-     * @param \CodeIgniter\Database\BaseBuilder $builder
      */
     private function applyTenantFilter(\CodeIgniter\Database\BaseBuilder $builder): void
     {

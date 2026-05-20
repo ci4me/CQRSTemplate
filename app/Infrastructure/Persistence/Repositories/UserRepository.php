@@ -6,12 +6,12 @@ namespace App\Infrastructure\Persistence\Repositories;
 
 use App\Domain\User\Entities\User;
 use App\Domain\User\ErrorCodes;
+use App\Domain\User\Ports\UserRepositoryInterface;
 use App\Domain\User\ValueObjects\Email;
 use App\Domain\User\ValueObjects\HashedPassword;
 use App\Domain\User\ValueObjects\UserName;
 use App\Domain\User\ValueObjects\UserRole;
 use App\Domain\User\ValueObjects\UserStatus;
-use App\Domain\User\Ports\UserRepositoryInterface;
 use App\Infrastructure\Persistence\Models\UserModel;
 use Config\Logging;
 use Psr\Log\LoggerInterface;
@@ -70,6 +70,9 @@ readonly class UserRepository implements UserRepositoryInterface
             }
 
             $this->logQuery('findById', $duration, true);
+            if (!is_array($row)) {
+                return null;
+            }
             return $this->toDomainEntity($row);
         } catch (\Throwable $e) {
             $this->logger->error('Query failed', [
@@ -95,6 +98,9 @@ readonly class UserRepository implements UserRepositoryInterface
             }
 
             $this->logQuery('findByEmail', $duration, true);
+            if (!is_array($row)) {
+                return null;
+            }
             return $this->toDomainEntity($row);
         } catch (\Throwable $e) {
             $this->logger->error('Query failed', [
@@ -134,7 +140,10 @@ readonly class UserRepository implements UserRepositoryInterface
     public function delete(int $id): bool
     {
         try {
-            return $this->model->delete($id);
+            $result = $this->model->delete($id);
+            // Model::delete returns BaseResult|bool; coerce so the
+            // declared contract holds.
+            return $result === true;
         } catch (\Throwable $e) {
             $this->logger->error('Failed to delete user', [
                 'domain' => 'User',
@@ -188,16 +197,18 @@ readonly class UserRepository implements UserRepositoryInterface
                 $builder->where('status', $status);
             }
 
-            // Get total count
-            $total = $builder->countAllResults(false);
+            // Get total count. countAllResults is typed int|string upstream;
+            // cast once for the math.
+            $total = (int) $builder->countAllResults(false);
 
             // Apply pagination
             $offset = ($page - 1) * $perPage;
             $builder->limit($perPage, $offset);
             $builder->orderBy('created_at', 'DESC');
 
-            // Execute query
-            $rows = $builder->get()->getResultArray();
+            // Execute query. get() may return false on driver failure.
+            $result = $builder->get();
+            $rows = $result === false ? [] : $result->getResultArray();
             $duration = (microtime(true) - $startTime) * 1000;
 
             $this->logQuery('findPaginated', $duration, count($rows) > 0);
@@ -205,14 +216,14 @@ readonly class UserRepository implements UserRepositoryInterface
             // Convert to entities
             $users = array_map([$this, 'toDomainEntity'], $rows);
 
-            $totalPages = (int) ceil($total / $perPage);
+            $totalPages = $perPage > 0 ? (int) ceil($total / $perPage) : 1;
 
             return [
                 'data' => $users,
                 'total' => $total,
                 'page' => $page,
                 'perPage' => $perPage,
-                'totalPages' => $totalPages,
+                'totalPages' => max(1, $totalPages),
             ];
         } catch (\Throwable $e) {
             $this->logger->error('Paginated query failed', [
@@ -232,7 +243,7 @@ readonly class UserRepository implements UserRepositoryInterface
     public function countTotal(): int
     {
         try {
-            return $this->model->where('deleted_at IS NULL')->countAllResults();
+            return (int) $this->model->where('deleted_at IS NULL')->countAllResults();
         } catch (\Throwable $e) {
             $this->logger->error('Count query failed', [
                 'domain' => 'User',
@@ -252,7 +263,7 @@ readonly class UserRepository implements UserRepositoryInterface
     public function countByRole(string $role): int
     {
         try {
-            return $this->model
+            return (int) $this->model
                 ->where('role', $role)
                 ->where('deleted_at IS NULL')
                 ->countAllResults();
@@ -276,7 +287,7 @@ readonly class UserRepository implements UserRepositoryInterface
     public function countByStatus(string $status): int
     {
         try {
-            return $this->model
+            return (int) $this->model
                 ->where('status', $status)
                 ->where('deleted_at IS NULL')
                 ->countAllResults();
@@ -291,23 +302,32 @@ readonly class UserRepository implements UserRepositoryInterface
         }
     }
 
+    /**
+     * @param array<int|string, mixed> $row Raw database row from CI4 Model::find / first / getResultArray
+     */
     private function toDomainEntity(array $row): User
     {
         return User::reconstitute(
             id: (int) $row['id'],
-            name: UserName::fromString($row['name']),
-            email: Email::fromString($row['email']),
-            hashedPassword: HashedPassword::fromHash($row['password_hash']),
-            role: UserRole::from($row['role']),
-            status: UserStatus::from($row['status']),
+            name: UserName::fromString((string) $row['name']),
+            email: Email::fromString((string) $row['email']),
+            hashedPassword: HashedPassword::fromHash((string) $row['password_hash']),
+            role: UserRole::from((string) $row['role']),
+            status: UserStatus::from((string) $row['status']),
             failedLoginAttempts: (int) $row['failed_login_attempts'],
-            lockedUntil: $row['locked_until'] ? new \DateTimeImmutable($row['locked_until']) : null,
-            createdAt: new \DateTimeImmutable($row['created_at']),
-            updatedAt: $row['updated_at'] ? new \DateTimeImmutable($row['updated_at']) : null,
-            deletedAt: $row['deleted_at'] ? new \DateTimeImmutable($row['deleted_at']) : null
+            lockedUntil: isset($row['locked_until']) && $row['locked_until'] !== ''
+                ? new \DateTimeImmutable((string) $row['locked_until']) : null,
+            createdAt: new \DateTimeImmutable((string) $row['created_at']),
+            updatedAt: isset($row['updated_at']) && $row['updated_at'] !== ''
+                ? new \DateTimeImmutable((string) $row['updated_at']) : null,
+            deletedAt: isset($row['deleted_at']) && $row['deleted_at'] !== ''
+                ? new \DateTimeImmutable((string) $row['deleted_at']) : null
         );
     }
 
+    /**
+     * @return array<string, scalar|null>
+     */
     private function toArray(User $user): array
     {
         return [
@@ -325,13 +345,15 @@ readonly class UserRepository implements UserRepositoryInterface
     {
         $isSlowQuery = $durationMs > $this->loggingConfig->slowQueryThresholdMs;
 
-        if ($isSlowQuery) {
-            $this->logger->warning('Slow query detected', [
-                'domain' => 'User',
-                'method' => $method,
-                'duration_ms' => round($durationMs, 2),
-                'found' => $found,
-            ]);
+        if (!$isSlowQuery) {
+            return;
         }
+
+        $this->logger->warning('Slow query detected', [
+            'domain' => 'User',
+            'method' => $method,
+            'duration_ms' => round($durationMs, 2),
+            'found' => $found,
+        ]);
     }
 }

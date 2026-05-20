@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Persistence\Repositories;
 
-use CodeIgniter\Database\ConnectionInterface;
+use CodeIgniter\Database\BaseConnection;
 
 /**
  * Password History Repository.
@@ -24,8 +24,11 @@ readonly class PasswordHistoryRepository
 {
     private const int MAX_HISTORY_COUNT = 5;
 
+    /**
+     * @param BaseConnection<object|resource|false, object|resource|false> $db
+     */
     public function __construct(
-        private ConnectionInterface $db
+        private BaseConnection $db
     ) {
     }
 
@@ -47,7 +50,7 @@ readonly class PasswordHistoryRepository
             'created_at' => date('Y-m-d H:i:s'),
         ]);
 
-        $insertId = $this->db->insertID();
+        $insertId = (int) $this->db->insertID();
 
         // Prune old entries (keep only last N)
         $this->pruneOldEntries($userId);
@@ -73,10 +76,13 @@ readonly class PasswordHistoryRepository
             ->limit($count)
             ->get();
 
+        if ($query === false) {
+            return [];
+        }
         $results = $query->getResultArray();
 
         return array_map(
-            fn(array $row): string => $row['password_hash'],
+            static fn(array $row): string => (string) $row['password_hash'],
             $results
         );
     }
@@ -98,9 +104,11 @@ readonly class PasswordHistoryRepository
 
         // Use constant-time comparison to prevent timing attacks
         foreach ($historyHashes as $historicHash) {
-            if (hash_equals($historicHash, $passwordHash)) {
-                $found = true;
+            if (!hash_equals($historicHash, $passwordHash)) {
+                continue;
             }
+
+            $found = true;
         }
 
         return $found;
@@ -122,9 +130,11 @@ readonly class PasswordHistoryRepository
 
         $found = false;
         foreach ($historyHashes as $historicHash) {
-            if (password_verify($plaintextPassword, $historicHash)) {
-                $found = true;
+            if (!password_verify($plaintextPassword, $historicHash)) {
+                continue;
             }
+
+            $found = true;
         }
 
         return $found;
@@ -140,20 +150,23 @@ readonly class PasswordHistoryRepository
     private function pruneOldEntries(int $userId): void
     {
         // Get IDs of entries to keep (last N)
-        $keepIds = $this->db->table('password_history')
+        $result = $this->db->table('password_history')
             ->select('id')
             ->where('user_id', $userId)
             ->orderBy('created_at', 'DESC')
             ->limit(self::MAX_HISTORY_COUNT)
-            ->get()
-            ->getResultArray();
+            ->get();
+        if ($result === false) {
+            return;
+        }
+        $keepIds = $result->getResultArray();
 
         if (count($keepIds) === 0) {
             return;
         }
 
         $keepIdList = array_map(
-            fn(array $row): int => (int) $row['id'],
+            static fn(array $row): int => (int) $row['id'],
             $keepIds
         );
 

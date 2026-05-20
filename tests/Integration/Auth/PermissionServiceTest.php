@@ -76,17 +76,23 @@ final class PermissionServiceTest extends IntegrationTestCase
         $db = Database::connect();
         $now = date('Y-m-d H:i:s');
 
-        $permId = (int) $db->table('permissions')->insert([
+        // CI4's insert(..., $returnID=true) returns BaseResult|bool|int,
+        // but on a successful insert with $returnID=true it's the insert
+        // id. Pull the explicit lastInsertID via insertID() to keep the
+        // type narrowing static-analyser-friendly.
+        $db->table('permissions')->insert([
             'name' => $permission,
             'description' => 'test',
             'created_at' => $now,
-        ], true);
+        ]);
+        $permId = (int) $db->insertID();
 
-        $roleId = (int) $db->table('roles')->insert([
+        $db->table('roles')->insert([
             'slug' => 'test-role-' . uniqid('', true),
             'name' => 'Test Role',
             'created_at' => $now,
-        ], true);
+        ]);
+        $roleId = (int) $db->insertID();
 
         $db->table('role_permissions')->insert([
             'role_id' => $roleId,

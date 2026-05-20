@@ -379,7 +379,7 @@ final class UpdateUserHandlerTest extends UnitTestCase
             ->with($this->callback(function ($event) {
                 return $event instanceof UserUpdatedEvent &&
                        $event->userId === 1 &&
-                       empty($event->updatedFields);
+                       $event->updatedFields === [];
             }));
 
         $this->handler->handle($command);

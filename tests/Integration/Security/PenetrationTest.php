@@ -611,7 +611,7 @@ final class PenetrationTest extends IntegrationTestCase
         $csrfGlobalConfig = $filtersConfig->globals['before']['csrf'] ?? null;
         $this->assertNotNull($csrfGlobalConfig);
 
-        if (ENVIRONMENT === 'testing') {
+        if (defined('ENVIRONMENT') && ENVIRONMENT === 'testing') {
             // Testing: CSRF disabled for all routes
             $this->assertArrayHasKey('except', $csrfGlobalConfig);
             $this->assertContains('*', $csrfGlobalConfig['except']);
