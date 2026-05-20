@@ -57,13 +57,13 @@ The template has closed 40+ critical issues across auth, security, concurrency, 
 
 9. ~~**[HIGH]** `CorrelationIdService` static state leaks across rows in long-running workers.~~ **PARTIALLY CLOSED in p1-batch1** — `CorrelationIdMiddleware::after()` now clears on every HTTP request. Worker loops (`–watch` mode of `events:relay` / `jobs:work`) still need an explicit `clear()` at the top of each iteration.
 
-10. **[HIGH]** `–watch` workers (relay, job-worker) have no SIGTERM handling: rows orphaned in `in_flight`/`reserved` state, never reclaimed. **r06:V10** — pcntl_signal(SIGTERM); add `events:reap` / `jobs:reap` commands.
+10. ~~**[HIGH]** `–watch` workers have no SIGTERM handling.~~ **CLOSED in p4-batch1** — RelayOutboxEvents and WorkJobs install pcntl SIGTERM/SIGINT handlers and exit gracefully between drains. Reap commands for already-orphaned rows still tracked as a follow-up.
 
-11. **[HIGH]** `ApiResponse` envelope defined but used by zero controllers. Every API response hand-rolls `{success, data, …}`. **r10** — refactor all controllers to use ApiResponse OR delete it and document the real shape.
+11. ~~**[HIGH]** `ApiResponse` envelope defined but used by zero controllers.~~ **PARTIALLY CLOSED in p4-batch1** — ApiResponse is documented as the canonical envelope for NEW controllers; UserController migration tracked as a Phase 5 follow-up (breaking change for clients consuming `{success}`).
 
-12. **[HIGH]** `CORS` filter alias defined, never wired to `globals` or route groups. Browsers block CORS responses. **r10** — wire filter to `api/v1/*` or globals.
+12. ~~**[HIGH]** `CORS` filter alias defined, never wired.~~ **CLOSED in p4-batch1** — wired to `api/v1/*` (both before for OPTIONS preflight and after for response headers).
 
-13. **[MEDIUM]** `UpdateCookieCommand` missing `expectedVersion`; optimistic-lock WHERE compares freshly-loaded version against itself. **r08:1.3** — add expectedVersion field; thread through WHERE clause; test concurrent-modify detection.
+13. ~~**[MEDIUM]** `UpdateCookieCommand` missing `expectedVersion`.~~ **CLOSED in p4-batch1** — optional `expectedVersion: ?int` parameter; handler pre-flights against the loaded entity and throws DomainException::concurrentModification when the client lost the race.
 
 14. ~~**[MEDIUM]** Cookie/User error codes collide (both 101); User has self-aliasing (301 = 301).~~ **CLOSED in p2-batch1** — domain-scoping documented as intentional (every emit carries `domain` for disambiguation); aliases (301, 303) kept as named synonyms by design.
 

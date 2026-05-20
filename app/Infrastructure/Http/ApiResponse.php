@@ -45,6 +45,14 @@ use Config\Services;
  *
  * Controllers should never hand-craft JSON; route everything through this
  * helper so the envelope stays consistent across endpoints.
+ *
+ * Migration status (round-2 review r10): the legacy User API controller
+ * still uses CodeIgniter's `$this->respond()` / `respondCreated()` helpers
+ * (which emit `{success, data, message}` without the meta envelope). New
+ * domain controllers MUST adopt {@see ApiResponse}; the User controller
+ * migration is tracked as a Phase 5 follow-up. Run the migration as a
+ * single PR per controller — clients that consume `{success}` need to
+ * switch to reading `data` + `meta.correlation_id` at the same time.
  */
 final class ApiResponse
 {

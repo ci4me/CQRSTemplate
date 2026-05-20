@@ -77,6 +77,22 @@ final readonly class UpdateCookieHandler
                 throw DomainException::notFound('Cookie', $command->id, ErrorCodes::COOKIE_NOT_FOUND);
             }
 
+            // CONCURRENCY: pre-flight optimistic-locking check. The repository
+            // also gates the UPDATE on `WHERE version = ?`, but pre-flighting
+            // here avoids the value-object parse + name-uniqueness query for
+            // a request that already lost the race. Null expectedVersion is
+            // backwards-compatible — legacy callers skip the check and lean
+            // on the repository's row-level guard.
+            if ($command->expectedVersion !== null && $cookie->getVersion() !== $command->expectedVersion) {
+                throw DomainException::concurrentModification(
+                    'Cookie',
+                    $command->id,
+                    $command->expectedVersion,
+                    $cookie->getVersion(),
+                    ErrorCodes::COOKIE_STATE_CONCURRENT_MODIFICATION
+                );
+            }
+
             // B13: snapshot previous state BEFORE mutation so the event can
             // carry a structured diff for the audit log.
             $previousState = $this->snapshot($cookie);
