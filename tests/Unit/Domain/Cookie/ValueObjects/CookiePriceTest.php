@@ -6,6 +6,7 @@ namespace Tests\Unit\Domain\Cookie\ValueObjects;
 
 use App\Domain\Cookie\ValueObjects\CookiePrice;
 use App\Domain\Shared\Exceptions\ValidationException;
+use App\Domain\Shared\ValueObjects\Currency;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\Support\UnitTestCase;
 
@@ -205,5 +206,47 @@ final class CookiePriceTest extends UnitTestCase
         $price = CookiePrice::fromString('4.99');
 
         $this->assertSame('4.99', (string) $price);
+    }
+
+    public function test_default_currency_is_usd_and_format_uses_dollar_sign(): void
+    {
+        $price = CookiePrice::fromString('4.99');
+
+        $this->assertSame('USD', $price->getCurrency()->iso);
+        $this->assertSame('$4.99', $price->format());
+    }
+
+    public function test_explicit_currency_changes_format_symbol(): void
+    {
+        $price = CookiePrice::fromString('4.99', Currency::eur());
+
+        $this->assertSame('EUR', $price->getCurrency()->iso);
+        $this->assertSame('€4.99', $price->format());
+        $this->assertSame(499, $price->getMinorUnits());
+    }
+
+    public function test_format_with_explicit_symbol_overrides_default(): void
+    {
+        $price = CookiePrice::fromString('4.99');
+
+        $this->assertSame('R$4.99', $price->format('R$'));
+    }
+
+    public function test_arithmetic_across_currencies_is_rejected(): void
+    {
+        $usd = CookiePrice::fromString('1.00', Currency::usd());
+        $eur = CookiePrice::fromString('1.00', Currency::eur());
+
+        $this->expectException(\InvalidArgumentException::class);
+        $usd->add($eur);
+    }
+
+    public function test_get_money_exposes_underlying_value_object(): void
+    {
+        $price = CookiePrice::fromString('1.00');
+        $money = $price->getMoney();
+
+        $this->assertSame(100, $money->amountMinor());
+        $this->assertSame('USD', $money->currency->iso);
     }
 }

@@ -6,99 +6,83 @@ namespace App\Domain\Cookie\ValueObjects;
 
 use App\Domain\Cookie\ErrorCodes;
 use App\Domain\Shared\Exceptions\ValidationException;
+use App\Domain\Shared\ValueObjects\Currency;
+use App\Domain\Shared\ValueObjects\Money;
 
 /**
- * Value Object representing a Cookie price.
+ * Cookie sale price (D7).
  *
- * Business Rules:
- * - Price must be greater than zero
- * - Price has a maximum of 2 decimal places
- * - Price is stored and compared as integer minor units to avoid float drift
+ * Thin domain-specific wrapper around {@see Money}. Encodes the Cookie
+ * domain's business rules around price (must be > 0, must fit a typical
+ * retail catalogue) while delegating amount / currency mechanics to the
+ * shared Money value object.
  *
- * Usage Example:
- * ```php
- * $price = CookiePrice::fromString('2.99');
- * $price->getMinorUnits(); // 299
- * $price->toDecimalString(); // "2.99"
- * ```
+ * Why a wrapper instead of using Money directly:
+ *  - Self-validates against COOKIE_VALIDATION_PRICE so callers get the
+ *    right domain error code.
+ *  - Keeps the type signature explicit: a method that takes a CookiePrice
+ *    can never receive a Money for shipping fees.
+ *  - Pins the currency choice for cookies at the boundary (currently USD;
+ *    becomes configurable via SettingsService when multi-currency lands).
+ *
+ * Usage:
+ *   $price = CookiePrice::fromString('2.99');     // assumes USD
+ *   $price->toDecimalString();                    // "2.99"
+ *   $price->getMinorUnits();                       // 299
+ *   $price->getMoney()->currency->iso;             // "USD"
+ *   $price->format();                              // "$2.99"
  */
 final readonly class CookiePrice
 {
     private const int MIN_MINOR_UNITS = 1;
-    private const int MAX_MINOR_UNITS = 999_999; // 9999.99
+    private const int MAX_MINOR_UNITS = 999_999; // 9,999.99 in 2-decimal currencies
 
-    /**
-     * Price in minor units (cents for the current UI currency).
-     */
-    private int $minorUnits;
+    private Money $money;
 
-    private function __construct(int $minorUnits)
+    private function __construct(Money $money)
     {
-        if ($minorUnits < self::MIN_MINOR_UNITS) {
-            throw ValidationException::tooSmall(
-                'price',
-                self::minorUnitsToFloat(self::MIN_MINOR_UNITS),
-                self::minorUnitsToFloat($minorUnits),
-                ErrorCodes::COOKIE_VALIDATION_PRICE
-            );
-        }
-
-        if ($minorUnits > self::MAX_MINOR_UNITS) {
-            throw ValidationException::outOfRange(
-                'price',
-                self::minorUnitsToFloat(self::MIN_MINOR_UNITS),
-                self::minorUnitsToFloat(self::MAX_MINOR_UNITS),
-                self::minorUnitsToFloat($minorUnits),
-                ErrorCodes::COOKIE_VALIDATION_PRICE
-            );
-        }
-
-        $this->minorUnits = $minorUnits;
+        $this->assertPositiveAndInRange($money->amountMinor());
+        $this->money = $money;
     }
 
     /**
      * Create CookiePrice from a decimal string.
      *
      * Floats should stay outside commands and HTTP boundaries. Accept decimal
-     * strings instead so invalid precision is rejected instead of rounded.
+     * strings instead so invalid precision is rejected instead of silently
+     * rounded by the float conversion.
      */
-    public static function fromString(string $price): self
+    public static function fromString(string $price, ?Currency $currency = null): self
     {
         $trimmed = trim($price);
-
         if ($trimmed === '') {
             throw ValidationException::required('price', ErrorCodes::COOKIE_VALIDATION_PRICE);
         }
 
-        $cleaned = preg_replace('/^[\$£€¥]\s*/u', '', $trimmed);
-        if ($cleaned === null) {
-            throw self::invalidFormat();
-        }
+        // Parse first (a format failure is mapped to the cookie-specific code).
+        // The constructor enforces the cookie-specific range and emits the
+        // existing tooSmall/outOfRange messages — those are not caught here.
+        $money = self::parseMoneyOrFail($trimmed, $currency ?? self::defaultCurrency());
 
-        $cleaned = trim($cleaned);
-
-        if (preg_match('/^-?\d+(?:\.\d{1,2})?$/', $cleaned) !== 1) {
-            throw self::invalidFormat();
-        }
-
-        $isNegative = str_starts_with($cleaned, '-');
-        $unsigned = ltrim($cleaned, '-');
-        [$major, $minor] = array_pad(explode('.', $unsigned, 2), 2, '');
-
-        $minorUnits = ((int) $major) * 100 + (int) str_pad($minor, 2, '0');
-        if ($isNegative) {
-            $minorUnits *= -1;
-        }
-
-        return new self($minorUnits);
+        return new self($money);
     }
 
-    /**
-     * Create CookiePrice from integer minor units.
-     */
-    public static function fromMinorUnits(int $minorUnits): self
+    private static function parseMoneyOrFail(string $value, Currency $currency): Money
     {
-        return new self($minorUnits);
+        try {
+            return Money::fromDecimalString($value, $currency);
+        } catch (ValidationException) {
+            throw ValidationException::invalidFormat(
+                'price',
+                'a decimal amount with up to 2 decimal places',
+                ErrorCodes::COOKIE_VALIDATION_PRICE
+            );
+        }
+    }
+
+    public static function fromMinorUnits(int $minorUnits, ?Currency $currency = null): self
+    {
+        return new self(Money::fromMinorUnits($minorUnits, $currency ?? self::defaultCurrency()));
     }
 
     /**
@@ -107,97 +91,103 @@ final readonly class CookiePrice
      * Prefer fromString() at boundaries because float values may already have
      * lost decimal precision before they reach this method.
      */
-    public static function fromFloat(float $price): self
+    public static function fromFloat(float $price, ?Currency $currency = null): self
     {
-        if (!is_finite($price)) {
-            throw self::invalidFormat();
-        }
-
-        return new self((int) round($price * 100));
+        return new self(Money::fromFloat($price, $currency ?? self::defaultCurrency()));
     }
 
-    /**
-     * Get the price as a float for legacy consumers.
-     */
-    public function getValue(): float
+    public function getMoney(): Money
     {
-        return self::minorUnitsToFloat($this->minorUnits);
+        return $this->money;
+    }
+
+    public function getCurrency(): Currency
+    {
+        return $this->money->currency;
     }
 
     public function getMinorUnits(): int
     {
-        return $this->minorUnits;
+        return $this->money->amountMinor();
     }
 
     /**
-     * Get database-safe decimal representation.
+     * @deprecated Prefer ::getMinorUnits or ::toDecimalString. Float drift
+     *             may bite at the boundary; kept for legacy code paths.
      */
+    public function getValue(): float
+    {
+        return $this->money->amountMinor() / (10 ** $this->money->currency->decimals);
+    }
+
     public function toDecimalString(): string
     {
-        return number_format($this->minorUnits / 100, 2, '.', '');
+        return $this->money->toDecimalString();
     }
 
-    /**
-     * Alias for decimal string representation.
-     */
     public function toString(): string
     {
         return $this->toDecimalString();
     }
 
     /**
-     * Format price as currency string.
+     * Format with the underlying currency's symbol. The legacy `$currency`
+     * parameter is preserved for callers that want to override the symbol
+     * (e.g. for a localised display) without changing the underlying
+     * monetary value.
      */
-    public function format(string $currency = '$'): string
+    public function format(?string $currencySymbol = null): string
     {
-        return $currency . $this->toDecimalString();
+        if ($currencySymbol === null) {
+            return $this->money->format();
+        }
+        return $currencySymbol . $this->toDecimalString();
     }
 
-    public function equals(CookiePrice $other): bool
+    public function equals(self $other): bool
     {
-        return $this->minorUnits === $other->minorUnits;
+        return $this->money->equals($other->money);
     }
 
-    public function greaterThan(CookiePrice $other): bool
+    public function greaterThan(self $other): bool
     {
-        return $this->minorUnits > $other->minorUnits;
+        return $this->money->greaterThan($other->money);
     }
 
-    public function isGreaterThan(CookiePrice $other): bool
+    public function isGreaterThan(self $other): bool
     {
         return $this->greaterThan($other);
     }
 
-    public function lessThan(CookiePrice $other): bool
+    public function lessThan(self $other): bool
     {
-        return $this->minorUnits < $other->minorUnits;
+        return $this->money->lessThan($other->money);
     }
 
-    public function isLessThan(CookiePrice $other): bool
+    public function isLessThan(self $other): bool
     {
         return $this->lessThan($other);
     }
 
-    public function add(CookiePrice $other): CookiePrice
+    public function add(self $other): self
     {
-        return new self($this->minorUnits + $other->minorUnits);
+        return new self($this->money->add($other->money));
     }
 
-    public function subtract(CookiePrice $other): CookiePrice
+    public function subtract(self $other): self
     {
-        return new self($this->minorUnits - $other->minorUnits);
+        return new self($this->money->subtract($other->money));
     }
 
-    public function multiplyBy(int $quantity): CookiePrice
+    public function multiplyBy(int $quantity): self
     {
         if ($quantity <= 0) {
             throw ValidationException::tooSmall('quantity', 1, $quantity);
         }
-
-        return new self($this->minorUnits * $quantity);
+        return new self($this->money->multiply($quantity));
     }
 
-    public function applyDiscount(float $discountPercent): CookiePrice
+    public function applyDiscount(float $discountPercent): self
     {
         if ($discountPercent < 0 || $discountPercent > 100) {
             throw ValidationException::outOfRange(
@@ -208,10 +198,8 @@ final readonly class CookiePrice
                 ErrorCodes::COOKIE_VALIDATION_PRICE
             );
         }
-
-        $discountedMinorUnits = (int) round($this->minorUnits * (100 - $discountPercent) / 100);
-
-        return new self($discountedMinorUnits);
+        $discountedMinor = (int) round($this->money->amountMinor() * (100 - $discountPercent) / 100);
+        return new self(Money::fromMinorUnits($discountedMinor, $this->money->currency));
     }
 
     public function __toString(): string
@@ -219,17 +207,33 @@ final readonly class CookiePrice
         return $this->toDecimalString();
     }
 
-    private static function invalidFormat(): ValidationException
+    private function assertPositiveAndInRange(int $minorUnits): void
     {
-        return ValidationException::invalidFormat(
-            'price',
-            'a decimal amount with up to 2 decimal places',
-            ErrorCodes::COOKIE_VALIDATION_PRICE
-        );
+        if ($minorUnits < self::MIN_MINOR_UNITS) {
+            throw ValidationException::tooSmall(
+                'price',
+                self::MIN_MINOR_UNITS / 100,
+                $minorUnits / 100,
+                ErrorCodes::COOKIE_VALIDATION_PRICE
+            );
+        }
+        if ($minorUnits > self::MAX_MINOR_UNITS) {
+            throw ValidationException::outOfRange(
+                'price',
+                self::MIN_MINOR_UNITS / 100,
+                self::MAX_MINOR_UNITS / 100,
+                $minorUnits / 100,
+                ErrorCodes::COOKIE_VALIDATION_PRICE
+            );
+        }
     }
 
-    private static function minorUnitsToFloat(int $minorUnits): float
+    /**
+     * Cookie domain default currency. Becomes configurable via
+     * SettingsService when multi-currency catalogues land.
+     */
+    private static function defaultCurrency(): Currency
     {
-        return $minorUnits / 100;
+        return Currency::usd();
     }
 }
