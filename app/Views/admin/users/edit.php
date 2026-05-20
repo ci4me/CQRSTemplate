@@ -40,7 +40,7 @@
                     <div class="mb-3">
                         <label for="name" class="form-label">Name <span class="text-danger">*</span></label>
                         <input type="text" class="form-control <?= session('errors.name') ? 'is-invalid' : '' ?>"
-                               id="name" name="name" value="<?= old('name', $user->name) ?>" required>
+                               id="name" name="name" value="<?= esc(old('name', $user->name), 'attr') ?>" required>
                         <?php if (session('errors.name')): ?>
                             <div class="invalid-feedback"><?= esc(session('errors.name')) ?></div>
                         <?php endif; ?>
@@ -49,7 +49,7 @@
                     <div class="mb-3">
                         <label for="email" class="form-label">Email <span class="text-danger">*</span></label>
                         <input type="email" class="form-control <?= session('errors.email') ? 'is-invalid' : '' ?>"
-                               id="email" name="email" value="<?= old('email', $user->email) ?>" required>
+                               id="email" name="email" value="<?= esc(old('email', $user->email), 'attr') ?>" required>
                         <?php if (session('errors.email')): ?>
                             <div class="invalid-feedback"><?= esc(session('errors.email')) ?></div>
                         <?php endif; ?>
@@ -104,9 +104,9 @@
             <div class="card-body">
                 <h5 class="card-title">User Information</h5>
                 <p class="card-text small">
-                    <strong>User ID:</strong> <?= $user->id ?><br>
-                    <strong>Created:</strong> <?= $user->createdAt ?><br>
-                    <strong>Last Updated:</strong> <?= $user->updatedAt ?>
+                    <strong>User ID:</strong> <?= (int) $user->id ?><br>
+                    <strong>Created:</strong> <?= esc($user->createdAt) ?><br>
+                    <strong>Last Updated:</strong> <?= esc($user->updatedAt) ?>
                 </p>
             </div>
         </div>

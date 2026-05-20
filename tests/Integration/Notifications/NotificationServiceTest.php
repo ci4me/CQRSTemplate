@@ -6,10 +6,39 @@ namespace Tests\Integration\Notifications;
 
 use App\Infrastructure\Notifications\NotificationLevel;
 use App\Infrastructure\Notifications\NotificationService;
+use Config\Database;
 use Tests\Support\IntegrationTestCase;
 
 final class NotificationServiceTest extends IntegrationTestCase
 {
+    protected function setUp(): void
+    {
+        parent::setUp();
+        // notifications.user_id now has a FK to users(id). Seed the user
+        // rows the tests reference up front so the FK is satisfied.
+        $this->seedUsers([1, 2, 5, 42, 999]);
+    }
+
+    /**
+     * @param list<int> $ids
+     */
+    private function seedUsers(array $ids): void
+    {
+        $now = date('Y-m-d H:i:s');
+        $rows = array_map(static fn(int $id): array => [
+            'id' => $id,
+            'name' => sprintf('Notif Fixture %d', $id),
+            'email' => sprintf('notif-%d@test', $id),
+            'password_hash' => '$argon2id$v=19$m=65536,t=4,p=1$xx$' . str_repeat('a', 43),
+            'role' => 'customer',
+            'status' => 'active',
+            'failed_login_attempts' => 0,
+            'created_at' => $now,
+            'updated_at' => $now,
+        ], $ids);
+        Database::connect()->table('users')->insertBatch($rows);
+    }
+
     public function test_notify_persists_with_defaults(): void
     {
         $svc = new NotificationService();

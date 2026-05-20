@@ -98,9 +98,9 @@
             <div class="card-body">
                 <h5 class="card-title">Cookie Information</h5>
                 <p class="card-text small">
-                    <strong>ID:</strong> <?= $cookie->id ?><br>
-                    <strong>Created:</strong> <?= $cookie->createdAt ?><br>
-                    <strong>Updated:</strong> <?= $cookie->updatedAt ?>
+                    <strong>ID:</strong> <?= (int) $cookie->id ?><br>
+                    <strong>Created:</strong> <?= esc($cookie->createdAt) ?><br>
+                    <strong>Updated:</strong> <?= esc($cookie->updatedAt) ?>
                 </p>
             </div>
         </div>

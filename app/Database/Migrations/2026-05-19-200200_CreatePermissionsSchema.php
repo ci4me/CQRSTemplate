@@ -123,6 +123,11 @@ class CreatePermissionsSchema extends Migration
 
         $this->forge->addPrimaryKey(['role_id', 'permission_id']);
         $this->forge->addKey('permission_id');
+        // Referential integrity: deleting a role MUST also remove its
+        // grants; same for a permission. Without these FKs a deleted
+        // role leaves orphan rows that grant nothing-against-nothing.
+        $this->forge->addForeignKey('role_id', 'roles', 'id', 'CASCADE', 'CASCADE');
+        $this->forge->addForeignKey('permission_id', 'permissions', 'id', 'CASCADE', 'CASCADE');
         $this->forge->createTable('role_permissions', true);
     }
 
@@ -147,6 +152,10 @@ class CreatePermissionsSchema extends Migration
 
         $this->forge->addPrimaryKey(['user_id', 'role_id']);
         $this->forge->addKey('role_id');
+        // Same rationale as role_permissions: drop the join row when
+        // either side is deleted.
+        $this->forge->addForeignKey('user_id', 'users', 'id', 'CASCADE', 'CASCADE');
+        $this->forge->addForeignKey('role_id', 'roles', 'id', 'CASCADE', 'CASCADE');
         $this->forge->createTable('user_roles', true);
     }
 }

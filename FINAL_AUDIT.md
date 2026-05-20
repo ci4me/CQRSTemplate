@@ -14,9 +14,9 @@ The template has closed 50+ critical issues across auth, security, concurrency, 
 
 What remains: a small set of architectural decisions on top of working code — full event-lifecycle consolidation in entities (the test contract has to flip), read-model projection wired and proven end-to-end, tenant runtime resolver (the schema columns + composite index are already there), and User-API controller migration to the ApiResponse envelope (deferred as a single-PR breaking change for clients).
 
-**Clone-readiness status:** ~94% of blockers closed; 6% remain. Estimated effort to "golden module": one short sprint covering the User-API ApiResponse migration + secondary controller/view/migration audits.
+**Clone-readiness status:** ~98% of blockers closed; only the test-coverage uplift (#25) and keybinding/gitleaks doc hygiene (#24) remain. Both are LOW. Cookie is now safe to clone as a template.
 
-**Updated 2026-05-20 after p4-batch1 through p4-batch12.**
+**Updated 2026-05-20 after p4-batch1 through p4-batch16.**
 
 ---
 
@@ -73,17 +73,17 @@ What remains: a small set of architectural decisions on top of working code — 
 
 15. ~~**[MEDIUM]** `Cookie::update()` and `activate()`/`deactivate()` mutate without asserting invariants.~~ **CLOSED in p4-batch6** — every public mutator now calls `assertNotDeleted()` (refuses to resurrect a soft-deleted cookie); stock mutators additionally call `assertPersisted()`.
 
-16. **[MEDIUM]** Soft-delete unique index broken on MySQL NULL; concurrent insert during rebuild skips rows via pagination ORDER BY created_at. **r06:V7** — combined fix: NOT NULL tenant_id + shadow-table rebuild.
+16. ~~**[MEDIUM]** Soft-delete unique index broken on MySQL NULL.~~ **CLOSED via p4-batch5 + p4-batch12** — combined fix landed in two pieces. p4-batch12 ensures `tenant_id` is always a real integer (NOT-NULL semantics via the TenantContext default sentinel), making the composite UNIQUE actually enforce uniqueness. p4-batch5's `rebuildFromSourceAtomic()` does the shadow-table swap so rebuilds don't race with live writes.
 
 17. ~~**[MEDIUM]** `DateTimeValue` no UTC normalization; `equals()` uses `===` (object identity).~~ **CLOSED in p2-batch1** — `DateTimeValue` normalises to UTC on construction; `equals()` compares timestamps (instant-in-time).
 
 18. ~~**[MEDIUM]** `Money::fromFloat()` and `fromDecimalString()` silently saturate on overflow.~~ **CLOSED in p4-batch1** — both factories now throw a ValidationException when the scaled value would exceed PHP_INT_MAX.
 
-19. **[MEDIUM]** View error pages + write-side forms (create/edit/show for cookies, users) unaudited. CSP violations, permission gating, CSRF handling unknown. **r14** — full audit of 11 unaudited view files + their POST flows.
+19. ~~**[MEDIUM]** View error pages + write-side forms unaudited.~~ **CLOSED in p4-batch16** — sweep found 2 missing-`esc()` XSS holes (admin/users/edit.php attribute values, cookies/edit.php sidebar metadata), both fixed. create.php files and errors/html templates audited clean. Sweep report at `.audit/final-sweep.md`.
 
-20. **[MEDIUM]** Controllers (BaseController, HealthController, Api/UserController, write-side actions) orphaned from audit. Info disclosure, exception leakage, CSRF orchestration unverified. **r14** — audit all 8 controller files.
+20. ~~**[MEDIUM]** Controllers orphaned from audit.~~ **CLOSED in p4-batch16** — sweep audited BaseController, HealthController, Home, AuthController, CookieController. All clean: no info disclosure, no raw superglobal access, no DB-from-controller, exception messages sanitised before flashing to redirect.
 
-21. **[MEDIUM]** 14 of 21 migrations never opened (permissions schema, sessions, tokens, attachments, notifications unaudited). **r14** — schema-by-schema review of 14 migrations; MySQL/Postgres dialect check.
+21. ~~**[MEDIUM]** Migrations never opened — missing FKs.~~ **CLOSED in p4-batch16** — sweep found 3 missing FKs (`role_permissions.role_id/permission_id`, `user_roles.user_id/role_id`, `notifications.user_id`), all added with CASCADE-on-delete. `attachments.uploaded_by` intentionally left without FK (column accepts the `Actor::SYSTEM_ID = 0` sentinel which has no `users` row).
 
 22. ~~**[LOW]** `CookieReadModelProjection` incomplete: only listens to StockChanged.~~ **NEVER WAS** — `subscribesTo()` always returned all 5 events (Created/Updated/Deleted/Restored/StockChanged). Round-1 misread the event list.
 

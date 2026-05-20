@@ -112,6 +112,14 @@ class CreateAttachmentsTable extends Migration
         $this->forge->addKey(['attachable_type', 'attachable_id']);
         $this->forge->addKey('storage_key');
         $this->forge->addKey('tenant_id');
+        // INTENTIONAL: no FK on `uploaded_by`. The column accepts the
+        // {@see \App\Domain\Shared\ValueObjects\Actor::SYSTEM_ID} sentinel
+        // (0) for system-driven uploads (migrations, jobs, seeders), and
+        // there is no `users` row with id=0. The column stays as audit
+        // metadata, not a hard reference. Hard-deletes of a real user
+        // leave the attachment row in place — the `created_by` /
+        // `uploaded_by` columns become "user id at the time" rather than
+        // "currently existing user".
 
         $this->forge->createTable('attachments', true);
     }

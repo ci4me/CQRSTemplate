@@ -96,6 +96,10 @@ class CreateNotificationsTable extends Migration
         $this->forge->addKey(['user_id', 'read_at']);
         $this->forge->addKey(['user_id', 'created_at']);
         $this->forge->addKey('correlation_id');
+        // Notifications die with the user — no point keeping inbox rows
+        // for a hard-deleted account. CASCADE on delete; users.id is
+        // never updated, so update behaviour is purely defensive.
+        $this->forge->addForeignKey('user_id', 'users', 'id', 'CASCADE', 'CASCADE');
 
         $this->forge->createTable('notifications', true);
     }
