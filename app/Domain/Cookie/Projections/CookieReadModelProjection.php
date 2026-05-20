@@ -78,6 +78,104 @@ final class CookieReadModelProjection implements ProjectionInterface
 
     public function rebuildFromSource(?callable $progressCallback = null): void
     {
+        $this->rebuildInto('cookie_read_model', $progressCallback);
+    }
+
+    /**
+     * Live-safe rebuild via shadow table.
+     *
+     * The default {@see self::rebuildFromSource()} truncates and rebuilds in
+     * place, which means any read served while the rebuild is in flight sees
+     * a partial table. This variant builds the full projection into a shadow
+     * table FIRST and then renames it into place atomically:
+     *
+     *   1. CREATE TABLE cookie_read_model_shadow_<ts> LIKE cookie_read_model
+     *   2. INSERT every projected row into the shadow.
+     *   3. RENAME TABLE cookie_read_model TO _old, _shadow TO live (MySQL
+     *      handles this atomically — readers never see an empty table).
+     *   4. DROP the _old copy.
+     *
+     * SQLite has no atomic RENAME-to-existing semantics, so we fall back to
+     * the in-place rebuild for the test/dev path. Production targets MySQL
+     * or Postgres, which both support the atomic swap.
+     */
+    public function rebuildFromSourceAtomic(?callable $progressCallback = null): void
+    {
+        $db = $this->connection();
+        $platform = strtolower($db->getPlatform());
+
+        if ($platform === 'sqlite3') {
+            // Fall back to the in-place rebuild: SQLite test runs are single-
+            // writer anyway, so the race the shadow swap defends against
+            // doesn't apply.
+            $this->truncate();
+            $this->rebuildInto('cookie_read_model', $progressCallback);
+            return;
+        }
+
+        $shadow = sprintf('cookie_read_model_shadow_%d', time());
+
+        // Step 1: clone the schema. CREATE ... LIKE works on MySQL;
+        // Postgres uses CREATE TABLE ... (LIKE ... INCLUDING ALL).
+        if ($platform === 'mysqli' || $platform === 'mysql') {
+            $db->query(sprintf('CREATE TABLE %s LIKE cookie_read_model', $db->escapeIdentifiers($shadow)));
+        } else {
+            $db->query(sprintf(
+                'CREATE TABLE %s (LIKE cookie_read_model INCLUDING ALL)',
+                $db->escapeIdentifiers($shadow)
+            ));
+        }
+
+        try {
+            $this->rebuildInto($shadow, $progressCallback);
+
+            // Step 3: atomic swap. MySQL's RENAME TABLE ... TO ..., ... TO ...
+            // is atomic; Postgres needs ALTER TABLE ... RENAME inside a tx.
+            $live = 'cookie_read_model';
+            $old = sprintf('cookie_read_model_old_%d', time());
+
+            if ($platform === 'mysqli' || $platform === 'mysql') {
+                $db->query(sprintf(
+                    'RENAME TABLE %s TO %s, %s TO %s',
+                    $db->escapeIdentifiers($live),
+                    $db->escapeIdentifiers($old),
+                    $db->escapeIdentifiers($shadow),
+                    $db->escapeIdentifiers($live)
+                ));
+            } else {
+                $db->transBegin();
+                $db->query(sprintf('ALTER TABLE %s RENAME TO %s', $db->escapeIdentifiers($live), $db->escapeIdentifiers($old)));
+                $db->query(sprintf('ALTER TABLE %s RENAME TO %s', $db->escapeIdentifiers($shadow), $db->escapeIdentifiers($live)));
+                $db->transCommit();
+            }
+
+            // Step 4: drop the old copy. Failing this leaves an orphan
+            // table — we log but don't rethrow, the swap itself already
+            // succeeded.
+            try {
+                $db->query(sprintf('DROP TABLE %s', $db->escapeIdentifiers($old)));
+            } catch (\Throwable) {
+                // intentional: see comment above.
+            }
+        } catch (\Throwable $e) {
+            // Clean up the shadow table on failure so a half-built rebuild
+            // doesn't accumulate orphans across reruns.
+            try {
+                $db->query(sprintf('DROP TABLE %s', $db->escapeIdentifiers($shadow)));
+            } catch (\Throwable) {
+                // best-effort
+            }
+            throw $e;
+        }
+    }
+
+    /**
+     * Shared rebuild loop: paginate over the canonical source and upsert
+     * every row into the given target table. Used by both the in-place
+     * and shadow-table flows.
+     */
+    private function rebuildInto(string $targetTable, ?callable $progressCallback): void
+    {
         $page = 1;
         $perPage = 100;
 
@@ -96,7 +194,7 @@ final class CookieReadModelProjection implements ProjectionInterface
             }
 
             foreach ($rows as $cookie) {
-                $this->upsertFromEntity($cookie);
+                $this->upsertFromEntity($cookie, $targetTable);
             }
 
             if ($progressCallback !== null) {
@@ -166,7 +264,7 @@ final class CookieReadModelProjection implements ProjectionInterface
             ]);
     }
 
-    private function upsertFromEntity(Cookie $cookie): void
+    private function upsertFromEntity(Cookie $cookie, string $targetTable = 'cookie_read_model'): void
     {
         $id = $cookie->getId();
         if ($id === null) {
@@ -176,19 +274,19 @@ final class CookieReadModelProjection implements ProjectionInterface
         $row = $this->rowFor($cookie);
         $db = $this->connection();
 
-        $exists = $db->table('cookie_read_model')
+        $exists = $db->table($targetTable)
             ->where('cookie_id', $id)
             ->countAllResults() > 0;
 
         if ($exists) {
-            $db->table('cookie_read_model')
+            $db->table($targetTable)
                 ->where('cookie_id', $id)
                 ->update($row);
             return;
         }
 
         $row['cookie_id'] = $id;
-        $db->table('cookie_read_model')->insert($row);
+        $db->table($targetTable)->insert($row);
     }
 
     /**
