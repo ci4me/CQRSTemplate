@@ -7,6 +7,7 @@ namespace App\Domain\Shared\ValueObjects;
 use App\Domain\Shared\Exceptions\ValidationException;
 use DateTimeImmutable;
 use DateTimeInterface;
+use DateTimeZone;
 
 /**
  * Value Object representing a date and time.
@@ -33,48 +34,64 @@ use DateTimeInterface;
 final readonly class DateTimeValue
 {
     /**
-     * The immutable datetime instance.
+     * Canonical storage timezone. Every DateTimeValue is normalised to UTC
+     * on construction so equality and ordering don't depend on the
+     * server's local timezone setting (`date.timezone`). Display-time
+     * conversions are the caller's responsibility.
+     */
+    private const string STORAGE_TIMEZONE = 'UTC';
+
+    /**
+     * The immutable datetime instance, always in UTC.
      */
     private DateTimeImmutable $value;
 
-    /**
-     * Create a new DateTimeValue.
-     *
-     * @param DateTimeImmutable $dateTime The datetime instance
-     */
     private function __construct(DateTimeImmutable $dateTime)
     {
-        $this->value = $dateTime;
+        $this->value = $dateTime->setTimezone(new DateTimeZone(self::STORAGE_TIMEZONE));
     }
 
     /**
-     * Create from current time.
-     *
+     * Create from current time (UTC).
      */
     public static function now(): self
     {
-        return new self(new DateTimeImmutable());
+        return new self(new DateTimeImmutable('now', new DateTimeZone(self::STORAGE_TIMEZONE)));
     }
 
     /**
      * Create from string.
      *
-     * @param string $datetime The datetime string (e.g., "2025-01-01 10:30:00")
+     * Accepts the canonical `Y-m-d H:i:s` format (assumed UTC) AND the
+     * looser ISO-8601 with timezone — the latter is what API clients
+     * typically send. Whatever timezone is supplied, the resulting value
+     * is normalised to UTC.
+     *
+     * @param string $datetime The datetime string (e.g., "2025-01-01 10:30:00" or "2025-01-01T10:30:00+02:00")
      * @throws ValidationException If format is invalid
      */
     public static function fromString(string $datetime): self
     {
-        $date = DateTimeImmutable::createFromFormat('Y-m-d H:i:s', $datetime);
+        $utc = new DateTimeZone(self::STORAGE_TIMEZONE);
 
+        $date = DateTimeImmutable::createFromFormat('Y-m-d H:i:s', $datetime, $utc);
         if ($date === false) {
-            throw ValidationException::invalidFormat('datetime', 'Y-m-d H:i:s (e.g., 2025-01-01 10:30:00)');
+            // Fallback: ISO-8601 / RFC-3339 with explicit timezone offset.
+            try {
+                $date = new DateTimeImmutable($datetime);
+            } catch (\Throwable) {
+                throw ValidationException::invalidFormat(
+                    'datetime',
+                    'Y-m-d H:i:s or ISO-8601 with timezone offset'
+                );
+            }
         }
 
         return new self($date);
     }
 
     /**
-     * Create from DateTimeInterface.
+     * Create from DateTimeInterface (normalised to UTC).
      *
      * @param DateTimeInterface $datetime The datetime instance
      */
@@ -108,14 +125,17 @@ final readonly class DateTimeValue
     }
 
     /**
-     * Check if this datetime equals another.
+     * Check if this datetime equals another by instant-in-time, NOT by
+     * object identity. PHP's `===` on DateTimeImmutable compares object
+     * identity, so two values built from "the same string" would compare
+     * as not-equal. We normalise to UTC and compare timestamps — the
+     * value-object equality the rest of the domain expects.
      *
      * @param DateTimeValue $other The other datetime to compare
-     * @return bool True if datetimes are equal
      */
     public function equals(DateTimeValue $other): bool
     {
-        return $this->value === $other->value;
+        return $this->value->getTimestamp() === $other->value->getTimestamp();
     }
 
     /**

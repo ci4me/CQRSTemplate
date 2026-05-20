@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Unit\Domain\Shared;
 
 use App\Domain\Shared\AggregateRoot;
+use App\Domain\Shared\Events\DomainEventInterface;
 use Tests\Support\UnitTestCase;
 
 /**
@@ -26,8 +27,8 @@ final class AggregateRootTest extends UnitTestCase
     {
         $agg = $this->fixture();
 
-        $e1 = new \stdClass();
-        $e2 = new \stdClass();
+        $e1 = $this->dummyEvent();
+        $e2 = $this->dummyEvent();
         $agg->raiseEventPublic($e1);
         $agg->raiseEventPublic($e2);
 
@@ -39,7 +40,7 @@ final class AggregateRootTest extends UnitTestCase
     {
         $agg = $this->fixture();
 
-        $e1 = new \stdClass();
+        $e1 = $this->dummyEvent();
         $agg->raiseEventPublic($e1);
 
         $pulled = $agg->pullEvents();
@@ -52,7 +53,7 @@ final class AggregateRootTest extends UnitTestCase
     public function test_peek_does_not_clear(): void
     {
         $agg = $this->fixture();
-        $agg->raiseEventPublic(new \stdClass());
+        $agg->raiseEventPublic($this->dummyEvent());
 
         $agg->peekEvents();
         $agg->peekEvents();
@@ -66,10 +67,16 @@ final class AggregateRootTest extends UnitTestCase
         return new class {
             use AggregateRoot;
 
-            public function raiseEventPublic(object $event): void
+            public function raiseEventPublic(DomainEventInterface $event): void
             {
                 $this->raiseEvent($event);
             }
+        };
+    }
+
+    private function dummyEvent(): DomainEventInterface
+    {
+        return new class implements DomainEventInterface {
         };
     }
 }

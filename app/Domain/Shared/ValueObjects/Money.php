@@ -28,21 +28,26 @@ use App\Domain\Shared\Exceptions\ValidationException;
  *  - {@see self::toDecimalString()} — DB-friendly fixed decimal.
  *  - {@see self::format()} — currency-symbol-prefixed display string.
  */
-final readonly class Money
+final readonly class Money implements \JsonSerializable
 {
     public Currency $currency;
     private int $amountMinor;
 
-    private function __construct(int $amountMinor, ?Currency $currency = null)
+    private function __construct(int $amountMinor, Currency $currency)
     {
         $this->amountMinor = $amountMinor;
-        $this->currency = $currency ?? Currency::usd();
+        $this->currency = $currency;
     }
 
     /**
      * Build from raw minor units (e.g. 299 for $2.99, 1500 for ¥1500).
+     *
+     * The `$currency` argument is required at every factory: an implicit
+     * USD default would silently convert "1500 yen" into "$15.00" when a
+     * caller forgot to specify the currency. Pass {@see Currency::usd()}
+     * explicitly when USD is intended.
      */
-    public static function fromMinorUnits(int $amountMinor, ?Currency $currency = null): self
+    public static function fromMinorUnits(int $amountMinor, Currency $currency): self
     {
         return new self($amountMinor, $currency);
     }
@@ -53,9 +58,8 @@ final readonly class Money
      * with too many fractional digits — silent rounding is never
      * acceptable for money.
      */
-    public static function fromDecimalString(string $value, ?Currency $currency = null): self
+    public static function fromDecimalString(string $value, Currency $currency): self
     {
-        $currency ??= Currency::usd();
         $cleaned = self::cleanDecimalInput($value);
 
         $decimalsAllowed = $currency->decimals;
@@ -89,9 +93,8 @@ final readonly class Money
      * Last-resort float factory. Floats lose precision past 2-3 decimal
      * places; prefer fromDecimalString at HTTP / CSV boundaries.
      */
-    public static function fromFloat(float $value, ?Currency $currency = null): self
+    public static function fromFloat(float $value, Currency $currency): self
     {
-        $currency ??= Currency::usd();
         if (!is_finite($value)) {
             throw ValidationException::invalidFormat('amount', 'a finite number');
         }
@@ -125,6 +128,23 @@ final readonly class Money
     public function __toString(): string
     {
         return $this->toDecimalString();
+    }
+
+    /**
+     * Wire format for JSON-encoded events / responses. Including the ISO
+     * code with the value is the cheapest way to keep multi-currency
+     * payloads unambiguous; the previous implementation lost the amount
+     * entirely because the integer field was private.
+     *
+     * @return array{amount_minor: int, currency: string, formatted: string}
+     */
+    public function jsonSerialize(): array
+    {
+        return [
+            'amount_minor' => $this->amountMinor,
+            'currency' => $this->currency->iso,
+            'formatted' => $this->toDecimalString(),
+        ];
     }
 
     public function isZero(): bool

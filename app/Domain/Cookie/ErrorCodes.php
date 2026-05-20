@@ -7,12 +7,24 @@ namespace App\Domain\Cookie;
 /**
  * Cookie domain error codes.
  *
- * Error code ranges:
+ * Error code ranges (DOMAIN-SCOPED — see contract below):
  * 100-199: Validation errors
  * 200-299: Not found errors
  * 300-399: Business rule violations
  * 400-499: State errors
  * 500-599: Repository errors
+ *
+ * Scoping contract:
+ *   Numbers in this class are scoped to the Cookie domain. They WILL
+ *   collide with the same numeric value in {@see \App\Domain\User\ErrorCodes}
+ *   (e.g. 101 is COOKIE_VALIDATION_NAME here and USER_VALIDATION_EMAIL there).
+ *   That is intentional — every code is emitted alongside a `domain` field
+ *   in logs and a `domain` member in API problem-detail responses, so the
+ *   numeric collision never produces an ambiguous record.
+ *
+ *   Consumers that need a GLOBAL identifier should use the FQCN of this
+ *   constant (`App\Domain\Cookie\ErrorCodes::COOKIE_VALIDATION_NAME`) or
+ *   concatenate `cookie.101` for log queries.
  *
  * Usage Example:
  * ```php

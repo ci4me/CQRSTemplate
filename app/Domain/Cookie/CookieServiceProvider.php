@@ -16,6 +16,8 @@ use App\Domain\Cookie\Events\CookieCreated\CookieCreatedEvent;
 use App\Domain\Cookie\Events\CookieCreated\CookieCreatedEventHandler;
 use App\Domain\Cookie\Events\CookieDeleted\CookieDeletedEvent;
 use App\Domain\Cookie\Events\CookieDeleted\CookieDeletedEventHandler;
+use App\Domain\Cookie\Events\CookieRestored\CookieRestoredEvent;
+use App\Domain\Cookie\Events\CookieRestored\CookieRestoredEventHandler;
 use App\Domain\Cookie\Events\CookieStockChanged\CookieStockChangedEvent;
 use App\Domain\Cookie\Events\CookieStockChanged\CookieStockChangedEventHandler;
 use App\Domain\Cookie\Events\CookieUpdated\CookieUpdatedEvent;
@@ -192,6 +194,15 @@ final class CookieServiceProvider implements DomainServiceProviderInterface
         $dispatcher->subscribe(
             CookieStockChangedEvent::class,
             new CookieStockChangedEventHandler($logger)
+        );
+
+        // Register CookieRestored event handler. The original implementation
+        // raised the event but never registered a subscriber, so the row's
+        // "restored" lifecycle transition silently dropped on the floor —
+        // audit lines and any future read-model projection wouldn't fire.
+        $dispatcher->subscribe(
+            CookieRestoredEvent::class,
+            new CookieRestoredEventHandler($logger)
         );
     }
 

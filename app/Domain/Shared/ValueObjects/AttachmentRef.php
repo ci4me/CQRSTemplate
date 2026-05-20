@@ -14,7 +14,7 @@ namespace App\Domain\Shared\ValueObjects;
  */
 final readonly class AttachmentRef
 {
-    public function __construct(
+    private function __construct(
         public int $id,
         public string $attachableType,
         public string $attachableId,
@@ -24,5 +24,82 @@ final readonly class AttachmentRef
         public ?string $checksumSha256,
         public int $uploadedBy
     ) {
+        $this->assertValid();
+    }
+
+    /**
+     * Build a reference for a freshly persisted attachment. The arguments
+     * are validated (positive id, non-empty type/name/mime, non-negative
+     * size) so the rest of the domain doesn't have to worry about
+     * malformed values smuggled in via direct construction.
+     */
+    public static function create(
+        int $id,
+        string $attachableType,
+        string $attachableId,
+        string $originalName,
+        string $mimeType,
+        int $sizeBytes,
+        ?string $checksumSha256,
+        int $uploadedBy
+    ): self {
+        return new self(
+            $id,
+            $attachableType,
+            $attachableId,
+            $originalName,
+            $mimeType,
+            $sizeBytes,
+            $checksumSha256,
+            $uploadedBy
+        );
+    }
+
+    /**
+     * Rebuild from a persisted row. Same invariants — a database column
+     * could have been edited by hand.
+     */
+    public static function reconstitute(
+        int $id,
+        string $attachableType,
+        string $attachableId,
+        string $originalName,
+        string $mimeType,
+        int $sizeBytes,
+        ?string $checksumSha256,
+        int $uploadedBy
+    ): self {
+        return new self(
+            $id,
+            $attachableType,
+            $attachableId,
+            $originalName,
+            $mimeType,
+            $sizeBytes,
+            $checksumSha256,
+            $uploadedBy
+        );
+    }
+
+    private function assertValid(): void
+    {
+        if ($this->id <= 0) {
+            throw new \InvalidArgumentException('AttachmentRef: id must be > 0.');
+        }
+        if ($this->attachableType === '') {
+            throw new \InvalidArgumentException('AttachmentRef: attachableType must not be empty.');
+        }
+        if ($this->originalName === '') {
+            throw new \InvalidArgumentException('AttachmentRef: originalName must not be empty.');
+        }
+        if ($this->mimeType === '') {
+            throw new \InvalidArgumentException('AttachmentRef: mimeType must not be empty.');
+        }
+        if ($this->sizeBytes < 0) {
+            throw new \InvalidArgumentException('AttachmentRef: sizeBytes must be >= 0.');
+        }
+        if ($this->uploadedBy < 0) {
+            throw new \InvalidArgumentException('AttachmentRef: uploadedBy must be >= 0.');
+        }
     }
 }

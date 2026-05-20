@@ -7,12 +7,19 @@ namespace App\Domain\User;
 /**
  * Centralized error codes for the User domain.
  *
- * Error Code Ranges:
+ * Error Code Ranges (DOMAIN-SCOPED — see contract below):
  * - 1xx: Validation errors
  * - 2xx: Not found errors
  * - 3xx: Business rule violations
  * - 4xx: Repository/persistence errors
  * - 5xx: Authentication/authorization errors
+ *
+ * Scoping contract:
+ *   Numbers here are scoped to the User domain and WILL collide with the
+ *   same numeric value in {@see \App\Domain\Cookie\ErrorCodes}. Every code
+ *   is emitted with a `domain` field in logs / API responses so the
+ *   collision never produces an ambiguous record. For a globally unique
+ *   identifier use the FQCN of the constant.
  */
 final class ErrorCodes
 {

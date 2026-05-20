@@ -20,9 +20,12 @@ final class MoneyTest extends UnitTestCase
         $this->assertSame('USD', $usd->currency->iso);
     }
 
-    public function test_default_currency_is_usd(): void
+    public function test_currency_must_be_passed_explicitly(): void
     {
-        $m = Money::fromMinorUnits(100);
+        // SECURITY/DEFAULTS: the factories no longer accept null currency.
+        // Forcing the caller to pass Currency::usd() (or whichever currency
+        // applies) prevents silent USD coercion of a JPY/BHD value.
+        $m = Money::fromMinorUnits(100, Currency::usd());
         $this->assertSame('USD', $m->currency->iso);
     }
 
@@ -71,7 +74,7 @@ final class MoneyTest extends UnitTestCase
     public function test_from_decimal_string_rejects_empty(): void
     {
         $this->expectException(ValidationException::class);
-        Money::fromDecimalString('   ');
+        Money::fromDecimalString('   ', Currency::usd());
     }
 
     public function test_from_float_uses_currency_decimals(): void
@@ -153,8 +156,20 @@ final class MoneyTest extends UnitTestCase
 
     public function test_is_zero_is_negative(): void
     {
-        $this->assertTrue(Money::fromMinorUnits(0)->isZero());
-        $this->assertFalse(Money::fromMinorUnits(0)->isNegative());
-        $this->assertTrue(Money::fromMinorUnits(-1)->isNegative());
+        $this->assertTrue(Money::fromMinorUnits(0, Currency::usd())->isZero());
+        $this->assertFalse(Money::fromMinorUnits(0, Currency::usd())->isNegative());
+        $this->assertTrue(Money::fromMinorUnits(-1, Currency::usd())->isNegative());
+    }
+
+    public function test_json_serialise_preserves_amount_and_currency(): void
+    {
+        $m = Money::fromMinorUnits(1500, Currency::fromIso('JPY'));
+        $json = json_encode($m);
+        $this->assertNotFalse($json);
+
+        $decoded = json_decode($json, true);
+        $this->assertSame(1500, $decoded['amount_minor']);
+        $this->assertSame('JPY', $decoded['currency']);
+        $this->assertSame('1500', $decoded['formatted']);
     }
 }

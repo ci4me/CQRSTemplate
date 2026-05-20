@@ -24,6 +24,7 @@ use App\Infrastructure\Bus\Middleware\AuditMiddleware;
 use App\Infrastructure\Bus\Middleware\LoggingMiddleware;
 use App\Infrastructure\Bus\Middleware\TransactionMiddleware;
 use App\Infrastructure\Bus\QueryBus;
+use App\Infrastructure\Projections\ProjectionRegistry;
 use App\Infrastructure\Email\EmailService;
 use App\Infrastructure\I18n\LocaleResolver;
 use App\Infrastructure\Jobs\JobQueue;
@@ -161,6 +162,37 @@ class Services extends BaseService
     }
 
     /**
+     * Get the Projection Registry instance.
+     *
+     * The registry owns every read-model projection in the app and re-uses
+     * the shared EventDispatcher as its delivery channel. Each projection's
+     * `subscribesTo()` declares which events it cares about; the registry
+     * subscribes its `apply()` to those events. The spark rebuild command
+     * looks up projections by name through this registry, so wiring it up
+     * in Services is what makes `php spark projections:rebuild` work.
+     */
+    public static function projectionRegistry(bool $getShared = true): ProjectionRegistry
+    {
+        if ($getShared) {
+            $registry = static::getSharedInstance('projectionRegistry');
+            self::ensureProvidersRegistered();
+            return $registry;
+        }
+
+        $registry = new ProjectionRegistry(self::eventDispatcher());
+
+        // Cookie pilot projection (D15). New domains register their own
+        // projections in their service provider — this one lives in
+        // Services because Cookie is the reference domain that demonstrates
+        // the wiring end-to-end.
+        $registry->register(
+            new \App\Domain\Cookie\Projections\CookieReadModelProjection(self::cookieRepository())
+        );
+
+        return $registry;
+    }
+
+    /**
      * Ensure service providers are registered exactly once.
      *
      * This method is called by each bus getter to ensure handlers are registered
@@ -206,6 +238,12 @@ class Services extends BaseService
         );
 
         self::$providersRegistered = true;
+
+        // Build the projection registry AFTER the domain providers have wired
+        // their handlers — the registry adds projection apply() calls to the
+        // same dispatcher, and we don't want the dispatcher state to differ
+        // depending on which Services::* method touched it first.
+        static::getSharedInstance('projectionRegistry');
     }
 
     /**

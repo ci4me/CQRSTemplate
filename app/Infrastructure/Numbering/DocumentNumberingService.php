@@ -76,7 +76,7 @@ final class DocumentNumberingService
         }
 
         $formatted = $this->format($row['prefix'], $next, $row['pad_length'], $row['suffix']);
-        return new DocumentNumber($series, $scope, $next, $formatted);
+        return DocumentNumber::create($series, $scope, $next, $formatted);
     }
 
     /**

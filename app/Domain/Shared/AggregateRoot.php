@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Domain\Shared;
 
+use App\Domain\Shared\Events\DomainEventInterface;
+
 /**
  * Trait shared by every aggregate root in the domain layer.
  *
@@ -42,7 +44,7 @@ namespace App\Domain\Shared;
 trait AggregateRoot
 {
     /**
-     * @var list<object>
+     * @var list<DomainEventInterface>
      */
     private array $pendingEvents = [];
 
@@ -51,8 +53,12 @@ trait AggregateRoot
      *
      * Events are NOT dispatched immediately — they accumulate until the
      * repository (or an explicit caller) drains them via pullEvents().
+     * Constraining the parameter to {@see DomainEventInterface} prevents
+     * an entity from accidentally enqueuing a random object (typo, copy/
+     * paste from a command) and shipping it to the bus where the relay
+     * would refuse to rehydrate it.
      */
-    protected function raiseEvent(object $event): void
+    protected function raiseEvent(DomainEventInterface $event): void
     {
         $this->pendingEvents[] = $event;
     }
@@ -60,7 +66,7 @@ trait AggregateRoot
     /**
      * Return the queued events and clear the buffer.
      *
-     * @return list<object>
+     * @return list<DomainEventInterface>
      */
     public function pullEvents(): array
     {
@@ -73,7 +79,7 @@ trait AggregateRoot
     /**
      * Inspect queued events without clearing the buffer. Useful in tests.
      *
-     * @return list<object>
+     * @return list<DomainEventInterface>
      */
     public function peekEvents(): array
     {

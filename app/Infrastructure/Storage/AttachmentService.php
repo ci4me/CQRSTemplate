@@ -83,7 +83,7 @@ final class AttachmentService
 
         $id = (int) $this->connection()->insertID();
 
-        return new AttachmentRef(
+        return AttachmentRef::create(
             id: $id,
             attachableType: $attachableType,
             attachableId: $attachableId,
@@ -158,7 +158,7 @@ final class AttachmentService
      */
     private function hydrate(array $row): AttachmentRef
     {
-        return new AttachmentRef(
+        return AttachmentRef::reconstitute(
             id: (int) $row['id'],
             attachableType: (string) $row['attachable_type'],
             attachableId: (string) $row['attachable_id'],
