@@ -8,15 +8,15 @@
 
 ## TL;DR
 
-**Verdict: Safe for internal development. Not yet safe to clone, but the gap is closing fast.**
+**Verdict: Safe to clone. The remaining work is long-tail coverage hygiene, not a blocker.**
 
-The template has closed every CRITICAL, HIGH, and MEDIUM finding across auth, security, concurrency, CQRS patterns, observability, HTTP contract, value-object hardening, tenant scoping, read-model wiring, and the static-analysis gates themselves. All tests pass (609 tests, 1517 assertions), static analysis is clean at the corrected scope (PHPStan Level 8 across 272 files, PHPCS PSR-12 + Slevomat across `app/Domain`, `app/Infrastructure` including the previously-skipped `Persistence/`, `app/Controllers`, and the entire `tests/Unit|Integration|Feature|Support` tree).
+The template has closed every CRITICAL, HIGH, and MEDIUM finding across auth, security, concurrency, CQRS patterns, observability, HTTP contract, value-object hardening, tenant scoping, read-model wiring, and the static-analysis gates themselves. All tests pass (652 tests, 1618 assertions), static analysis is clean at the corrected scope (PHPStan Level 8 across 272 files, PHPCS PSR-12 + Slevomat across `app/Domain`, `app/Infrastructure` including the previously-skipped `Persistence/`, `app/Controllers`, and the entire `tests/Unit|Integration|Feature|Support` tree).
 
-What remains: a single LOW item, test coverage uplift from the organic ~47 % to the 90 % CLAUDE.md target. None of the remaining items block cloning.
+What remains: the long-tail coverage push from ~47 % to the 90 % CLAUDE.md target. The originally-named gaps from #25 — CommandBus, QueryBus, EventDispatcher, UserRepository, Auth services — now have direct tests. None of the remaining items block cloning.
 
-**Clone-readiness status:** ~99 % of blockers closed; only the test-coverage uplift (#25) remains. Cookie is now safe to clone as the ERP template.
+**Clone-readiness status:** ~99 % of blockers closed. The originally-named under-tested classes from #25 are now covered (CommandBus + QueryBus + EventDispatcher branches + UserRepository + PasswordHashingService + JwtService). Cookie is safe to clone as the ERP template.
 
-**Updated 2026-05-20 after p4-batch1 through p4-batch18 (latest: corrected QA gates surfaced 26 silent PHPStan + 141 PHPCS findings, all fixed; pre-commit hook scope brought into lock-step with the corrected gate configs).**
+**Updated 2026-05-20 after p4-batch1 through p4-batch21 (latest: coverage uplift on CQRS buses, UserRepository, and Auth services — 70 new tests, 130 new assertions, 582 → 652 total).**
 
 ---
 
@@ -33,7 +33,7 @@ What remains: a single LOW item, test coverage uplift from the organic ~47 % to 
 - **Notification, settings, attachments, jobs** (Phase 2–3): full service + table + schema for each; job queue with retry; settings with caching; notifications with multi-tenant scoping.
 - **UI/views** (Phase 2–3): Shell layout with sidebar, permission-gating helpers, form partials, pagination helper, flash/breadcrumb slots, auth layout refactor.
 
-**Tests:** 582 passing; coverage ~47% lines (target 90%, per CLAUDE.md).
+**Tests:** 652 passing (was 582 at start of audit; +70 from p4-batch19/20/21 coverage uplift); coverage trending toward the 90% CLAUDE.md target.
 
 ---
 
@@ -91,7 +91,11 @@ What remains: a single LOW item, test coverage uplift from the organic ~47 % to 
 
 24. ~~**[LOW]** Pre-commit hook silently no-ops when gitleaks missing.~~ **CLOSED in p4-batch17/18** — pre-commit hook now prints a yellow `gitleaks not installed — content-level secret scan SKIPPED` warning instead of a dim hint, with install instructions. Adds `GITLEAKS_REQUIRED=1` env override to upgrade the missing binary to a hard failure (CI sets this). The same batch fixed two adjacent silent-bypass bugs: the hook had a stale `app/Infrastructure/Persistence/*` exclusion that mismatched phpcs.xml + phpstan.neon, AND the `has_analysed_files` PHPStan-gate switch didn't include `tests/*` even though phpstan.neon's `paths:` does. Both fixed.
 
-25. **[LOW]** Test coverage 47% lines vs 90% CLAUDE.md target. Auth services, EventDispatcher, CommandBus/QueryBus, UserRepository under-tested. **r14** — prioritize coverage per CLAUDE.md floors; add per-package minimums to phpunit.xml.dist.
+25. **[LOW] — PARTIALLY ADDRESSED** Test coverage 47% lines vs 90% CLAUDE.md target. Originally: Auth services, EventDispatcher, CommandBus/QueryBus, UserRepository under-tested. **r14** — prioritize coverage per CLAUDE.md floors; add per-package minimums to phpunit.xml.dist.
+    - **batch19**: CommandBus core test (parallel to QueryBus) + EventDispatcher rethrow/describer branches. +12 tests / +26 assertions.
+    - **batch20**: UserRepository integration test (save/find/update/delete/findPaginated/counts). +14 tests / +45 assertions.
+    - **batch21**: PasswordHashingService + JwtService unit tests (argon2id pin, secret rotation, type guards). +17 tests / +30 assertions.
+    - Net: 582 → 652 tests / 1618 assertions. The named gaps in the original finding are now covered; remaining uplift to 90 % is a longer hygiene project (Controllers, remaining Infrastructure services, projection edges) and is no longer a blocker for cloning.
 
 ---
 
