@@ -71,8 +71,10 @@ else
 fi
 
 # 6. PHPStan Level 8 — only against changed files for speed.
-if [ -x vendor/bin/phpstan ]; then
-    if ! vendor/bin/phpstan analyse --no-progress --memory-limit=512M "${php_files[@]}"; then
+#    Filter out view files (Views/) since PHPStan cannot analyse them standalone.
+mapfile -t phpstan_files < <(printf '%s\n' "${php_files[@]}" | grep -v '/Views/' || true)
+if [ -x vendor/bin/phpstan ] && [ ${#phpstan_files[@]} -gt 0 ]; then
+    if ! vendor/bin/phpstan analyse --no-progress --memory-limit=512M "${phpstan_files[@]}"; then
         echo "${RED}✗ PHPStan Level 8 found issues. Fix or commit with --no-verify (NOT recommended).${RST}"
         exit 1
     fi

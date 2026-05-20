@@ -10,11 +10,15 @@
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
         <div class="container">
             <a class="navbar-brand" href="/dashboard">ERP Template</a>
-            <ul class="navbar-nav">
+            <ul class="navbar-nav me-auto">
                 <li class="nav-item"><a class="nav-link" href="/dashboard">Dashboard</a></li>
                 <li class="nav-item"><a class="nav-link" href="/cookies">Cookies</a></li>
                 <li class="nav-item"><a class="nav-link" href="/admin/users">Users</a></li>
             </ul>
+            <form action="/auth/logout" method="POST" class="d-inline">
+                <?= csrf_field() ?>
+                <button type="submit" class="btn btn-outline-light btn-sm">Logout</button>
+            </form>
         </div>
     </nav>
 

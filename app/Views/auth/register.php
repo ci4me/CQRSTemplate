@@ -18,8 +18,13 @@
             <?= csrf_field() ?>
             
             <div class="form-group">
+                <label for="name">Full Name</label>
+                <input type="text" id="name" name="name" required autofocus value="<?= esc(old('name'), 'attr') ?>">
+            </div>
+
+            <div class="form-group">
                 <label for="email">Email</label>
-                <input type="email" id="email" name="email" required autofocus value="<?= esc(old('email'), 'attr') ?>">
+                <input type="email" id="email" name="email" required value="<?= esc(old('email'), 'attr') ?>">
             </div>
             
             <div class="form-group">
