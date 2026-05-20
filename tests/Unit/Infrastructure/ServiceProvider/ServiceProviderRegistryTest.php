@@ -163,6 +163,20 @@ final class ServiceProviderRegistryTest extends UnitTestCase
                     return null;
                 }
             },
+            'cookieReadModelRepository' => new class implements \App\Domain\Cookie\Ports\CookieReadModelRepositoryInterface {
+                public function findById(int $cookieId): ?\App\Domain\Cookie\DTOs\CookieDTO
+                {
+                    return null;
+                }
+                public function findAll(bool $includeInactive = false): array
+                {
+                    return [];
+                }
+                public function findPaginated(int $page = 1, int $perPage = 20, ?string $searchTerm = null, bool $includeInactive = false): array
+                {
+                    return ['data' => [], 'total' => 0, 'page' => $page, 'perPage' => $perPage, 'lastPage' => 1];
+                }
+            },
             'eventDispatcher' => new EventDispatcher(),
             'logger' => new \Psr\Log\NullLogger(),
             'loggingConfig' => new \Config\Logging(),

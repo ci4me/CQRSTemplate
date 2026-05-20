@@ -187,7 +187,7 @@ final class CookieCrudTest extends FeatureTestCase
     public function test_show_displays_cookie_details(): void
     {
         $cookie = CookieFactory::createCookie(['name' => 'Show Cookie']);
-        $id = $this->cookieRepository->save($cookie);
+        $id = $this->saveCookieAndProject($cookie);
 
         $result = $this->get("/cookies/{$id}");
 
@@ -210,7 +210,7 @@ final class CookieCrudTest extends FeatureTestCase
     public function test_edit_displays_form_with_cookie_data(): void
     {
         $cookie = CookieFactory::createCookie(['name' => 'Edit Cookie']);
-        $id = $this->cookieRepository->save($cookie);
+        $id = $this->saveCookieAndProject($cookie);
 
         $result = $this->get("/cookies/{$id}/edit");
 

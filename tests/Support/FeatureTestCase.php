@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace Tests\Support;
 
+use App\Domain\Cookie\Entities\Cookie;
+use App\Domain\Cookie\Events\CookieCreated\CookieCreatedEvent;
+use App\Domain\Cookie\Projections\CookieReadModelProjection;
 use App\Infrastructure\Logging\LoggerFactory;
 use App\Infrastructure\Persistence\Models\UserModel;
 use App\Infrastructure\Persistence\Repositories\CookieRepository;
@@ -142,6 +145,31 @@ abstract class FeatureTestCase extends CIUnitTestCase
     protected function tearDown(): void
     {
         parent::tearDown();
+    }
+
+    /**
+     * Persist a Cookie via the write side AND project it into
+     * `cookie_read_model` so a subsequent GET /cookies/:id can read it.
+     *
+     * Production flow goes through CreateCookieCommand which dispatches
+     * the CookieCreatedEvent that the registered CookieReadModelProjection
+     * subscribes to. Feature tests that bypass the command bus (using
+     * the repository directly for setup speed) need to mirror that path
+     * by hand — this helper hides the wiring.
+     */
+    protected function saveCookieAndProject(Cookie $cookie): int
+    {
+        $id = $this->cookieRepository->save($cookie);
+
+        $projection = new CookieReadModelProjection($this->cookieRepository);
+        $projection->apply(new CookieCreatedEvent(
+            cookieId: $id,
+            cookieName: $cookie->getName()->getValue(),
+            cookiePrice: $cookie->getPrice()->toDecimalString(),
+            initialStock: $cookie->getStock()
+        ));
+
+        return $id;
     }
 
     /**

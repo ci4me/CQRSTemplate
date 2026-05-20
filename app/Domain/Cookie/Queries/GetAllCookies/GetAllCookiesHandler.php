@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Cookie\Queries\GetAllCookies;
 
 use App\Domain\Cookie\DTOs\CookieDTO;
-use App\Domain\Cookie\Ports\CookieRepositoryInterface;
+use App\Domain\Cookie\Ports\CookieReadModelRepositoryInterface;
 use Config\Logging;
 use Psr\Log\LoggerInterface;
 
@@ -32,12 +32,12 @@ final readonly class GetAllCookiesHandler
     /**
      * Create a new GetAllCookiesHandler.
      *
-     * @param CookieRepositoryInterface $repository For data retrieval
+     * @param CookieReadModelRepositoryInterface $repository For data retrieval
      * @param LoggerInterface $logger For query logging
      * @param Logging $loggingConfig For logging configuration
      */
     public function __construct(
-        private CookieRepositoryInterface $repository,
+        private CookieReadModelRepositoryInterface $repository,
         private LoggerInterface $logger,
         private Logging $loggingConfig
     ) {
@@ -59,7 +59,7 @@ final readonly class GetAllCookiesHandler
 
         $this->logQueryExecution($query->includeInactive, count($cookies), $durationMs);
 
-        return array_map(static fn($cookie) => CookieDTO::fromEntity($cookie), $cookies);
+        return $cookies;
     }
 
     /**

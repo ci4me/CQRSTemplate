@@ -5,23 +5,22 @@ declare(strict_types=1);
 namespace Tests\Unit\Domain\Cookie\Queries;
 
 use App\Domain\Cookie\DTOs\CookieDTO;
+use App\Domain\Cookie\Ports\CookieReadModelRepositoryInterface;
 use App\Domain\Cookie\Queries\GetCookieById\GetCookieByIdHandler;
 use App\Domain\Cookie\Queries\GetCookieById\GetCookieByIdQuery;
-use App\Domain\Cookie\Ports\CookieRepositoryInterface;
 use App\Infrastructure\Logging\LoggerFactory;
 use Config\Logging;
-use Tests\Support\Factories\CookieFactory;
 use Tests\Support\UnitTestCase;
 
 final class GetCookieByIdHandlerTest extends UnitTestCase
 {
-    private CookieRepositoryInterface $repository;
+    private CookieReadModelRepositoryInterface $repository;
     private GetCookieByIdHandler $handler;
 
     protected function setUp(): void
     {
         parent::setUp();
-        $this->repository = $this->createMock(CookieRepositoryInterface::class);
+        $this->repository = $this->createMock(CookieReadModelRepositoryInterface::class);
         $logger = LoggerFactory::create('test.cookie.queries');
         $loggingConfig = new Logging();
         $this->handler = new GetCookieByIdHandler($this->repository, $logger, $loggingConfig);
@@ -30,7 +29,17 @@ final class GetCookieByIdHandlerTest extends UnitTestCase
     public function test_returns_cookie_when_found(): void
     {
         $query = new GetCookieByIdQuery(id: 1);
-        $expected = CookieFactory::createPersistedCookie(['id' => 1]);
+        $expected = new CookieDTO(
+            id: 1,
+            name: 'Chip',
+            description: 'A cookie',
+            price: '2.99',
+            formattedPrice: '$2.99',
+            stock: 5,
+            isActive: true,
+            createdAt: '2025-10-21 10:00:00',
+            updatedAt: null
+        );
 
         $this->repository->expects($this->once())
             ->method('findById')
@@ -40,7 +49,8 @@ final class GetCookieByIdHandlerTest extends UnitTestCase
         $result = $this->handler->handle($query);
 
         $this->assertInstanceOf(CookieDTO::class, $result);
-        $this->assertEquals(1, $result->id);
+        $this->assertSame(1, $result->id);
+        $this->assertSame('Chip', $result->name);
     }
 
     public function test_returns_null_when_not_found(): void

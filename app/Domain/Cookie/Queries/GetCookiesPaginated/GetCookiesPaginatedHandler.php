@@ -5,8 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Cookie\Queries\GetCookiesPaginated;
 
 use App\Domain\Cookie\DTOs\CookieDTO;
-use App\Domain\Cookie\Entities\Cookie;
-use App\Domain\Cookie\Ports\CookieRepositoryInterface;
+use App\Domain\Cookie\Ports\CookieReadModelRepositoryInterface;
 use Config\Logging;
 use Psr\Log\LoggerInterface;
 
@@ -34,12 +33,12 @@ final readonly class GetCookiesPaginatedHandler
     /**
      * Create a new GetCookiesPaginatedHandler.
      *
-     * @param CookieRepositoryInterface $repository For data retrieval
+     * @param CookieReadModelRepositoryInterface $repository For data retrieval
      * @param LoggerInterface $logger For query logging
      * @param Logging $loggingConfig For logging configuration
      */
     public function __construct(
-        private CookieRepositoryInterface $repository,
+        private CookieReadModelRepositoryInterface $repository,
         private LoggerInterface $logger,
         private Logging $loggingConfig
     ) {
@@ -55,6 +54,7 @@ final readonly class GetCookiesPaginatedHandler
     {
         $startTime = microtime(true);
 
+        // Read-side port returns DTOs already; no per-row reconstitution.
         $result = $this->repository->findPaginated(
             page: $query->page,
             perPage: $query->perPage,
@@ -66,8 +66,6 @@ final readonly class GetCookiesPaginatedHandler
 
         $this->logQueryExecution($query, $result, $durationMs);
 
-        $result['data'] = array_map(static fn(Cookie $cookie) => CookieDTO::fromEntity($cookie), $result['data']);
-
         return $result;
     }
 
@@ -75,7 +73,7 @@ final readonly class GetCookiesPaginatedHandler
      * Log query execution based on configured logging level.
      *
      * @param GetCookiesPaginatedQuery $query The query being executed
-     * @param array{data: array<int, Cookie>, total: int, page: int, perPage: int, lastPage: int} $result The query result
+     * @param array{data: array<int, CookieDTO>, total: int, page: int, perPage: int, lastPage: int} $result The query result
      * @param float $durationMs Execution duration in milliseconds
      */
     private function logQueryExecution(GetCookiesPaginatedQuery $query, array $result, float $durationMs): void
@@ -107,7 +105,7 @@ final readonly class GetCookiesPaginatedHandler
      * Log query details with context.
      *
      * @param GetCookiesPaginatedQuery $query The query being executed
-     * @param array{data: array<int, Cookie>, total: int, page: int, perPage: int, lastPage: int} $result The query result
+     * @param array{data: array<int, CookieDTO>, total: int, page: int, perPage: int, lastPage: int} $result The query result
      * @param float $durationMs Execution duration in milliseconds
      * @param bool $isSlowQuery Whether this is a slow query
      */

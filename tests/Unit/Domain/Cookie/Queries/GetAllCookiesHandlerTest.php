@@ -5,23 +5,22 @@ declare(strict_types=1);
 namespace Tests\Unit\Domain\Cookie\Queries;
 
 use App\Domain\Cookie\DTOs\CookieDTO;
+use App\Domain\Cookie\Ports\CookieReadModelRepositoryInterface;
 use App\Domain\Cookie\Queries\GetAllCookies\GetAllCookiesHandler;
 use App\Domain\Cookie\Queries\GetAllCookies\GetAllCookiesQuery;
-use App\Domain\Cookie\Ports\CookieRepositoryInterface;
 use App\Infrastructure\Logging\LoggerFactory;
 use Config\Logging;
-use Tests\Support\Factories\CookieFactory;
 use Tests\Support\UnitTestCase;
 
 final class GetAllCookiesHandlerTest extends UnitTestCase
 {
-    private CookieRepositoryInterface $repository;
+    private CookieReadModelRepositoryInterface $repository;
     private GetAllCookiesHandler $handler;
 
     protected function setUp(): void
     {
         parent::setUp();
-        $this->repository = $this->createMock(CookieRepositoryInterface::class);
+        $this->repository = $this->createMock(CookieReadModelRepositoryInterface::class);
         $logger = LoggerFactory::create('test.cookie.queries');
         $loggingConfig = new Logging();
         $this->handler = new GetAllCookiesHandler($this->repository, $logger, $loggingConfig);
@@ -30,12 +29,12 @@ final class GetAllCookiesHandlerTest extends UnitTestCase
     public function test_returns_all_active_cookies_by_default(): void
     {
         $query = new GetAllCookiesQuery();
-        $entities = CookieFactory::createMultiple(3);
+        $dtos = $this->makeDtos(3);
 
         $this->repository->expects($this->once())
             ->method('findAll')
             ->with(false)
-            ->willReturn($entities);
+            ->willReturn($dtos);
 
         $result = $this->handler->handle($query);
 
@@ -46,12 +45,12 @@ final class GetAllCookiesHandlerTest extends UnitTestCase
     public function test_returns_all_cookies_including_inactive(): void
     {
         $query = new GetAllCookiesQuery(includeInactive: true);
-        $expected = CookieFactory::createMultiple(5);
+        $dtos = $this->makeDtos(5);
 
         $this->repository->expects($this->once())
             ->method('findAll')
             ->with(true)
-            ->willReturn($expected);
+            ->willReturn($dtos);
 
         $result = $this->handler->handle($query);
 
@@ -70,5 +69,27 @@ final class GetAllCookiesHandlerTest extends UnitTestCase
 
         $this->assertIsArray($result);
         $this->assertEmpty($result);
+    }
+
+    /**
+     * @return list<CookieDTO>
+     */
+    private function makeDtos(int $count): array
+    {
+        $out = [];
+        for ($i = 1; $i <= $count; $i++) {
+            $out[] = new CookieDTO(
+                id: $i,
+                name: "Cookie {$i}",
+                description: null,
+                price: '1.00',
+                formattedPrice: '$1.00',
+                stock: 10,
+                isActive: true,
+                createdAt: '2025-10-21 10:00:00',
+                updatedAt: null
+            );
+        }
+        return $out;
     }
 }

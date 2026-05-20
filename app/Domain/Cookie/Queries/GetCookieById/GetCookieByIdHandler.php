@@ -5,8 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Cookie\Queries\GetCookieById;
 
 use App\Domain\Cookie\DTOs\CookieDTO;
-use App\Domain\Cookie\Entities\Cookie;
-use App\Domain\Cookie\Ports\CookieRepositoryInterface;
+use App\Domain\Cookie\Ports\CookieReadModelRepositoryInterface;
 use Config\Logging;
 use Psr\Log\LoggerInterface;
 
@@ -35,12 +34,12 @@ final readonly class GetCookieByIdHandler
     /**
      * Create a new GetCookieByIdHandler.
      *
-     * @param CookieRepositoryInterface $repository For data retrieval
+     * @param CookieReadModelRepositoryInterface $repository For data retrieval
      * @param LoggerInterface $logger For query logging
      * @param Logging $loggingConfig For logging configuration
      */
     public function __construct(
-        private CookieRepositoryInterface $repository,
+        private CookieReadModelRepositoryInterface $repository,
         private LoggerInterface $logger,
         private Logging $loggingConfig
     ) {
@@ -56,23 +55,23 @@ final readonly class GetCookieByIdHandler
     {
         $startTime = microtime(true);
 
-        $cookie = $this->repository->findById($query->id);
+        $dto = $this->repository->findById($query->id);
 
         $durationMs = (microtime(true) - $startTime) * 1000;
 
-        $this->logQueryExecution($query->id, $cookie, $durationMs);
+        $this->logQueryExecution($query->id, $dto, $durationMs);
 
-        return $cookie !== null ? CookieDTO::fromEntity($cookie) : null;
+        return $dto;
     }
 
     /**
      * Log query execution based on configured logging level.
      *
      * @param int $cookieId The cookie ID being queried
-     * @param Cookie|null $result The query result
+     * @param CookieDTO|null $result The query result
      * @param float $durationMs Execution duration in milliseconds
      */
-    private function logQueryExecution(int $cookieId, ?Cookie $result, float $durationMs): void
+    private function logQueryExecution(int $cookieId, ?CookieDTO $result, float $durationMs): void
     {
         $isSlowQuery = $durationMs > $this->loggingConfig->slowQueryThresholdMs;
 
@@ -100,11 +99,11 @@ final readonly class GetCookieByIdHandler
      * Log query details with context.
      *
      * @param int $cookieId The cookie ID being queried
-     * @param Cookie|null $result The query result
+     * @param CookieDTO|null $result The query result
      * @param float $durationMs Execution duration in milliseconds
      * @param bool $isSlowQuery Whether this is a slow query
      */
-    private function logQuery(int $cookieId, ?Cookie $result, float $durationMs, bool $isSlowQuery): void
+    private function logQuery(int $cookieId, ?CookieDTO $result, float $durationMs, bool $isSlowQuery): void
     {
         $context = [
             'domain' => 'Cookie',

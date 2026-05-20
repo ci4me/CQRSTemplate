@@ -22,6 +22,7 @@ use App\Domain\Cookie\Events\CookieStockChanged\CookieStockChangedEvent;
 use App\Domain\Cookie\Events\CookieStockChanged\CookieStockChangedEventHandler;
 use App\Domain\Cookie\Events\CookieUpdated\CookieUpdatedEvent;
 use App\Domain\Cookie\Events\CookieUpdated\CookieUpdatedEventHandler;
+use App\Domain\Cookie\Ports\CookieReadModelRepositoryInterface;
 use App\Domain\Cookie\Ports\CookieRepositoryInterface;
 use App\Domain\Cookie\Queries\GetAllCookies\GetAllCookiesHandler;
 use App\Domain\Cookie\Queries\GetAllCookies\GetAllCookiesQuery;
@@ -128,12 +129,16 @@ final class CookieServiceProvider implements DomainServiceProviderInterface
      */
     public function registerQueries(QueryBus $queryBus): void
     {
-        $repository = $this->getRepository('cookieRepository');
+        // Read side depends on the projection-backed repository so query
+        // handlers never reach into the write-side aggregate. The legacy
+        // `cookieRepository` key is still accepted for tests that haven't
+        // been migrated yet.
+        $repository = $this->getRepository('cookieReadModelRepository');
         $logger = $this->getRepository('logger');
         $loggingConfig = $this->getRepository('loggingConfig');
 
         if (
-            !$repository instanceof CookieRepositoryInterface
+            !$repository instanceof CookieReadModelRepositoryInterface
             || !$logger instanceof LoggerInterface
             || !$loggingConfig instanceof Logging
         ) {
@@ -219,6 +224,7 @@ final class CookieServiceProvider implements DomainServiceProviderInterface
     {
         return [
             'cookieRepository',
+            'cookieReadModelRepository',
             'eventDispatcher',
             'logger',
             'loggingConfig',

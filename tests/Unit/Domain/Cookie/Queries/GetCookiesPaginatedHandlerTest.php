@@ -4,23 +4,23 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Domain\Cookie\Queries;
 
+use App\Domain\Cookie\DTOs\CookieDTO;
+use App\Domain\Cookie\Ports\CookieReadModelRepositoryInterface;
 use App\Domain\Cookie\Queries\GetCookiesPaginated\GetCookiesPaginatedHandler;
 use App\Domain\Cookie\Queries\GetCookiesPaginated\GetCookiesPaginatedQuery;
-use App\Domain\Cookie\Ports\CookieRepositoryInterface;
 use App\Infrastructure\Logging\LoggerFactory;
 use Config\Logging;
-use Tests\Support\Factories\CookieFactory;
 use Tests\Support\UnitTestCase;
 
 final class GetCookiesPaginatedHandlerTest extends UnitTestCase
 {
-    private CookieRepositoryInterface $repository;
+    private CookieReadModelRepositoryInterface $repository;
     private GetCookiesPaginatedHandler $handler;
 
     protected function setUp(): void
     {
         parent::setUp();
-        $this->repository = $this->createMock(CookieRepositoryInterface::class);
+        $this->repository = $this->createMock(CookieReadModelRepositoryInterface::class);
         $logger = LoggerFactory::create('test.cookie.queries');
         $loggingConfig = new Logging();
         $this->handler = new GetCookiesPaginatedHandler($this->repository, $logger, $loggingConfig);
@@ -29,7 +29,7 @@ final class GetCookiesPaginatedHandlerTest extends UnitTestCase
     public function test_returns_paginated_results(): void
     {
         $query = new GetCookiesPaginatedQuery(page: 1, perPage: 20);
-        $cookies = CookieFactory::createMultiple(20);
+        $cookies = $this->makeDtos(20);
 
         $expectedResult = [
             'data' => $cookies,
@@ -51,6 +51,7 @@ final class GetCookiesPaginatedHandlerTest extends UnitTestCase
         $this->assertEquals(100, $result['total']);
         $this->assertEquals(1, $result['page']);
         $this->assertEquals(20, $result['perPage']);
+        $this->assertContainsOnlyInstancesOf(CookieDTO::class, $result['data']);
     }
 
     public function test_handles_search_term(): void
@@ -61,7 +62,7 @@ final class GetCookiesPaginatedHandlerTest extends UnitTestCase
             searchTerm: 'Chocolate'
         );
 
-        $cookies = CookieFactory::createMultiple(5);
+        $cookies = $this->makeDtos(5);
         $expectedResult = [
             'data' => $cookies,
             'total' => 5,
@@ -104,5 +105,27 @@ final class GetCookiesPaginatedHandlerTest extends UnitTestCase
             ->willReturn($expectedResult);
 
         $this->handler->handle($query);
+    }
+
+    /**
+     * @return list<CookieDTO>
+     */
+    private function makeDtos(int $count): array
+    {
+        $out = [];
+        for ($i = 1; $i <= $count; $i++) {
+            $out[] = new CookieDTO(
+                id: $i,
+                name: "Cookie {$i}",
+                description: null,
+                price: '1.00',
+                formattedPrice: '$1.00',
+                stock: 10,
+                isActive: true,
+                createdAt: '2025-10-21 10:00:00',
+                updatedAt: null
+            );
+        }
+        return $out;
     }
 }
