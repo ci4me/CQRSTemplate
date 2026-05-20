@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Commands;
 
 use App\Infrastructure\Jobs\JobWorker;
+use App\Infrastructure\Logging\CorrelationIdService;
 use App\Infrastructure\Logging\LoggerFactory;
 use CodeIgniter\CLI\BaseCommand;
 use CodeIgniter\CLI\CLI;
@@ -57,7 +58,22 @@ final class WorkJobs extends BaseCommand
 
         $worker = new JobWorker(LoggerFactory::create('infrastructure.job_worker'));
 
+        // OPERABILITY: same SIGTERM/SIGINT pattern as RelayOutboxEvents so
+        // supervisor stops don't orphan claimed jobs mid-pass.
+        $shouldStop = false;
+        if (function_exists('pcntl_async_signals')) {
+            pcntl_async_signals(true);
+            $stopHandler = static function () use (&$shouldStop): void {
+                $shouldStop = true;
+            };
+            pcntl_signal(SIGTERM, $stopHandler);
+            pcntl_signal(SIGINT, $stopHandler);
+        }
+
         do {
+            // OBSERVABILITY: fresh correlation id per drain pass.
+            CorrelationIdService::clear();
+
             $stats = $worker->drain($queue, $batch);
             CLI::write(sprintf(
                 'jobs:work queue=%s — processed=%d succeeded=%d retried=%d failed=%d',
@@ -67,6 +83,11 @@ final class WorkJobs extends BaseCommand
                 $stats['retried'],
                 $stats['failed']
             ), 'green');
+
+            if ($shouldStop) {
+                CLI::write('jobs:work: SIGTERM/SIGINT received — exiting between drains', 'yellow');
+                break;
+            }
 
             if ($watch && $stats['processed'] === 0) {
                 sleep($sleep);

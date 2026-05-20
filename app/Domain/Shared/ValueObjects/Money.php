@@ -80,6 +80,24 @@ final readonly class Money implements \JsonSerializable
 
         $factor = 10 ** $decimalsAllowed;
         $minorPadded = str_pad($minor, $decimalsAllowed, '0');
+
+        // SECURITY/CORRECTNESS: catch overflow on 64-bit ints so a hostile
+        // CSV row of "999999999999999999999.99" can't silently wrap to a
+        // small / negative balance. PHP_INT_MAX is ~9.2e18. The cheapest
+        // shape check that PHPStan + bc accept is a digit-length compare:
+        // anything with more digits than PHP_INT_MAX itself is definitely
+        // too big. We do a precise compare on borderline lengths.
+        $intMaxStr = (string) PHP_INT_MAX;
+        $intMaxLen = strlen($intMaxStr);
+        $major = $major === '' ? '0' : $major;
+        $combinedLen = strlen($major) + ($decimalsAllowed === 0 ? 0 : $decimalsAllowed);
+        if ($combinedLen > $intMaxLen) {
+            throw ValidationException::invalidFormat(
+                'amount',
+                sprintf('a value within %s minor units', PHP_INT_MAX)
+            );
+        }
+
         $amount = ((int) $major) * $factor + ($decimalsAllowed === 0 ? 0 : (int) $minorPadded);
 
         if ($isNegative) {
@@ -92,6 +110,10 @@ final readonly class Money implements \JsonSerializable
     /**
      * Last-resort float factory. Floats lose precision past 2-3 decimal
      * places; prefer fromDecimalString at HTTP / CSV boundaries.
+     *
+     * Throws on overflow rather than silently saturating: a multiplication
+     * that exceeds PHP_INT_MAX would otherwise wrap into a small negative
+     * value and silently corrupt downstream totals.
      */
     public static function fromFloat(float $value, Currency $currency): self
     {
@@ -100,7 +122,15 @@ final readonly class Money implements \JsonSerializable
         }
 
         $factor = 10 ** $currency->decimals;
-        return new self((int) round($value * $factor), $currency);
+        $scaled = $value * $factor;
+        if ($scaled > PHP_INT_MAX || $scaled < PHP_INT_MIN) {
+            throw ValidationException::invalidFormat(
+                'amount',
+                sprintf('a value within %s minor units', PHP_INT_MAX)
+            );
+        }
+
+        return new self((int) round($scaled), $currency);
     }
 
     public function amountMinor(): int

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Commands;
 
+use App\Infrastructure\Logging\CorrelationIdService;
 use App\Infrastructure\Logging\LoggerFactory;
 use App\Infrastructure\Outbox\EventOutboxRelay;
 use CodeIgniter\CLI\BaseCommand;
@@ -60,7 +61,29 @@ final class RelayOutboxEvents extends BaseCommand
             logger: LoggerFactory::create('infrastructure.outbox_relay')
         );
 
+        // OPERABILITY: handle SIGTERM/SIGINT gracefully so the supervisor
+        // (systemd, supervisord, docker stop) can stop us between drains
+        // instead of killing mid-row, which would leave the in_flight row
+        // stuck until a manual reap. pcntl_async_signals lets the handler
+        // fire between PHP opcodes without explicit pcntl_signal_dispatch().
+        $shouldStop = false;
+        if (function_exists('pcntl_async_signals')) {
+            pcntl_async_signals(true);
+            $stopHandler = static function () use (&$shouldStop): void {
+                $shouldStop = true;
+            };
+            pcntl_signal(SIGTERM, $stopHandler);
+            pcntl_signal(SIGINT, $stopHandler);
+        }
+
         do {
+            // OBSERVABILITY: clear the static correlation id before each
+            // drain pass so the next batch of rows gets a fresh trace
+            // (each row adopts its row.correlation_id inside processRow).
+            // Without this, idle --watch loops leak the first pass's id
+            // into every subsequent pass's diagnostics.
+            CorrelationIdService::clear();
+
             $stats = $relay->drain($batch);
             CLI::write(sprintf(
                 'relay pass — processed=%d delivered=%d retried=%d failed=%d',
@@ -69,6 +92,11 @@ final class RelayOutboxEvents extends BaseCommand
                 $stats['retried'],
                 $stats['failed']
             ), 'green');
+
+            if ($shouldStop) {
+                CLI::write('relay: SIGTERM/SIGINT received — exiting between drains', 'yellow');
+                break;
+            }
 
             if ($watch && $stats['processed'] === 0) {
                 sleep($sleep);

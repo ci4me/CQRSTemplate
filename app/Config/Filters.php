@@ -146,5 +146,15 @@ class Filters extends BaseFilters
                 'dashboard',
             ],
         ],
+        // SECURITY: api/v1/* requests are designed to be called from
+        // browsers / mobile clients on a different origin. Without CORS
+        // the browser blocks the response and the JWT/refresh flow silently
+        // fails. Apply the CodeIgniter `Cors` filter both before (handle
+        // OPTIONS preflight) and after (echo allow headers on the response).
+        // Origins/methods are configured in app/Config/Cors.php.
+        'cors' => [
+            'before' => ['api/v1/*'],
+            'after' => ['api/v1/*'],
+        ],
     ];
 }
