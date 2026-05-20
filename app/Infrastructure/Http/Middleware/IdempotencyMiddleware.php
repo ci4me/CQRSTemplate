@@ -64,6 +64,20 @@ final class IdempotencyMiddleware implements FilterInterface
         }
 
         $actorId = $this->actorId($request);
+
+        // SECURITY: an anonymous actor (system, id=0) is a SHARED bucket
+        // for every unauthenticated client. Reusing an Idempotency-Key
+        // would replay one client's response to another. The middleware
+        // is meant to live on auth-gated routes; refuse to operate when
+        // the actor is anonymous to make that contract explicit.
+        if ($actorId <= 0) {
+            return ApiResponse::problem(
+                401,
+                'Idempotency requires authentication',
+                'The Idempotency-Key header can only be used on authenticated requests.'
+            );
+        }
+
         $hash = $this->requestHash($request);
 
         $existing = $this->lookup($key, $actorId);

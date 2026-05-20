@@ -147,6 +147,19 @@ final class IdempotencyMiddlewareTest extends CIUnitTestCase
             $request->setHeader('Content-Type', 'application/json');
         }
 
+        // SECURITY: IdempotencyMiddleware now refuses anonymous (actor_id=0)
+        // calls because the (id_key, actor_id) tuple would collide across
+        // clients. Attach a synthetic authenticated user so existing tests
+        // exercise the success / conflict paths.
+        $user = new class {
+            public function getId(): int
+            {
+                return 42;
+            }
+        };
+        /** @phpstan-ignore-next-line dynamic property */
+        $request->user = $user;
+
         return $request;
     }
 }

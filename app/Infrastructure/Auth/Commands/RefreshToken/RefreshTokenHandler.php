@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Auth\Commands\RefreshToken;
 
+use App\Domain\User\Ports\TokenBlacklistInterface;
 use App\Infrastructure\Auth\Services\JwtService;
 use App\Infrastructure\Auth\ValueObjects\AuthenticationResult;
 use App\Infrastructure\Logging\LoggerFactory;
@@ -35,7 +36,8 @@ final readonly class RefreshTokenHandler
 
     public function __construct(
         private JwtService $jwtService,
-        private UserRepository $userRepository
+        private UserRepository $userRepository,
+        private ?TokenBlacklistInterface $blacklist = null
     ) {
         $this->logger = LoggerFactory::create('auth.refresh-token');
     }
@@ -48,6 +50,20 @@ final readonly class RefreshTokenHandler
         ]);
 
         try {
+            // SECURITY: an explicit logout blacklists the refresh token along
+            // with the access token. Consulting the blacklist BEFORE the
+            // refresh_tokens table makes rotation reject a stolen-but-revoked
+            // refresh token even when the per-jti row hasn't yet been marked
+            // (e.g. logout writes only the blacklist row, the per-token
+            // revocation column races with the new refresh).
+            if ($this->blacklist !== null && $this->blacklist->isBlacklisted($command->refreshToken)) {
+                $this->logger->warning('Refresh attempt with blacklisted token', [
+                    'domain' => 'Auth',
+                    'security' => 'CRITICAL',
+                ]);
+                throw new \RuntimeException('Token has been revoked');
+            }
+
             // Validate refresh token signature and expiration
             $payload = $this->jwtService->validateToken($command->refreshToken);
 

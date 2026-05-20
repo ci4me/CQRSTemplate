@@ -90,7 +90,7 @@ final class AuthServiceProvider implements DomainServiceProviderInterface
 
         $commandBus->register(
             RefreshTokenCommand::class,
-            new RefreshTokenHandler($jwtService, $userRepository)
+            new RefreshTokenHandler($jwtService, $userRepository, $tokenBlacklist)
         );
 
         $commandBus->register(

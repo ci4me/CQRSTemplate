@@ -6,17 +6,17 @@ namespace App\Infrastructure\Auth\Adapters\Jwt;
 
 use App\Domain\User\Entities\User;
 use App\Domain\User\Ports\AuthenticationServiceInterface;
+use App\Domain\User\Ports\TokenBlacklistInterface;
 use App\Domain\User\ValueObjects\AccessToken;
 use App\Domain\User\ValueObjects\AuthenticationResult;
 use App\Infrastructure\Auth\Services\JwtService;
-use App\Infrastructure\Auth\Services\TokenBlacklistService;
 use App\Infrastructure\Persistence\Repositories\UserRepository;
 
 final readonly class FirebaseJwtAdapter implements AuthenticationServiceInterface
 {
     public function __construct(
         private JwtService $jwtService,
-        private TokenBlacklistService $blacklist,
+        private TokenBlacklistInterface $blacklist,
         private UserRepository $userRepository,
     ) {
     }

@@ -111,6 +111,23 @@ final class DocumentNumberingService
         string $suffix,
         int $padLength
     ): array {
+        // CONCURRENCY: lock the sequence row for the rest of this transaction
+        // on engines that support row-level locks (MySQL InnoDB, Postgres).
+        // Without this, two concurrent allocate() calls would each read the
+        // same `current_value` and both write `current_value + 1`, handing
+        // out the same number twice — gapless numbering MUST remain gapless.
+        // SQLite is single-writer, so its lack of FOR UPDATE is a no-op.
+        $platform = strtolower($db->getPlatform());
+        if ($platform === 'mysqli' || $platform === 'postgre' || $platform === 'mysql') {
+            $escapedSeries = $db->escape($series);
+            $escapedScope = $db->escape($scope);
+            $db->query(sprintf(
+                'SELECT id FROM document_sequences WHERE series = %s AND scope = %s FOR UPDATE',
+                $escapedSeries,
+                $escapedScope
+            ));
+        }
+
         $builder = $db->table('document_sequences')
             ->where('series', $series)
             ->where('scope', $scope);

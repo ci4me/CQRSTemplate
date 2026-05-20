@@ -7,6 +7,7 @@ namespace App\Infrastructure\Bus\Middleware;
 use App\Infrastructure\Auth\Services\ActorResolver;
 use App\Infrastructure\Bus\CommandMiddlewareInterface;
 use App\Infrastructure\Logging\CorrelationIdService;
+use App\Infrastructure\Logging\RedactingProcessor;
 use CodeIgniter\Database\BaseConnection;
 use Config\Database;
 use Psr\Log\LoggerInterface;
@@ -87,7 +88,22 @@ final readonly class AuditMiddleware implements CommandMiddlewareInterface
         ?\Throwable $error,
         float $durationMs
     ): void {
+        // ROBUSTNESS: the audit insert MUST NOT cause CI4 to flip the outer
+        // transaction's status to false. CI4's QueryBuilder will set
+        // _transStatus = false on any query failure that happens while a
+        // transaction is open — even if we catch the thrown exception — and
+        // TransactionMiddleware will then refuse to commit the legitimate
+        // business write. We sidestep this by:
+        //  1. Toggling transException OFF for the duration of this insert,
+        //     so an error returns false instead of throwing.
+        //  2. Snapshotting transStatus before the insert and restoring it
+        //     if the audit insert flipped it.
+        // The business transaction must commit/rollback on the merit of
+        // the BUSINESS work, not on an audit side-channel hiccup.
         $db = $this->db ?? Database::connect();
+
+        $hadExceptionOn = $this->disableTransException($db);
+        $statusBefore = $db->transStatus();
 
         try {
             $db->table('audit_log')->insert([
@@ -110,7 +126,59 @@ final readonly class AuditMiddleware implements CommandMiddlewareInterface
                 'original_status' => $status,
                 'correlation_id' => CorrelationIdService::get(),
             ]);
+        } finally {
+            $this->restoreTransStatus($db, $statusBefore);
+            if ($hadExceptionOn) {
+                $this->enableTransException($db);
+            }
         }
+    }
+
+    /**
+     * @param BaseConnection<object|resource|false, object|resource|false> $db
+     */
+    private function disableTransException(BaseConnection $db): bool
+    {
+        $reflection = new \ReflectionObject($db);
+        if (!$reflection->hasProperty('transException')) {
+            return false;
+        }
+        $prop = $reflection->getProperty('transException');
+        $prop->setAccessible(true);
+        $previous = (bool) $prop->getValue($db);
+        $prop->setValue($db, false);
+        return $previous;
+    }
+
+    /**
+     * @param BaseConnection<object|resource|false, object|resource|false> $db
+     */
+    private function enableTransException(BaseConnection $db): void
+    {
+        $reflection = new \ReflectionObject($db);
+        if (!$reflection->hasProperty('transException')) {
+            return;
+        }
+        $prop = $reflection->getProperty('transException');
+        $prop->setAccessible(true);
+        $prop->setValue($db, true);
+    }
+
+    /**
+     * @param BaseConnection<object|resource|false, object|resource|false> $db
+     */
+    private function restoreTransStatus(BaseConnection $db, bool $previous): void
+    {
+        if ($db->transStatus() === $previous) {
+            return;
+        }
+        $reflection = new \ReflectionObject($db);
+        if (!$reflection->hasProperty('transStatus')) {
+            return;
+        }
+        $prop = $reflection->getProperty('transStatus');
+        $prop->setAccessible(true);
+        $prop->setValue($db, $previous);
     }
 
     /**
@@ -156,28 +224,14 @@ final readonly class AuditMiddleware implements CommandMiddlewareInterface
      */
     private function redact(array $data): array
     {
-        // Reuse the redaction logic by passing through a real LogRecord;
-        // RedactingProcessor expects a Monolog record, so we replicate its
-        // tiny key check here. The list MUST stay aligned with RedactingProcessor.
-        static $sensitive = [
-            'password', 'token', 'jwt', 'authorization', 'api_key',
-            'secret', 'private_key', 'credit_card', 'card_number', 'cvv',
-            'plaintext',
-        ];
-
+        // SECURITY: share the redaction key list with RedactingProcessor.
+        // Drift between the two would let secrets land in audit_log even
+        // while staying out of logs (or vice-versa) — both views must mask
+        // the same surface area.
         $out = [];
         foreach ($data as $key => $value) {
-            $needle = strtolower(is_string($key) ? $key : (string) $key);
-            $isSensitive = false;
-            foreach ($sensitive as $marker) {
-                if (str_contains($needle, $marker)) {
-                    $isSensitive = true;
-                    break;
-                }
-            }
-
-            if ($isSensitive) {
-                $out[$key] = '***';
+            if (RedactingProcessor::isSensitive($key)) {
+                $out[$key] = RedactingProcessor::MASK;
                 continue;
             }
 

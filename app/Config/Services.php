@@ -17,7 +17,7 @@ use App\Infrastructure\Auth\Services\PasswordHashingService;
 use App\Infrastructure\Auth\Services\RateLimitService;
 use App\Infrastructure\Auth\Services\SecurityEventService;
 use App\Infrastructure\Auth\Services\SessionManagementService;
-use App\Infrastructure\Auth\Services\TokenBlacklistService;
+use App\Infrastructure\Auth\Services\DatabaseTokenBlacklistService;
 use App\Infrastructure\Bus\CommandBus;
 use App\Infrastructure\Bus\EventDispatcher;
 use App\Infrastructure\Bus\Middleware\AuditMiddleware;
@@ -306,7 +306,11 @@ class Services extends BaseService
             return static::getSharedInstance('tokenBlacklistService');
         }
 
-        return new TokenBlacklistService(\Config\Services::cache());
+        // SECURITY: production default is the database-backed store so the
+        // revocation survives restarts and scales across web nodes. The
+        // cache-backed implementation is still available for offline scripts
+        // / dev work but MUST NOT be the default exposed to HTTP requests.
+        return new DatabaseTokenBlacklistService();
     }
 
     /**

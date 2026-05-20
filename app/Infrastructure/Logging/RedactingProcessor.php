@@ -23,12 +23,19 @@ use Monolog\LogRecord;
  */
 final class RedactingProcessor
 {
-    private const string MASK = '***';
+    public const string MASK = '***';
 
     /**
+     * Canonical list of sensitive key substrings.
+     *
+     * Public so other components that have to redact (e.g.
+     * {@see \App\Infrastructure\Bus\Middleware\AuditMiddleware}) can share
+     * the same list — drift between these lists is itself a security
+     * incident waiting to happen.
+     *
      * @var list<string>
      */
-    private const array SENSITIVE = [
+    public const array SENSITIVE = [
         'password',
         'password_hash',
         'password_confirm',
@@ -49,6 +56,17 @@ final class RedactingProcessor
         'cvv',
     ];
 
+    public static function isSensitive(int|string $key): bool
+    {
+        $needle = strtolower((string) $key);
+        foreach (self::SENSITIVE as $marker) {
+            if (str_contains($needle, $marker)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     public function __invoke(LogRecord $record): LogRecord
     {
         return $record->with(
@@ -66,7 +84,7 @@ final class RedactingProcessor
         $out = [];
 
         foreach ($data as $key => $value) {
-            if ($this->isSensitiveKey($key)) {
+            if (self::isSensitive($key)) {
                 $out[$key] = self::MASK;
                 continue;
             }
@@ -80,18 +98,5 @@ final class RedactingProcessor
         }
 
         return $out;
-    }
-
-    private function isSensitiveKey(int|string $key): bool
-    {
-        $needle = strtolower((string) $key);
-
-        foreach (self::SENSITIVE as $marker) {
-            if (str_contains($needle, $marker)) {
-                return true;
-            }
-        }
-
-        return false;
     }
 }

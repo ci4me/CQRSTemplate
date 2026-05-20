@@ -15,10 +15,19 @@ use CodeIgniter\Session\Session;
  *  1. Authenticated user attached to the request by JWT or session middleware
  *     (`$request->user`).
  *  2. `user_id` value present in the session (web tier without middleware).
- *  3. Falls back to {@see Actor::system()} for CLI / migrations / jobs.
+ *  3. Falls back to {@see Actor::system()} for CLI / migrations / jobs
+ *     AND for unauthenticated HTTP requests (login, register, password-reset).
  *
- * Controllers should call {@see self::resolve($this->request)} when building
- * commands; CLI / background contexts can call {@see self::resolveOrSystem()}.
+ * SECURITY: Actor::system() is no longer auto-allowed by PermissionService
+ * (see that class for details). Downstream callers that need to gate on
+ * "an actual human did this" should check {@see Actor::isSystem()} and
+ * refuse the operation rather than rely on the fallback to magically
+ * become an admin.
+ *
+ * Controllers SHOULD call {@see self::resolve($this->request)} when building
+ * commands; the actual auth gating belongs in route filters (jwt / web_auth /
+ * role) so by the time we get here, an authenticated user IS available
+ * for protected routes.
  */
 final class ActorResolver
 {
