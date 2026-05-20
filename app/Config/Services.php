@@ -37,6 +37,7 @@ use App\Infrastructure\Persistence\Models\UserModel;
 use App\Infrastructure\Persistence\Repositories\PasswordHistoryRepository;
 use App\Infrastructure\Persistence\Repositories\UserRepository;
 use App\Infrastructure\ServiceProvider\ServiceProviderRegistry;
+use App\Infrastructure\Persistence\Repositories\CookieReadModelRepository;
 use App\Infrastructure\Persistence\Repositories\CookieRepository;
 use CodeIgniter\Config\BaseService;
 use Psr\Log\LoggerInterface;
@@ -224,6 +225,7 @@ class Services extends BaseService
             $eventDispatcher,
             [
                 'cookieRepository' => self::cookieRepository(),
+                'cookieReadModelRepository' => self::cookieReadModelRepository(),
                 'userRepository' => self::userRepository(),
                 'eventDispatcher' => $eventDispatcher,
                 'logger' => self::logger(),
@@ -269,6 +271,20 @@ class Services extends BaseService
             null,
             new EventOutboxWriter()
         );
+    }
+
+    /**
+     * Read-side repository: returns CookieDTO from the `cookie_read_model`
+     * projection table. Query handlers depend on this instead of
+     * {@see cookieRepository()} so the read path can be tuned independently.
+     */
+    public static function cookieReadModelRepository(bool $getShared = true): CookieReadModelRepository
+    {
+        if ($getShared) {
+            return static::getSharedInstance('cookieReadModelRepository');
+        }
+
+        return new CookieReadModelRepository();
     }
 
     /**
