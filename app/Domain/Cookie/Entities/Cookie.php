@@ -213,11 +213,29 @@ final class Cookie
         int $stock,
         bool $isActive
     ): void {
+        // INVARIANT: a deleted (soft-deleted) cookie is not mutable. The
+        // restore path explicitly clears deleted_at before issuing further
+        // updates. Without this guard, a stale view + a slow race could
+        // resurrect a deleted row by writing new field values that bypass
+        // the lifecycle.
+        $this->assertNotDeleted();
+
         $this->name = $name;
         $this->description = $description;
         $this->price = $price;
         $this->setStock($stock);
         $this->isActive = $isActive;
+    }
+
+    private function assertNotDeleted(): void
+    {
+        if ($this->deletedAt !== null) {
+            throw DomainException::invalidState(
+                'Cookie',
+                'cannot mutate a soft-deleted cookie; restore it first',
+                ErrorCodes::COOKIE_STATE_DELETED
+            );
+        }
     }
 
     /**
@@ -230,6 +248,8 @@ final class Cookie
      */
     public function decreaseStock(int $quantity): void
     {
+        $this->assertNotDeleted();
+
         if ($quantity <= 0) {
             throw ValidationException::tooSmall('quantity', 1, $quantity);
         }
@@ -263,6 +283,8 @@ final class Cookie
      */
     public function increaseStock(int $quantity): void
     {
+        $this->assertNotDeleted();
+
         if ($quantity <= 0) {
             throw ValidationException::tooSmall('quantity', 1, $quantity);
         }
@@ -297,19 +319,19 @@ final class Cookie
 
     /**
      * Activate the cookie (make it visible to customers).
-     *
      */
     public function activate(): void
     {
+        $this->assertNotDeleted();
         $this->isActive = true;
     }
 
     /**
      * Deactivate the cookie (hide from customers).
-     *
      */
     public function deactivate(): void
     {
+        $this->assertNotDeleted();
         $this->isActive = false;
     }
 
