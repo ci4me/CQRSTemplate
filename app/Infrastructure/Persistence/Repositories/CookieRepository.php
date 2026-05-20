@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Models\Cookie;
+namespace App\Infrastructure\Persistence\Repositories;
 
 use App\Domain\Cookie\Entities\Cookie;
 use App\Domain\Cookie\ErrorCodes;
@@ -13,6 +13,7 @@ use App\Domain\Shared\Exceptions\DomainException;
 use App\Domain\Shared\ValueObjects\Actor;
 use App\Infrastructure\Bus\EventDispatcher;
 use App\Infrastructure\Outbox\EventOutboxWriter;
+use App\Models\Cookie\CookieModel;
 use App\Models\Cookie\Traits\BusinessMetricsLogging;
 use App\Models\Cookie\Traits\RepositoryLogging;
 use CodeIgniter\Database\Exceptions\DatabaseException;

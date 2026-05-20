@@ -11,6 +11,7 @@ use App\Domain\User\ValueObjects\HashedPassword;
 use App\Domain\User\ValueObjects\UserName;
 use App\Domain\User\ValueObjects\UserRole;
 use App\Domain\User\ValueObjects\UserStatus;
+use App\Domain\User\Ports\UserRepositoryInterface;
 use App\Infrastructure\Persistence\Models\UserModel;
 use Config\Logging;
 use Psr\Log\LoggerInterface;

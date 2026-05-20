@@ -64,7 +64,7 @@ Use DDD tactical patterns: Value Objects, Entities, Aggregates, Repository Patte
 
 ---
 
-## ADR 3: PHP 8.4 with Strict Typing
+## ADR 3: PHP 8.3+ with Strict Typing
 
 **Status:** Accepted
 
@@ -72,7 +72,7 @@ Use DDD tactical patterns: Value Objects, Entities, Aggregates, Repository Patte
 PHP 8+ offers significant type safety improvements.
 
 **Decision:**
-Require PHP 8.4+, use `declare(strict_types=1)` in all files, readonly properties, constructor promotion.
+Require PHP 8.3+ (with CI currently testing on 8.4), use `declare(strict_types=1)` in all files, readonly properties, constructor promotion.
 
 **Consequences:**
 
@@ -84,7 +84,7 @@ Require PHP 8.4+, use `declare(strict_types=1)` in all files, readonly propertie
 - Better IDE autocomplete and refactoring
 
 **Negative:**
-- Requires PHP 8.4+ (cannot use on older servers)
+- Requires PHP 8.3+ (cannot use on older servers)
 - Strict types can feel verbose initially
 - Readonly prevents some flexibility
 

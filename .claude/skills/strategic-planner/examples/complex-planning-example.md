@@ -56,7 +56,7 @@ User wants to accept payments for cookie orders.
 ❌ Vendor lock-in (hard to switch later)
 
 **Checking compatibility:**
-- PHP 8.4: ✅ Compatible (tested up to PHP 8.3, 8.4 should work)
+- PHP 8.3+: ✅ Compatible
 - CodeIgniter 4: ✅ Framework-agnostic (we'll wrap in our CQRS pattern)
 - CQRS pattern: ✅ Easy to wrap (ProcessStripePaymentCommand)
 
@@ -86,7 +86,7 @@ User wants to accept payments for cookie orders.
 ❌ PHP SDK less elegant
 
 **Checking compatibility:**
-- PHP 8.4: ✅ Compatible
+- PHP 8.3+: ✅ Compatible
 - CodeIgniter 4: ✅ Works
 - CQRS pattern: ⚠️ Redirect flow complicates command pattern
 

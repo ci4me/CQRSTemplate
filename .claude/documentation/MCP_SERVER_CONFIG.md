@@ -252,7 +252,7 @@ Each log entry contains:
 The memory server organizes information using three concepts:
 
 1. **Entities** - Primary nodes with name, type, and observations
-   - Example: `{"name": "Cookie Domain", "entityType": "module", "observations": ["Uses CQRS pattern", "Has 45 files"]}`
+   - Example: `{"name": "Cookie Domain", "entityType": "module", "observations": ["Uses CQRS pattern", "Has standard CQRS files and touchpoints"]}`
 
 2. **Relations** - Directed connections between entities
    - Example: `"Cookie Domain" --[implements]--> "CQRS Pattern"`

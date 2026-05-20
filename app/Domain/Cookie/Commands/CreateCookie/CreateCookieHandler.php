@@ -12,7 +12,7 @@ use App\Domain\Cookie\ValueObjects\CookieName;
 use App\Domain\Cookie\ValueObjects\CookiePrice;
 use App\Domain\Shared\Exceptions\DomainException;
 use App\Domain\Shared\Exceptions\ValidationException;
-use App\Infrastructure\Bus\EventDispatcher;
+use App\Infrastructure\Bus\EventDispatcherInterface;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -45,12 +45,12 @@ final readonly class CreateCookieHandler
      * Create a new CreateCookieHandler.
      *
      * @param CookieRepositoryInterface $repository For persistence operations
-     * @param EventDispatcher $eventDispatcher For dispatching domain events
+     * @param EventDispatcherInterface $eventDispatcher For dispatching domain events
      * @param LoggerInterface $logger For logging command execution (channel: cookie.command.create)
      */
     public function __construct(
         private CookieRepositoryInterface $repository,
-        private EventDispatcher $eventDispatcher,
+        private EventDispatcherInterface $eventDispatcher,
         private LoggerInterface $logger
     ) {
     }

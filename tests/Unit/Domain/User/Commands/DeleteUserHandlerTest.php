@@ -9,9 +9,9 @@ use App\Domain\User\Commands\DeleteUser\DeleteUserCommand;
 use App\Domain\User\Commands\DeleteUser\DeleteUserHandler;
 use App\Domain\User\ErrorCodes;
 use App\Domain\User\Events\UserDeleted\UserDeletedEvent;
-use App\Infrastructure\Bus\EventDispatcher;
+use App\Infrastructure\Bus\EventDispatcherInterface;
 use App\Infrastructure\Logging\LoggerFactory;
-use App\Infrastructure\Persistence\Repositories\UserRepositoryInterface;
+use App\Domain\User\Ports\UserRepositoryInterface;
 use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 use Tests\Support\Factories\UserFactory;
 use Tests\Support\UnitTestCase;
@@ -29,7 +29,7 @@ use Tests\Support\UnitTestCase;
 final class DeleteUserHandlerTest extends UnitTestCase
 {
     private UserRepositoryInterface $repository;
-    private EventDispatcher $eventDispatcher;
+    private EventDispatcherInterface $eventDispatcher;
     private DeleteUserHandler $handler;
 
     protected function setUp(): void
@@ -37,7 +37,7 @@ final class DeleteUserHandlerTest extends UnitTestCase
         parent::setUp();
 
         $this->repository = $this->createMock(UserRepositoryInterface::class);
-        $this->eventDispatcher = $this->createMock(EventDispatcher::class);
+        $this->eventDispatcher = $this->createMock(EventDispatcherInterface::class);
         $logger = LoggerFactory::create('test.user.commands');
         $this->handler = new DeleteUserHandler($this->repository, $this->eventDispatcher, $logger);
     }

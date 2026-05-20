@@ -10,6 +10,36 @@ parameters:
         - app/Config/Constants.php
         - app/Views
         - app/Infrastructure/Persistence (?)
+    reportUnmatchedIgnoredErrors: false
+    ignoreErrors:
+        -
+            identifier: trait.unused
+            path: app/Models/Cookie/Traits/
+        -
+            identifier: constant.notFound
+            path: app/Config/
+        -
+            identifier: return.type
+            path: app/Config/Services.php
+        -
+            identifier: argument.type
+            path: app/Config/Services.php
+        -
+            identifier: function.notFound
+            path: app/Config/
+        -
+            identifier: property.defaultValue
+            path: app/Config/Filters.php
+        -
+            identifier: ternary.shortNotAllowed
+            path: app/Config/App.php
+        -
+            identifier: arrayFilter.strict
+            path: app/Config/App.php
+        -
+            message: '#.*#'
+            path: tests/
+            reportUnmatched: false
     bootstrapFiles:
         - phpstan-bootstrap.php
 

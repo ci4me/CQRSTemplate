@@ -9,9 +9,9 @@ use App\Domain\User\Commands\UpdateUser\UpdateUserCommand;
 use App\Domain\User\Commands\UpdateUser\UpdateUserHandler;
 use App\Domain\User\ErrorCodes;
 use App\Domain\User\Events\UserUpdated\UserUpdatedEvent;
-use App\Infrastructure\Bus\EventDispatcher;
+use App\Infrastructure\Bus\EventDispatcherInterface;
 use App\Infrastructure\Logging\LoggerFactory;
-use App\Infrastructure\Persistence\Repositories\UserRepositoryInterface;
+use App\Domain\User\Ports\UserRepositoryInterface;
 use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 use Tests\Support\Factories\UserFactory;
 use Tests\Support\UnitTestCase;
@@ -30,7 +30,7 @@ use Tests\Support\UnitTestCase;
 final class UpdateUserHandlerTest extends UnitTestCase
 {
     private UserRepositoryInterface $repository;
-    private EventDispatcher $eventDispatcher;
+    private EventDispatcherInterface $eventDispatcher;
     private UpdateUserHandler $handler;
 
     protected function setUp(): void
@@ -38,7 +38,7 @@ final class UpdateUserHandlerTest extends UnitTestCase
         parent::setUp();
 
         $this->repository = $this->createMock(UserRepositoryInterface::class);
-        $this->eventDispatcher = $this->createMock(EventDispatcher::class);
+        $this->eventDispatcher = $this->createMock(EventDispatcherInterface::class);
         $logger = LoggerFactory::create('test.user.commands');
         $this->handler = new UpdateUserHandler($this->repository, $this->eventDispatcher, $logger);
     }

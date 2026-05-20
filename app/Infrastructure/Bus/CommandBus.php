@@ -68,6 +68,12 @@ final class CommandBus
             );
         }
 
+        if (!method_exists($handler, 'handle')) {
+            throw new RuntimeException(
+                sprintf('Handler for command "%s" must have a handle() method', $commandClass)
+            );
+        }
+
         $this->handlers[$commandClass] = $handler;
     }
 

@@ -15,7 +15,7 @@ php spark make:migration CreateCookiesTable
 
 **Run migrations:**
 ```bash
-php spark migrate
+php spark migrate --all
 
 # Rollback last batch
 php spark migrate:rollback
@@ -309,15 +309,15 @@ php spark serve --host=0.0.0.0 --port=9000
 php spark db:create {database_name}
 
 # Seed database
-php spark db:seed CookieSeeder
+php spark db:seed DatabaseSeeder
 
 # Seed specific seeder with namespace
-php spark db:seed App\\Database\\Seeds\\CookieSeeder
+php spark db:seed App\\Database\\Seeds\\DatabaseSeeder
 ```
 
 ## Auto-Discovery with Attributes
 
-**This project uses PHP 8.4 attributes for auto-discovery:**
+**This project uses native PHP attributes for auto-discovery:**
 
 ```php
 use App\Infrastructure\Attributes\DomainServiceProvider;
@@ -403,7 +403,7 @@ app.indexPage = ''
 - Wrap CodeIgniter models
 - Convert arrays to domain entities
 - Handle domain-specific queries
-- Located in: `app/Models/{Domain}/`
+- Located in: `app/Infrastructure/Persistence/Repositories/`
 
 **Routing:**
 - Use route groups for organization
@@ -447,4 +447,4 @@ app.indexPage = ''
 - **cqrs-specialist** - Ensure controllers delegate to buses
 - **ddd-specialist** - Models should NOT contain business logic
 - **test-specialist** - Write feature tests for HTTP endpoints
-- **php-specialist** - Verify PHP 8.4 syntax and type safety
+- **php-specialist** - Verify PHP 8.3+ syntax and type safety

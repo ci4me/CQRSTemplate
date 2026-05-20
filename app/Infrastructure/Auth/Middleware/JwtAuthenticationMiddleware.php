@@ -6,6 +6,7 @@ namespace App\Infrastructure\Auth\Middleware;
 
 use App\Domain\User\Entities\User;
 use App\Domain\User\Ports\TokenBlacklistInterface;
+use App\Infrastructure\Auth\AuthContext;
 use App\Infrastructure\Auth\Services\JwtService;
 use App\Infrastructure\Auth\Services\SessionManagementService;
 use App\Infrastructure\Persistence\Repositories\UserRepository;
@@ -174,6 +175,8 @@ final class JwtAuthenticationMiddleware implements FilterInterface
         // PHPStan: Dynamic property assignment to support controllers accessing user
         /** @phpstan-ignore-next-line */
         $request->user = $user;
+
+        AuthContext::setCurrentUserId($user->getId());
 
         // Log successful authentication
         $this->logAuthenticationSuccess($user, $request);
@@ -385,16 +388,21 @@ final class JwtAuthenticationMiddleware implements FilterInterface
     }
 
     /**
-     * Generate device fingerprint from IP and user agent.
+     * Generate device fingerprint from user agent only.
      *
-     * @param string $ipAddress IP address
+     * Only uses User-Agent for fingerprint to avoid false positives
+     * when IP changes (mobile roaming, VPN, etc.).
+     *
+     * @param string $ipAddress IP address (kept for backward compatibility)
      * @param string $userAgent User agent string
      * @return string SHA-256 hash
+     *
+     * @todo Remove $ipAddress parameter in the next major version
+     * @phpcsSuppress SlevomatCodingStandard.Functions.UnusedParameter.UnusedParameter
      */
     private function generateDeviceFingerprint(string $ipAddress, string $userAgent): string
     {
-        $data = $ipAddress . '|' . $userAgent;
-        return hash('sha256', $data);
+        return hash('sha256', $userAgent);
     }
 
     /**

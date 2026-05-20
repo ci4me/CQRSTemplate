@@ -37,7 +37,7 @@ use App\Infrastructure\Persistence\Models\UserModel;
 use App\Infrastructure\Persistence\Repositories\PasswordHistoryRepository;
 use App\Infrastructure\Persistence\Repositories\UserRepository;
 use App\Infrastructure\ServiceProvider\ServiceProviderRegistry;
-use App\Models\Cookie\CookieRepository;
+use App\Infrastructure\Persistence\Repositories\CookieRepository;
 use CodeIgniter\Config\BaseService;
 use Psr\Log\LoggerInterface;
 
@@ -159,7 +159,7 @@ class Services extends BaseService
             return $dispatcher;
         }
 
-        return new EventDispatcher();
+        return new EventDispatcher(self::logger());
     }
 
     /**
@@ -208,11 +208,14 @@ class Services extends BaseService
         }
 
 
-        // Get shared instances (without triggering registration again)
+        // Get shared instances (without triggering registration again).
+        // CommandBus middleware (LoggingMiddleware + TransactionMiddleware +
+        // AuditMiddleware) was already wired in commandBus(false). Don't
+        // re-register here — main's parallel addMiddleware() call was
+        // dropped during merge because pushMiddleware is the canonical API.
         $commandBus = static::getSharedInstance('commandBus');
         $queryBus = static::getSharedInstance('queryBus');
         $eventDispatcher = static::getSharedInstance('eventDispatcher');
-
 
         // Register all domain providers
         ServiceProviderRegistry::registerAll(

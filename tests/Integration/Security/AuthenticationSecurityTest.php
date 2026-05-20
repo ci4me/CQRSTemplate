@@ -617,7 +617,7 @@ final class AuthenticationSecurityTest extends IntegrationTestCase
         $this->assertStringContainsString('JWT Secret Rotation Procedure', $content);
         $this->assertStringContainsString('7-day overlap period', $content);
         $this->assertStringContainsString('JWT_SECRET_KEY_OLD', $content);
-        $this->assertStringContainsString('openssl rand -base64 64', $content);
+        $this->assertStringContainsString('openssl rand -hex 48', $content);
 
         // Verify implementation has old secret fallback
         $this->assertStringContainsString('oldSecretKey', $content);

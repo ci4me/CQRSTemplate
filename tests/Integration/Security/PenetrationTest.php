@@ -573,7 +573,7 @@ final class PenetrationTest extends IntegrationTestCase
         $securityConfig = config('Security');
 
         // Verify CSRF protection is configured
-        $this->assertEquals('cookie', $securityConfig->csrfProtection);
+        $this->assertEquals('session', $securityConfig->csrfProtection);
         $this->assertTrue(
             $securityConfig->regenerate,
             'CSRF token should regenerate on each request'

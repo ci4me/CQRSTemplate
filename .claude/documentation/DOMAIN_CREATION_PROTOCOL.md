@@ -79,7 +79,7 @@ final readonly class {Entity}{Property}
 
 **Specialists Required:**
 - `ddd-specialist` - Verify value object pattern
-- `php-specialist` - Verify PHP 8.4 features, types
+- `php-specialist` - Verify PHP 8.3+ features, types
 - `phpstan-specialist` - Verify type safety
 
 **Quality Gate:** PHPStan Level 8 pass, no violations
@@ -252,8 +252,9 @@ declare(strict_types=1);
 namespace App\Domain\{Domain};
 
 use App\Infrastructure\Attributes\DomainServiceProvider;
-use App\Infrastructure\Bus\{CommandBus, QueryBus, EventDispatcher};
+use App\Infrastructure\Bus\{CommandBus, QueryBus, EventDispatcher, EventDispatcherInterface};
 use App\Infrastructure\ServiceProvider\DomainServiceProviderInterface;
+use Psr\Log\LoggerInterface;
 
 #[DomainServiceProvider]  // CRITICAL - enables auto-discovery
 final class {Domain}ServiceProvider implements DomainServiceProviderInterface
@@ -264,10 +265,11 @@ final class {Domain}ServiceProvider implements DomainServiceProviderInterface
     {
         $repository = $this->getRepository('{entity}Repository');
         $eventDispatcher = $this->getRepository('eventDispatcher');
+        $logger = $this->getRepository('logger');
 
         $commandBus->register(
             Create{Entity}Command::class,
-            new Create{Entity}Handler($repository, $eventDispatcher)
+            new Create{Entity}Handler($repository, $eventDispatcher, $logger)
         );
         // Register other commands...
     }
@@ -294,7 +296,7 @@ final class {Domain}ServiceProvider implements DomainServiceProviderInterface
 
     public function getRepositories(): array
     {
-        return ['{entity}Repository', 'eventDispatcher'];
+        return ['{entity}Repository', 'eventDispatcher', 'logger', 'loggingConfig'];
     }
 
     public function setRepositories(array $repositories): void
@@ -340,13 +342,15 @@ class {Entity}Model extends Model
 
 **Repository:**
 ```php
-// app/Models/{Domain}/{Entity}Repository.php
+// app/Infrastructure/Persistence/Repositories/{Entity}Repository.php
 
-namespace App\Models\{Domain};
+namespace App\Infrastructure\Persistence\Repositories;
 
 use App\Domain\{Domain}\Entities\{Entity};
+use App\Domain\{Domain}\Ports\{Entity}RepositoryInterface;
+use App\Models\{Domain}\{Entity}Model;
 
-class {Entity}Repository
+class {Entity}Repository implements {Entity}RepositoryInterface
 {
     private {Entity}Model $model;
 
@@ -528,7 +532,7 @@ composer check
 
 ## Completion Checklist
 
-- [ ] All 45 files created
+- [ ] All 45+ files/touchpoints created or updated
 - [ ] ServiceProvider has #[DomainServiceProvider] attribute
 - [ ] All handlers registered in ServiceProvider
 - [ ] Repository added to Services.php

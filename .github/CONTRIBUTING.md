@@ -10,7 +10,7 @@ git clone https://github.com/ci4me/CQRSTemplate.git
 cd CQRSTemplate
 composer install     # runs bin/setup-hooks → wires .githooks/ automatically
 cp env .env          # then edit DB credentials
-php spark migrate
+php spark migrate --all
 composer test
 ```
 

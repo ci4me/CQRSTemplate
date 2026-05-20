@@ -13,10 +13,8 @@ use to test your application. Those details can be found in the documentation.
 
 ## Requirements
 
-It is recommended to use the latest version of PHPUnit. At the time of this
-writing, we are running version 9.x. Support for this has been built into the
-**composer.json** file that ships with CodeIgniter and can easily be installed
-via [Composer](https://getcomposer.org/) if you don't already have it installed globally.
+This project uses PHPUnit 12.x via **composer.json**. Install it with
+[Composer](https://getcomposer.org/) if you don't already have it installed globally.
 
 ```console
 > composer install

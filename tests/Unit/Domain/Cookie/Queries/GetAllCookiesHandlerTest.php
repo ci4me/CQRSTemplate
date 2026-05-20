@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Domain\Cookie\Queries;
 
+use App\Domain\Cookie\DTOs\CookieDTO;
 use App\Domain\Cookie\Queries\GetAllCookies\GetAllCookiesHandler;
 use App\Domain\Cookie\Queries\GetAllCookies\GetAllCookiesQuery;
 use App\Domain\Cookie\Ports\CookieRepositoryInterface;
@@ -29,17 +30,17 @@ final class GetAllCookiesHandlerTest extends UnitTestCase
     public function test_returns_all_active_cookies_by_default(): void
     {
         $query = new GetAllCookiesQuery();
-        $expected = CookieFactory::createMultiple(3);
+        $entities = CookieFactory::createMultiple(3);
 
         $this->repository->expects($this->once())
             ->method('findAll')
             ->with(false)
-            ->willReturn($expected);
+            ->willReturn($entities);
 
         $result = $this->handler->handle($query);
 
         $this->assertCount(3, $result);
-        $this->assertEquals($expected, $result);
+        $this->assertContainsOnlyInstancesOf(CookieDTO::class, $result);
     }
 
     public function test_returns_all_cookies_including_inactive(): void

@@ -9,9 +9,9 @@ use App\Domain\User\Commands\ChangeUserPassword\ChangeUserPasswordCommand;
 use App\Domain\User\Commands\ChangeUserPassword\ChangeUserPasswordHandler;
 use App\Domain\User\ErrorCodes;
 use App\Domain\User\Events\PasswordChanged\PasswordChangedEvent;
-use App\Infrastructure\Bus\EventDispatcher;
+use App\Infrastructure\Bus\EventDispatcherInterface;
 use App\Infrastructure\Logging\LoggerFactory;
-use App\Infrastructure\Persistence\Repositories\UserRepositoryInterface;
+use App\Domain\User\Ports\UserRepositoryInterface;
 use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 use Tests\Support\Factories\UserFactory;
 use Tests\Support\UnitTestCase;
@@ -30,7 +30,7 @@ use Tests\Support\UnitTestCase;
 final class ChangeUserPasswordHandlerTest extends UnitTestCase
 {
     private UserRepositoryInterface $repository;
-    private EventDispatcher $eventDispatcher;
+    private EventDispatcherInterface $eventDispatcher;
     private ChangeUserPasswordHandler $handler;
 
     protected function setUp(): void
@@ -39,7 +39,7 @@ final class ChangeUserPasswordHandlerTest extends UnitTestCase
 
         $this->repository = $this->createMock(UserRepositoryInterface::class);
         $passwordHistory = $this->createMock(\App\Infrastructure\Persistence\Repositories\PasswordHistoryRepository::class);
-        $this->eventDispatcher = $this->createMock(EventDispatcher::class);
+        $this->eventDispatcher = $this->createMock(EventDispatcherInterface::class);
         $logger = LoggerFactory::create('test.user.commands');
         $this->handler = new ChangeUserPasswordHandler($this->repository, $passwordHistory, $this->eventDispatcher, $logger);
     }

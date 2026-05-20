@@ -8,7 +8,7 @@ use App\Domain\Cookie\ErrorCodes;
 use App\Domain\Cookie\Events\CookieDeleted\CookieDeletedEvent;
 use App\Domain\Cookie\Ports\CookieRepositoryInterface;
 use App\Domain\Shared\Exceptions\DomainException;
-use App\Infrastructure\Bus\EventDispatcher;
+use App\Infrastructure\Bus\EventDispatcherInterface;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -31,12 +31,12 @@ final readonly class DeleteCookieHandler
      * Create a new DeleteCookieHandler.
      *
      * @param CookieRepositoryInterface $repository For persistence operations
-     * @param EventDispatcher $eventDispatcher For dispatching domain events
+     * @param EventDispatcherInterface $eventDispatcher For dispatching domain events
      * @param LoggerInterface $logger For logging command execution (channel: cookie.command.delete)
      */
     public function __construct(
         private CookieRepositoryInterface $repository,
-        private EventDispatcher $eventDispatcher,
+        private EventDispatcherInterface $eventDispatcher,
         private LoggerInterface $logger
     ) {
     }

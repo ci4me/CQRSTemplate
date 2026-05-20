@@ -78,7 +78,7 @@ vendor/bin/phpunit tests/Feature/
 ## Test Tools
 
 ### PHPUnit 12.x
-- Latest version with PHP 8.4 support
+- Latest version with PHP 8.3+ support
 - Attribute-based configuration
 - Better error messages
 - Improved performance
@@ -153,7 +153,7 @@ final class CookieNameTest extends UnitTestCase
 
 ```php
 use Tests\Support\IntegrationTestCase;
-use App\Models\Cookie\CookieRepository;
+use App\Infrastructure\Persistence\Repositories\CookieRepository;
 use Tests\Support\Factories\CookieFactory;
 
 final class CookieRepositoryTest extends IntegrationTestCase
@@ -511,8 +511,8 @@ $mock->expects($this->never())  // Never called
 
 ## Resources
 
-- [PHPUnit Documentation](https://phpunit.de/manual/12.4/en/index.html)
-- [Testing Best Practices](https://phpunit.de/manual/12.4/en/writing-tests-for-phpunit.html)
+- [PHPUnit Documentation](https://docs.phpunit.de/)
+- [Testing Best Practices](https://docs.phpunit.de/en/12.5/writing-tests-for-phpunit.html)
 - [Xdebug Setup Guide](./XDEBUG_SETUP.md)
 - [Cookie Domain Tests](./tests/Unit/Domain/Cookie/)
 

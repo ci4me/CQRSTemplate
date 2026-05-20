@@ -68,7 +68,6 @@ namespace App\Domain\[Domain]\ValueObjects;
 
 use App\Domain\[Domain]\ErrorCodes;
 use App\Domain\Shared\Exceptions\ValidationException;
-use App\Infrastructure\Logging\DomainLogger;
 
 /**
  * Value Object representing [what this represents].
@@ -107,35 +106,16 @@ final readonly class [ValueObjectName]
         $normalized = trim($value);
 
         if ($normalized === '') {
-            DomainLogger::logValidation('[Domain]', '[ValueObjectName]', [
-                'attempted_value' => $value,
-                'validation_rule' => 'required',
-                'error_code' => ErrorCodes::[DOMAIN]_VALIDATION_[FIELD],
-            ]);
             throw ValidationException::required('[field]', ErrorCodes::[DOMAIN]_VALIDATION_[FIELD]);
         }
 
         $length = mb_strlen($normalized);
 
         if ($length < self::MIN_LENGTH) {
-            DomainLogger::logValidation('[Domain]', '[ValueObjectName]', [
-                'attempted_value' => $value,
-                'validation_rule' => 'min_length',
-                'min_length' => self::MIN_LENGTH,
-                'actual_length' => $length,
-                'error_code' => ErrorCodes::[DOMAIN]_VALIDATION_[FIELD],
-            ]);
             throw ValidationException::fieldTooShort('[field]', self::MIN_LENGTH, $length, ErrorCodes::[DOMAIN]_VALIDATION_[FIELD]);
         }
 
         if ($length > self::MAX_LENGTH) {
-            DomainLogger::logValidation('[Domain]', '[ValueObjectName]', [
-                'attempted_value' => $value,
-                'validation_rule' => 'max_length',
-                'max_length' => self::MAX_LENGTH,
-                'actual_length' => $length,
-                'error_code' => ErrorCodes::[DOMAIN]_VALIDATION_[FIELD],
-            ]);
             throw ValidationException::fieldTooLong('[field]', self::MAX_LENGTH, $length, ErrorCodes::[DOMAIN]_VALIDATION_[FIELD]);
         }
 
@@ -196,7 +176,6 @@ namespace App\Domain\Cookie\ValueObjects;
 
 use App\Domain\Cookie\ErrorCodes;
 use App\Domain\Shared\Exceptions\ValidationException;
-use App\Infrastructure\Logging\DomainLogger;
 
 /**
  * Value Object representing a Cookie name.
@@ -220,35 +199,16 @@ final readonly class CookieName
         $normalized = trim($name);
 
         if ($normalized === '') {
-            DomainLogger::logValidation('Cookie', 'CookieName', [
-                'attempted_value' => $name,
-                'validation_rule' => 'required',
-                'error_code' => ErrorCodes::COOKIE_VALIDATION_NAME,
-            ]);
             throw ValidationException::required('name', ErrorCodes::COOKIE_VALIDATION_NAME);
         }
 
         $length = mb_strlen($normalized);
 
         if ($length < self::MIN_LENGTH) {
-            DomainLogger::logValidation('Cookie', 'CookieName', [
-                'attempted_value' => $name,
-                'validation_rule' => 'min_length',
-                'min_length' => self::MIN_LENGTH,
-                'actual_length' => $length,
-                'error_code' => ErrorCodes::COOKIE_VALIDATION_NAME,
-            ]);
             throw ValidationException::fieldTooShort('name', self::MIN_LENGTH, $length, ErrorCodes::COOKIE_VALIDATION_NAME);
         }
 
         if ($length > self::MAX_LENGTH) {
-            DomainLogger::logValidation('Cookie', 'CookieName', [
-                'attempted_value' => $name,
-                'validation_rule' => 'max_length',
-                'max_length' => self::MAX_LENGTH,
-                'actual_length' => $length,
-                'error_code' => ErrorCodes::COOKIE_VALIDATION_NAME,
-            ]);
             throw ValidationException::fieldTooLong('name', self::MAX_LENGTH, $length, ErrorCodes::COOKIE_VALIDATION_NAME);
         }
 
@@ -282,7 +242,6 @@ final readonly class CookieName
 - Named static factory method
 - Private constructor for immutability
 - Strict type declarations
-- DomainLogger for validation failures
 - Error codes for monitoring
 - Small, focused methods
 - Each validation step is separate

@@ -72,13 +72,13 @@
 # AUTHENTICATION (JWT)
 #--------------------------------------------------------------------
 
-# JWT Secret Key - Generate a secure random 32+ character string
-# SECURITY: Generate with: openssl rand -base64 64
+# JWT Secret Key - Generate a secure random 48+ byte hex string
+# SECURITY: Generate with: openssl rand -hex 48
 # JWT_SECRET_KEY = 'your-secret-key-here-change-in-production'
 
 # JWT Secret Rotation - Old secret for graceful rotation (7-day overlap)
 # PROCEDURE:
-# 1. Generate new secret: openssl rand -base64 64
+# 1. Generate new secret: openssl rand -hex 48
 # 2. Set JWT_SECRET_KEY_OLD to current JWT_SECRET_KEY
 # 3. Set JWT_SECRET_KEY to new secret
 # 4. Wait 7 days (allows all old tokens to expire or be refreshed)

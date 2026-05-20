@@ -61,6 +61,12 @@ final class QueryBus
             );
         }
 
+        if (!method_exists($handler, 'handle')) {
+            throw new RuntimeException(
+                sprintf('Handler for query "%s" must have a handle() method', $queryClass)
+            );
+        }
+
         $this->handlers[$queryClass] = $handler;
     }
 
@@ -86,14 +92,7 @@ final class QueryBus
 
         $handler = $this->handlers[$queryClass];
 
-        // Verify handler has handle() method
-        if (!method_exists($handler, 'handle')) {
-            throw new DomainException(
-                sprintf('Handler for query "%s" does not have a handle() method', $queryClass)
-            );
-        }
-
-        // Call the handler's handle() method
+        /** @phpstan-ignore method.notFound (handle() verified at registration time) */
         return $handler->handle($query);
     }
 

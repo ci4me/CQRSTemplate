@@ -44,17 +44,17 @@
                     <tbody>
                         <?php foreach ($cookies as $cookie): ?>
                             <tr>
-                                <td><?= $cookie->getId() ?></td>
-                                <td><?= esc($cookie->getName()->getValue()) ?></td>
-                                <td><?= esc($cookie->getDescription()) ?></td>
-                                <td><?= $cookie->getPrice()->format() ?></td>
+                                <td><?= $cookie->id ?></td>
+                                <td><?= esc($cookie->name) ?></td>
+                                <td><?= esc($cookie->description) ?></td>
+                                <td><?= $cookie->formattedPrice ?></td>
                                 <td>
                                     <span class="badge bg-<?= $cookie->isOutOfStock() ? 'danger' : 'success' ?>">
-                                        <?= $cookie->getStock() ?>
+                                        <?= $cookie->stock ?>
                                     </span>
                                 </td>
                                 <td>
-                                    <?php if ($cookie->getIsActive()): ?>
+                                    <?php if ($cookie->isActive): ?>
                                         <span class="badge bg-success">Active</span>
                                     <?php else: ?>
                                         <span class="badge bg-secondary">Inactive</span>
@@ -62,8 +62,8 @@
                                 </td>
                                 <td>
                                     <div class="btn-group btn-group-sm">
-                                        <a href="/cookies/<?= $cookie->getId() ?>" class="btn btn-outline-primary">View</a>
-                                        <a href="/cookies/<?= $cookie->getId() ?>/edit" class="btn btn-outline-secondary">Edit</a>
+                                        <a href="/cookies/<?= $cookie->id ?>" class="btn btn-outline-primary">View</a>
+                                        <a href="/cookies/<?= $cookie->id ?>/edit" class="btn btn-outline-secondary">Edit</a>
                                     </div>
                                 </td>
                             </tr>

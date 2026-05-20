@@ -580,7 +580,7 @@ app/Domain/{Domain}/
 
 ### Complete File List
 
-**45 files created per domain:**
+**45+ files/touchpoints per domain:**
 - See `.claude/documentation/COMPLETE_FILE_INVENTORY.md` for detailed list
 
 ---
@@ -881,24 +881,18 @@ private function shouldLog(Config\Logging $config, float $duration, mixed $resul
 
 ### Domain Objects Logging
 
-**Value Objects and Entities** use static helper to avoid constructor injection:
+**Value Objects and Entities** do NOT use DomainLogger directly. Validation exceptions thrown by value objects and entities are logged by the command handler's catch block. This keeps domain objects free of infrastructure dependencies.
 
-**DomainLogger** (`app/Infrastructure/Logging/DomainLogger.php`):
 ```php
-// Log validation failures in value objects
-DomainLogger::logValidation('Cookie', 'CookieName', [
-    'attempted_value' => $name,
-    'validation_rule' => 'required',
-    'error_code' => ErrorCodes::COOKIE_VALIDATION_NAME,
-]);
+// Value objects throw exceptions (logged by handler):
+throw ValidationException::required('name', ErrorCodes::COOKIE_VALIDATION_NAME);
 
-// Log business rule violations in entities
-DomainLogger::logBusinessRule('Cookie', 'Cookie', [
-    'business_rule' => 'stock_cannot_be_negative',
-    'current_stock' => $this->stock,
-    'attempted_decrease' => $quantity,
-    'error_code' => ErrorCodes::COOKIE_BUSINESS_RULE_STOCK_NEGATIVE,
-]);
+// Entities throw exceptions (logged by handler):
+throw DomainException::businessRuleViolation(
+    'Stock cannot be negative',
+    sprintf('Attempted to decrease stock by %d when only %d available', $quantity, $this->stock),
+    ErrorCodes::COOKIE_BUSINESS_RULE_STOCK_NEGATIVE
+);
 ```
 
 ### Cookie Domain: Logging Template
@@ -966,7 +960,7 @@ composer check
 php spark serve
 
 # Run migrations
-php spark migrate
+php spark migrate --all
 
 # Run tests with readable output
 vendor/bin/phpunit --testdox
@@ -1055,7 +1049,7 @@ See MODIFYING_ENTITIES.md for checklist
 
 ### Zero-Configuration Domain Registration
 
-This template uses PHP 8.4 attributes for automatic domain registration:
+This template uses native PHP attributes for automatic domain registration:
 
 1. **Create domain folder**: `app/Domain/{YourDomain}/`
 2. **Create ServiceProvider** with `#[DomainServiceProvider]` attribute
@@ -1149,12 +1143,12 @@ All DTOs are readonly classes for thread safety and clarity.
 
 ## Dependencies
 
-- **PHP**: 8.4+
+- **PHP**: 8.3+ (CI currently tests on 8.4)
 - **CodeIgniter**: 4.6.3+
 - **MySQL**: 8.0+
 - **PHPStan**: Level 8
 - **PHPCS**: PSR-12 + Slevomat
-- **PHPUnit**: 12.4+
+- **PHPUnit**: 12.5+
 - **PCOV**: For fast code coverage
 
 ---
@@ -1178,7 +1172,7 @@ All DTOs are readonly classes for thread safety and clarity.
 A: In Command/Query Handlers in `app/Domain/{Domain}/Commands/` and `app/Domain/{Domain}/Queries/`
 
 **Q: Where is database access?**
-A: In Repositories in `app/Models/{Domain}/`
+A: In repository implementations under `app/Infrastructure/Persistence/Repositories/`, backed by CodeIgniter models in `app/Models/{Domain}/` or `app/Infrastructure/Persistence/Models/`.
 
 **Q: How do I add a new field to an entity?**
 A: Use `/add-property {Domain} {property} {type}` command or see `.claude/documentation/PROPERTY_ADDITION_PROTOCOL.md`

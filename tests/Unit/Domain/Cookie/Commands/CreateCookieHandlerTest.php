@@ -10,7 +10,7 @@ use App\Domain\Cookie\Commands\CreateCookie\CreateCookieHandler;
 use App\Domain\Cookie\Events\CookieCreated\CookieCreatedEvent;
 use App\Domain\Cookie\Ports\CookieRepositoryInterface;
 use App\Domain\Shared\Exceptions\DomainException;
-use App\Infrastructure\Bus\EventDispatcher;
+use App\Infrastructure\Bus\EventDispatcherInterface;
 use App\Infrastructure\Logging\LoggerFactory;
 use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 use Tests\Support\UnitTestCase;
@@ -22,7 +22,7 @@ use Tests\Support\UnitTestCase;
 final class CreateCookieHandlerTest extends UnitTestCase
 {
     private CookieRepositoryInterface $repository;
-    private EventDispatcher $eventDispatcher;
+    private EventDispatcherInterface $eventDispatcher;
     private CreateCookieHandler $handler;
 
     protected function setUp(): void
@@ -30,7 +30,7 @@ final class CreateCookieHandlerTest extends UnitTestCase
         parent::setUp();
 
         $this->repository = $this->createMock(CookieRepositoryInterface::class);
-        $this->eventDispatcher = $this->createMock(EventDispatcher::class);
+        $this->eventDispatcher = $this->createMock(EventDispatcherInterface::class);
         $logger = LoggerFactory::create('test.cookie.commands');
         $this->handler = new CreateCookieHandler($this->repository, $this->eventDispatcher, $logger);
     }

@@ -4,7 +4,7 @@ description: Use when creating or reviewing commands, queries, events, or handle
 tools: Read, Glob, Grep
 ---
 
-# CQRS Pattern Enforcer (PHP 8.4)
+# CQRS Pattern Enforcer (PHP 8.3+)
 
 ## Commands (Write Operations)
 
@@ -50,15 +50,15 @@ namespace App\Domain\Cookie\Commands\CreateCookie;
 use App\Domain\Cookie\Entities\Cookie;
 use App\Domain\Cookie\ValueObjects\CookieName;
 use App\Domain\Cookie\ValueObjects\CookiePrice;
-use App\Infrastructure\Bus\EventDispatcher;
-use App\Models\Cookie\CookieRepository;
+use App\Domain\Cookie\Ports\CookieRepositoryInterface;
+use App\Infrastructure\Bus\EventDispatcherInterface;
 use Psr\Log\LoggerInterface;
 
 final readonly class CreateCookieHandler
 {
     public function __construct(
-        private CookieRepository $repository,
-        private EventDispatcher $eventDispatcher,
+        private CookieRepositoryInterface $repository,
+        private EventDispatcherInterface $eventDispatcher,
         private LoggerInterface $logger
     ) {
     }
@@ -140,7 +140,7 @@ declare(strict_types=1);
 final readonly class GetCookieByIdHandler
 {
     public function __construct(
-        private CookieRepository $repository
+        private CookieRepositoryInterface $repository
     ) {}
 
     public function handle(GetCookieByIdQuery $query): ?Cookie
@@ -254,7 +254,7 @@ final readonly class GetCookieByIdHandler {
 ```php
 final readonly class CreateCookieHandler {
     public function __construct(
-        private CookieRepository $repository
+        private CookieRepositoryInterface $repository
     ) {}
 }
 ```
@@ -263,8 +263,8 @@ final readonly class CreateCookieHandler {
 ```php
 final readonly class CreateCookieHandler {
     public function __construct(
-        private CookieRepository $repository,
-        private EventDispatcher $eventDispatcher,
+        private CookieRepositoryInterface $repository,
+        private EventDispatcherInterface $eventDispatcher,
         private LoggerInterface $logger  // ← Inject logger
     ) {}
 }
@@ -275,7 +275,7 @@ final readonly class CreateCookieHandler {
 - **ddd-specialist** - Use for entities and value objects
 - **test-specialist** - Create tests for all handlers
 - **clean-code-specialist** - Ensure handlers are < 20 lines per method
-- **php-specialist** - Verify PHP 8.4 syntax and type safety
+- **php-specialist** - Verify PHP 8.3+ syntax and type safety
 
 ## Reference Implementation
 

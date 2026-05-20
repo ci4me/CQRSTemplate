@@ -101,9 +101,8 @@ final class AuthController extends BaseController
     {
         $session = session();
         assert($session instanceof Session);
-
         $session->destroy();
-        $session->setFlashdata('success', 'Logged out successfully');
-        return redirect()->to('/auth/login');
+
+        return redirect()->to('/auth/login')->with('success', 'Logged out successfully');
     }
 }

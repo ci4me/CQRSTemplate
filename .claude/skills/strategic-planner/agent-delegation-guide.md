@@ -157,7 +157,7 @@ Task({
   prompt: `Create value object template at .claude/skills/domain-scaffolding/templates/value-object-template.php.
 
 Requirements:
-- PHP 8.4 with declare(strict_types=1)
+- PHP 8.3+ with declare(strict_types=1)
 - Readonly class
 - Private constructor with validation
 - Static factory method
@@ -172,7 +172,7 @@ Task({
   prompt: `Create entity template at .claude/skills/domain-scaffolding/templates/entity-template.php.
 
 Requirements:
-- PHP 8.4 with declare(strict_types=1)
+- PHP 8.3+ with declare(strict_types=1)
 - Final class
 - Private constructor
 - Static create() and reconstitute() methods
@@ -188,7 +188,7 @@ Task({
   prompt: `Create command template at .claude/skills/domain-scaffolding/templates/command-template.php.
 
 Requirements:
-- PHP 8.4 with declare(strict_types=1)
+- PHP 8.3+ with declare(strict_types=1)
 - Readonly class
 - Public readonly properties
 - No methods (pure DTO)
@@ -201,7 +201,7 @@ Task({
   description: "Create walkthrough example",
   prompt: `Create complete domain walkthrough at .claude/skills/domain-scaffolding/examples/complete-domain-walkthrough.md.
 
-Use Cookie domain as reference to document creating all 45 files:
+Use Cookie domain as reference to document creating all standard files and touchpoints:
 - Directory structure
 - Value objects
 - Entity

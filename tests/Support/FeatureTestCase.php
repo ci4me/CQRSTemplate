@@ -6,7 +6,7 @@ namespace Tests\Support;
 
 use App\Infrastructure\Logging\LoggerFactory;
 use App\Infrastructure\Persistence\Models\UserModel;
-use App\Models\Cookie\CookieRepository;
+use App\Infrastructure\Persistence\Repositories\CookieRepository;
 use CodeIgniter\Test\CIUnitTestCase;
 use CodeIgniter\Test\DatabaseTestTrait;
 use CodeIgniter\Test\FeatureTestTrait;
@@ -63,6 +63,13 @@ abstract class FeatureTestCase extends CIUnitTestCase
         parent::setUp();
         $this->resetServices();
         \Config\Services::resetProviders();
+
+        // Simulate authenticated session for feature test requests
+        $this->withSession([
+            'logged_in' => true,
+            'user_id' => 1,
+            'role' => 'admin',
+        ]);
 
         // Create repository with dependencies
         $logger = LoggerFactory::create('test.cookie.repository');

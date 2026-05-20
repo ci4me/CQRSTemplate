@@ -1,10 +1,10 @@
 # Complete File Inventory for New Domain
 
-When adding a new domain to this CQRS template, you create **45 files total** (assuming 2 value objects, 3 commands, 3 queries, 3 events).
+When adding a new domain to this CQRS template, you create or touch **45+ files/touchpoints** (assuming 2 value objects, 3 commands, 3 queries, 3 events). The exact count varies as domains add ports, DTOs, infrastructure models, logging traits, or extra tests.
 
 ---
 
-## Domain Layer (22 files)
+## Domain Layer (24+ files)
 
 ### Service Provider (1 file)
 1. `app/Domain/{Domain}/{Domain}ServiceProvider.php`
@@ -12,42 +12,48 @@ When adding a new domain to this CQRS template, you create **45 files total** (a
 ### Entities (1 file)
 2. `app/Domain/{Domain}/Entities/{Entity}.php`
 
+### Ports (1 file)
+3. `app/Domain/{Domain}/Ports/{Entity}RepositoryInterface.php`
+
+### DTOs (1+ files)
+4. `app/Domain/{Domain}/DTOs/{Entity}DTO.php`
+
 ### Value Objects (2+ files)
-3. `app/Domain/{Domain}/ValueObjects/{Entity}Name.php`
-4. `app/Domain/{Domain}/ValueObjects/{Entity}Price.php`
+5. `app/Domain/{Domain}/ValueObjects/{Entity}Name.php`
+6. `app/Domain/{Domain}/ValueObjects/{Entity}Price.php`
    - Add more value objects as needed for properties requiring validation
 
 ### Commands (6 files - 2 files per command)
-5. `app/Domain/{Domain}/Commands/Create{Entity}/Create{Entity}Command.php`
-6. `app/Domain/{Domain}/Commands/Create{Entity}/Create{Entity}Handler.php`
-7. `app/Domain/{Domain}/Commands/Update{Entity}/Update{Entity}Command.php`
-8. `app/Domain/{Domain}/Commands/Update{Entity}/Update{Entity}Handler.php`
-9. `app/Domain/{Domain}/Commands/Delete{Entity}/Delete{Entity}Command.php`
-10. `app/Domain/{Domain}/Commands/Delete{Entity}/Delete{Entity}Handler.php`
+7. `app/Domain/{Domain}/Commands/Create{Entity}/Create{Entity}Command.php`
+8. `app/Domain/{Domain}/Commands/Create{Entity}/Create{Entity}Handler.php`
+9. `app/Domain/{Domain}/Commands/Update{Entity}/Update{Entity}Command.php`
+10. `app/Domain/{Domain}/Commands/Update{Entity}/Update{Entity}Handler.php`
+11. `app/Domain/{Domain}/Commands/Delete{Entity}/Delete{Entity}Command.php`
+12. `app/Domain/{Domain}/Commands/Delete{Entity}/Delete{Entity}Handler.php`
 
 ### Queries (6 files - 2 files per query)
-11. `app/Domain/{Domain}/Queries/Get{Entity}ById/Get{Entity}ByIdQuery.php`
-12. `app/Domain/{Domain}/Queries/Get{Entity}ById/Get{Entity}ByIdHandler.php`
-13. `app/Domain/{Domain}/Queries/GetAll{Entities}/GetAll{Entities}Query.php`
-14. `app/Domain/{Domain}/Queries/GetAll{Entities}/GetAll{Entities}Handler.php`
-15. `app/Domain/{Domain}/Queries/Get{Entities}Paginated/Get{Entities}PaginatedQuery.php`
-16. `app/Domain/{Domain}/Queries/Get{Entities}Paginated/Get{Entities}PaginatedHandler.php`
+13. `app/Domain/{Domain}/Queries/Get{Entity}ById/Get{Entity}ByIdQuery.php`
+14. `app/Domain/{Domain}/Queries/Get{Entity}ById/Get{Entity}ByIdHandler.php`
+15. `app/Domain/{Domain}/Queries/GetAll{Entities}/GetAll{Entities}Query.php`
+16. `app/Domain/{Domain}/Queries/GetAll{Entities}/GetAll{Entities}Handler.php`
+17. `app/Domain/{Domain}/Queries/Get{Entities}Paginated/Get{Entities}PaginatedQuery.php`
+18. `app/Domain/{Domain}/Queries/Get{Entities}Paginated/Get{Entities}PaginatedHandler.php`
 
 ### Events (6 files - 2 files per event)
-17. `app/Domain/{Domain}/Events/{Entity}Created/{Entity}CreatedEvent.php`
-18. `app/Domain/{Domain}/Events/{Entity}Created/{Entity}CreatedEventHandler.php`
-19. `app/Domain/{Domain}/Events/{Entity}Updated/{Entity}UpdatedEvent.php`
-20. `app/Domain/{Domain}/Events/{Entity}Updated/{Entity}UpdatedEventHandler.php`
-21. `app/Domain/{Domain}/Events/{Entity}Deleted/{Entity}DeletedEvent.php`
-22. `app/Domain/{Domain}/Events/{Entity}Deleted/{Entity}DeletedEventHandler.php`
+19. `app/Domain/{Domain}/Events/{Entity}Created/{Entity}CreatedEvent.php`
+20. `app/Domain/{Domain}/Events/{Entity}Created/{Entity}CreatedEventHandler.php`
+21. `app/Domain/{Domain}/Events/{Entity}Updated/{Entity}UpdatedEvent.php`
+22. `app/Domain/{Domain}/Events/{Entity}Updated/{Entity}UpdatedEventHandler.php`
+23. `app/Domain/{Domain}/Events/{Entity}Deleted/{Entity}DeletedEvent.php`
+24. `app/Domain/{Domain}/Events/{Entity}Deleted/{Entity}DeletedEventHandler.php`
 
 ---
 
 ## Infrastructure Layer (2 files)
 
 ### Persistence (2 files)
-23. `app/Models/{Domain}/{Entity}Model.php`
-24. `app/Models/{Domain}/{Entity}Repository.php`
+25. `app/Models/{Domain}/{Entity}Model.php`
+26. `app/Infrastructure/Persistence/Repositories/{Entity}Repository.php`
 
 ---
 
@@ -120,14 +126,14 @@ When adding a new domain to this CQRS template, you create **45 files total** (a
 
 | Layer | File Count |
 |-------|------------|
-| Domain Layer | 22 files |
+| Domain Layer | 24+ files |
 | Infrastructure Layer | 2 files |
 | Application Layer | 1 file |
 | Presentation Layer | 4 files |
 | Database Layer | 1 file |
 | Test Layer | 14 files |
 | Config Updates | 1 modification |
-| **TOTAL** | **45 files** |
+| **TOTAL** | **47+ files/touchpoints** |
 
 ---
 
@@ -140,85 +146,91 @@ app/Domain/Cookie/
 ├── CookieServiceProvider.php          # 1
 ├── Entities/
 │   └── Cookie.php                     # 2
+├── Ports/
+│   └── CookieRepositoryInterface.php  # 3
+├── DTOs/
+│   └── CookieDTO.php                  # 4
 ├── ValueObjects/
-│   ├── CookieName.php                 # 3
-│   └── CookiePrice.php                # 4
+│   ├── CookieName.php                 # 5
+│   └── CookiePrice.php                # 6
 ├── Commands/
 │   ├── CreateCookie/
-│   │   ├── CreateCookieCommand.php    # 5
-│   │   └── CreateCookieHandler.php    # 6
+│   │   ├── CreateCookieCommand.php    # 7
+│   │   └── CreateCookieHandler.php    # 8
 │   ├── UpdateCookie/
-│   │   ├── UpdateCookieCommand.php    # 7
-│   │   └── UpdateCookieHandler.php    # 8
+│   │   ├── UpdateCookieCommand.php    # 9
+│   │   └── UpdateCookieHandler.php    # 10
 │   └── DeleteCookie/
-│       ├── DeleteCookieCommand.php    # 9
-│       └── DeleteCookieHandler.php    # 10
+│       ├── DeleteCookieCommand.php    # 11
+│       └── DeleteCookieHandler.php    # 12
 ├── Queries/
 │   ├── GetCookieById/
-│   │   ├── GetCookieByIdQuery.php     # 11
-│   │   └── GetCookieByIdHandler.php   # 12
+│   │   ├── GetCookieByIdQuery.php     # 13
+│   │   └── GetCookieByIdHandler.php   # 14
 │   ├── GetAllCookies/
-│   │   ├── GetAllCookiesQuery.php     # 13
-│   │   └── GetAllCookiesHandler.php   # 14
+│   │   ├── GetAllCookiesQuery.php     # 15
+│   │   └── GetAllCookiesHandler.php   # 16
 │   └── GetCookiesPaginated/
-│       ├── GetCookiesPaginatedQuery.php   # 15
-│       └── GetCookiesPaginatedHandler.php # 16
+│       ├── GetCookiesPaginatedQuery.php   # 17
+│       └── GetCookiesPaginatedHandler.php # 18
 └── Events/
     ├── CookieCreated/
-    │   ├── CookieCreatedEvent.php     # 17
-    │   └── CookieCreatedEventHandler.php # 18
+    │   ├── CookieCreatedEvent.php     # 19
+    │   └── CookieCreatedEventHandler.php # 20
     ├── CookieUpdated/
-    │   ├── CookieUpdatedEvent.php     # 19
-    │   └── CookieUpdatedEventHandler.php # 20
+    │   ├── CookieUpdatedEvent.php     # 21
+    │   └── CookieUpdatedEventHandler.php # 22
     └── CookieDeleted/
-        ├── CookieDeletedEvent.php     # 21
-        └── CookieDeletedEventHandler.php # 22
+        ├── CookieDeletedEvent.php     # 23
+        └── CookieDeletedEventHandler.php # 24
 
 app/Models/Cookie/
-├── CookieModel.php                    # 23
-└── CookieRepository.php               # 24
+└── CookieModel.php                    # 25
+
+app/Infrastructure/Persistence/Repositories/
+└── CookieRepository.php               # 26
 
 app/Controllers/Domain/Cookie/
-└── CookieController.php               # 25
+└── CookieController.php               # 27
 
 app/Views/cookies/
-├── index.php                          # 26
-├── show.php                           # 27
-├── create.php                         # 28
-└── edit.php                           # 29
+├── index.php                          # 28
+├── show.php                           # 29
+├── create.php                         # 30
+└── edit.php                           # 31
 
 app/Database/Migrations/
-└── 2024-10-21-123456_CreateCookiesTable.php # 30
+└── 2024-10-21-123456_CreateCookiesTable.php # 32
 
 tests/Unit/Domain/Cookie/
 ├── ValueObjects/
-│   ├── CookieNameTest.php             # 31
-│   └── CookiePriceTest.php            # 32
+│   ├── CookieNameTest.php             # 33
+│   └── CookiePriceTest.php            # 34
 ├── Entities/
-│   └── CookieTest.php                 # 33
+│   └── CookieTest.php                 # 35
 ├── Commands/
-│   ├── CreateCookieHandlerTest.php    # 34
-│   ├── UpdateCookieHandlerTest.php    # 35
-│   └── DeleteCookieHandlerTest.php    # 36
+│   ├── CreateCookieHandlerTest.php    # 36
+│   ├── UpdateCookieHandlerTest.php    # 37
+│   └── DeleteCookieHandlerTest.php    # 38
 ├── Queries/
-│   ├── GetCookieByIdHandlerTest.php   # 37
-│   ├── GetAllCookiesHandlerTest.php   # 38
-│   └── GetCookiesPaginatedHandlerTest.php # 39
+│   ├── GetCookieByIdHandlerTest.php   # 39
+│   ├── GetAllCookiesHandlerTest.php   # 40
+│   └── GetCookiesPaginatedHandlerTest.php # 41
 └── Events/
-    ├── CookieEventsTest.php           # 40
-    └── CookieEventHandlersTest.php    # 41
+    ├── CookieEventsTest.php           # 42
+    └── CookieEventHandlersTest.php    # 43
 
 tests/Integration/Repositories/
-└── CookieRepositoryTest.php           # 42
+└── CookieRepositoryTest.php           # 44
 
 tests/Feature/Cookie/
-└── CookieCrudTest.php                 # 43
+└── CookieCrudTest.php                 # 45
 
 tests/Support/Factories/
-└── CookieFactory.php                  # 44
+└── CookieFactory.php                  # 46
 
 app/Config/
-└── Routes.php                         # 45 (modification)
+└── Routes.php                         # 47 (modification)
 ```
 
 ---
@@ -246,7 +258,7 @@ public static function {entity}Repository(bool $getShared = true): {Entity}Repos
 
 ## Automation
 
-Use the `/add-domain {DomainName}` slash command to generate all 45 files automatically from templates.
+Use the `/add-domain {DomainName}` slash command to generate all standard domain files automatically from templates.
 
 Or use the `domain-scaffolding` skill for interactive creation.
 

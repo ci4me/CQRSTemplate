@@ -4,7 +4,8 @@ declare(strict_types=1);
 
 namespace App\Domain\User\Queries\SearchUsers;
 
-use App\Infrastructure\Persistence\Repositories\UserRepositoryInterface;
+use App\Domain\User\DTOs\UserDTO;
+use App\Domain\User\Ports\UserRepositoryInterface;
 use Config\Logging;
 use Psr\Log\LoggerInterface;
 
@@ -38,7 +39,7 @@ final readonly class SearchUsersHandler
     }
 
     /**
-     * @return array{data: array<\App\Domain\User\Entities\User>, total: int, page: int, perPage: int, totalPages: int}
+     * @return array{data: array<UserDTO>, total: int, page: int, perPage: int, lastPage: int}
      */
     public function handle(SearchUsersQuery $query): array
     {
@@ -82,6 +83,11 @@ final readonly class SearchUsersHandler
                     'total_results' => $result['total'],
                 ]);
             }
+
+            $result['data'] = array_map(static fn($user) => UserDTO::fromEntity($user), $result['data']);
+
+            $result['lastPage'] = $result['totalPages'];
+            unset($result['totalPages']);
 
             return $result;
         } catch (\Throwable $e) {

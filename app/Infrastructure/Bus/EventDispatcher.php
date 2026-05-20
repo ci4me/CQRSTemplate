@@ -34,7 +34,10 @@ use Psr\Log\LoggerInterface;
  *
  * @package App\Infrastructure\Bus
  */
-class EventDispatcher
+// NOT `final`: PHPUnit's mock generator cannot double a final class and
+// our integration tests subclass to inject failing listeners. Production
+// callers should depend on {@see EventDispatcherInterface} where possible.
+class EventDispatcher implements EventDispatcherInterface
 {
     /**
      * Map of event class names to arrays of listener callables.

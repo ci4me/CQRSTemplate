@@ -64,27 +64,27 @@
                     <tbody>
                         <?php foreach ($users as $user): ?>
                             <tr>
-                                <td><?= $user->getId() ?></td>
-                                <td><?= esc($user->getName()) ?></td>
-                                <td><?= esc($user->getEmail()->getValue()) ?></td>
+                                <td><?= $user->id ?></td>
+                                <td><?= esc($user->name) ?></td>
+                                <td><?= esc($user->email) ?></td>
                                 <td>
-                                    <span class="badge bg-<?= $user->getRole()->getValue() === 'admin' ? 'danger' : 'primary' ?>">
-                                        <?= esc(ucfirst($user->getRole()->getValue())) ?>
+                                    <span class="badge bg-<?= $user->role === 'admin' ? 'danger' : 'primary' ?>">
+                                        <?= esc(ucfirst($user->role)) ?>
                                     </span>
                                 </td>
                                 <td>
-                                    <?php if ($user->getStatus()->getValue() === 'active'): ?>
+                                    <?php if ($user->status === 'active'): ?>
                                         <span class="badge bg-success">Active</span>
                                     <?php else: ?>
                                         <span class="badge bg-secondary">Inactive</span>
                                     <?php endif; ?>
                                 </td>
-                                <td><?= $user->getCreatedAt()->format('Y-m-d H:i') ?></td>
+                                <td><?= $user->createdAt ?></td>
                                 <td>
                                     <div class="btn-group btn-group-sm">
-                                        <a href="/admin/users/<?= $user->getId() ?>" class="btn btn-outline-primary">View</a>
-                                        <a href="/admin/users/<?= $user->getId() ?>/edit" class="btn btn-outline-secondary">Edit</a>
-                                        <a href="/admin/users/<?= $user->getId() ?>/reset-password" class="btn btn-outline-warning">Reset Pass</a>
+                                        <a href="/admin/users/<?= $user->id ?>" class="btn btn-outline-primary">View</a>
+                                        <a href="/admin/users/<?= $user->id ?>/edit" class="btn btn-outline-secondary">Edit</a>
+                                        <a href="/admin/users/<?= $user->id ?>/reset-password" class="btn btn-outline-warning">Reset Pass</a>
                                     </div>
                                 </td>
                             </tr>

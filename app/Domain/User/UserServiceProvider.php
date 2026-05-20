@@ -6,6 +6,8 @@ namespace App\Domain\User;
 
 use App\Domain\User\Commands\ChangeUserPassword\ChangeUserPasswordCommand;
 use App\Domain\User\Commands\ChangeUserPassword\ChangeUserPasswordHandler;
+use App\Domain\User\Commands\CreateUser\CreateUserCommand;
+use App\Domain\User\Commands\CreateUser\CreateUserHandler;
 use App\Domain\User\Commands\DeleteUser\DeleteUserCommand;
 use App\Domain\User\Commands\DeleteUser\DeleteUserHandler;
 use App\Domain\User\Commands\RegisterUser\RegisterUserCommand;
@@ -93,13 +95,19 @@ final class UserServiceProvider implements DomainServiceProviderInterface
                 \Config\Services::sessionManagementService()
             )
         );
+
+        $commandBus->register(
+            CreateUserCommand::class,
+            new CreateUserHandler($repository, $eventDispatcher, $logger)
+        );
     }
 
     public function registerQueries(QueryBus $queryBus): void
     {
         $repository = $this->getRepository('userRepository');
         $logger = $this->getRepository('logger');
-        $loggingConfig = new Logging();
+        $loggingConfig = $this->getRepository('loggingConfig');
+        assert($loggingConfig instanceof Logging);
 
         if (!$repository instanceof UserRepository || !$logger instanceof LoggerInterface) {
             throw new \RuntimeException('Invalid repository or logger injected');
@@ -166,6 +174,7 @@ final class UserServiceProvider implements DomainServiceProviderInterface
             'eventDispatcher',
             'passwordHasher',
             'logger',
+            'loggingConfig',
         ];
     }
 

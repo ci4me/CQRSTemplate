@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Tests\Support;
 
 use App\Infrastructure\Logging\LoggerFactory;
-use App\Models\Cookie\CookieRepository;
+use App\Infrastructure\Persistence\Repositories\CookieRepository;
 use CodeIgniter\Test\CIUnitTestCase;
 use CodeIgniter\Test\DatabaseTestTrait;
 

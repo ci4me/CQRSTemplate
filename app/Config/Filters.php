@@ -90,8 +90,9 @@ class Filters extends BaseFilters
         'before' => [
             // 'honeypot',
             // SECURITY: CSRF protection enabled (except in testing environment for feature tests)
-            // Testing environment bypass allows feature tests to run, but security tests
-            // verify CSRF behavior separately (see tests/Integration/Security/)
+            // Testing environment bypass allows feature tests to run without CSRF tokens.
+            // Dedicated CSRF security tests exist in tests/Integration/Security/ that test
+            // CSRF behavior independently by temporarily re-enabling the filter.
             'csrf' => (ENVIRONMENT !== 'testing') ? [] : ['except' => ['*']],
             // 'invalidchars',
             // OBSERVABILITY: adopt inbound X-Correlation-Id before any handler
