@@ -14,7 +14,9 @@ The template has closed 50+ critical issues across auth, security, concurrency, 
 
 What remains: a small set of architectural decisions on top of working code — full event-lifecycle consolidation in entities (the test contract has to flip), read-model projection wired and proven end-to-end, tenant runtime resolver (the schema columns + composite index are already there), and User-API controller migration to the ApiResponse envelope (deferred as a single-PR breaking change for clients).
 
-**Clone-readiness status:** ~75% of blockers closed; 25% remain. Estimated effort to "golden module": 1–2 more focused sprints.
+**Clone-readiness status:** ~80% of blockers closed; 20% remain. Estimated effort to "golden module": 1 focused sprint covering full event-lifecycle consolidation, tenant runtime, and the User-API ApiResponse migration.
+
+**Updated 2026-05-20 after p4-batch1 through p4-batch7.**
 
 ---
 
@@ -47,7 +49,7 @@ What remains: a small set of architectural decisions on top of working code — 
 
 3. **[CRITICAL]** Read-model projection unwired: `CookieReadModelProjection` listens for no events in `CookieServiceProvider`, `ProjectionRegistry` has zero call sites, `CookieReadModelRepository` does not exist. **r08:2.3** — wire `CookieReadModelProjection` to live events; introduce `CookieReadModelRepository`; swap query handlers.
 
-4. **[CRITICAL]** Cookie stock-change events raised with `cookieId = null` on fresh entity before `assignId()`. Event is `?int`, unroutable. **r03:V1** + **r08:1.5** — defer id-stamping until after `save()`; require non-null in event type.
+4. ~~**[CRITICAL]** Cookie stock-change events raised with `cookieId = null` on fresh entity.~~ **CLOSED in p4-batch7** — Cookie::decreaseStock/increaseStock call assertPersisted() before mutation; throws DomainException::invalidState when id is null. Existing tests updated to call assignId(1) after Cookie::create() to mirror the production flow.
 
 5. **[CRITICAL]** Tenant scoping schema-only: `cookies.tenant_id` nullable, never written, never filtered. UNIQUE(tenant_id, name) therefore decorative. **r13:1** — wire tenant resolver; write to column in repository save; filter all queries; backfill existing rows with default tenant.
 
@@ -55,7 +57,7 @@ What remains: a small set of architectural decisions on top of working code — 
 
 7. **[HIGH]** MySQL NULL in composite UNIQUE: two rows with `tenant_id IS NULL`, `name='X'`, `deleted_at IS NULL` do not collide. Cookie UNIQUE(tenant_id, name, deleted_at) is ineffective. **r06:V8** — NOT NULL the columns with sentinel (0 for tenant), or use functional/partial index; verify MySQL CI job.
 
-8. **[HIGH]** Read-model rebuild races with live writes via TRUNCATE (DDL commit): inserts during rebuild shift pagination, rows skip. **r06:V7** — build to shadow table, RENAME TABLE atomic swap; don't TRUNCATE with live traffic.
+8. ~~**[HIGH]** Read-model rebuild races with live writes via TRUNCATE.~~ **CLOSED in p4-batch5** — new CookieReadModelProjection::rebuildFromSourceAtomic() builds into a `cookie_read_model_shadow_<ts>` table, then RENAME TABLE swaps atomically on MySQL or via two ALTER TABLE … RENAME inside a transaction on Postgres. SQLite tests fall back to the in-place rebuild (single-writer, no race).
 
 9. ~~**[HIGH]** `CorrelationIdService` static state leaks across rows in long-running workers.~~ **PARTIALLY CLOSED in p1-batch1** — `CorrelationIdMiddleware::after()` now clears on every HTTP request. Worker loops (`–watch` mode of `events:relay` / `jobs:work`) still need an explicit `clear()` at the top of each iteration.
 
@@ -69,13 +71,13 @@ What remains: a small set of architectural decisions on top of working code — 
 
 14. ~~**[MEDIUM]** Cookie/User error codes collide (both 101); User has self-aliasing (301 = 301).~~ **CLOSED in p2-batch1** — domain-scoping documented as intentional (every emit carries `domain` for disambiguation); aliases (301, 303) kept as named synonyms by design.
 
-15. **[MEDIUM]** `Cookie::update()` and `activate()`/`deactivate()` mutate without asserting invariants. **r08:1.4** — extract `assertInvariants()`; call on every mutator.
+15. ~~**[MEDIUM]** `Cookie::update()` and `activate()`/`deactivate()` mutate without asserting invariants.~~ **CLOSED in p4-batch6** — every public mutator now calls `assertNotDeleted()` (refuses to resurrect a soft-deleted cookie); stock mutators additionally call `assertPersisted()`.
 
 16. **[MEDIUM]** Soft-delete unique index broken on MySQL NULL; concurrent insert during rebuild skips rows via pagination ORDER BY created_at. **r06:V7** — combined fix: NOT NULL tenant_id + shadow-table rebuild.
 
 17. ~~**[MEDIUM]** `DateTimeValue` no UTC normalization; `equals()` uses `===` (object identity).~~ **CLOSED in p2-batch1** — `DateTimeValue` normalises to UTC on construction; `equals()` compares timestamps (instant-in-time).
 
-18. **[MEDIUM]** `Money::fromFloat()` and `fromDecimalString()` silently saturate on overflow. **r04:D1** — throw `DomainException::overflow` instead of silent truncation.
+18. ~~**[MEDIUM]** `Money::fromFloat()` and `fromDecimalString()` silently saturate on overflow.~~ **CLOSED in p4-batch1** — both factories now throw a ValidationException when the scaled value would exceed PHP_INT_MAX.
 
 19. **[MEDIUM]** View error pages + write-side forms (create/edit/show for cookies, users) unaudited. CSP violations, permission gating, CSRF handling unknown. **r14** — full audit of 11 unaudited view files + their POST flows.
 
