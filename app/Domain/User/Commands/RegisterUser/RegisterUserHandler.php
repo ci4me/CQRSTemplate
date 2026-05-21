@@ -8,12 +8,12 @@ use App\Domain\Shared\Exceptions\DomainException;
 use App\Domain\User\Entities\User;
 use App\Domain\User\ErrorCodes;
 use App\Domain\User\Events\UserRegistered\UserRegisteredEvent;
+use App\Domain\User\Ports\UserRepositoryInterface;
 use App\Domain\User\ValueObjects\Email;
 use App\Domain\User\ValueObjects\HashedPassword;
 use App\Domain\User\ValueObjects\UserName;
 use App\Domain\User\ValueObjects\UserRole;
 use App\Infrastructure\Bus\EventDispatcherInterface;
-use App\Infrastructure\Persistence\Repositories\UserRepository;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -26,13 +26,13 @@ final readonly class RegisterUserHandler
     /**
      * __construct.
      *
-     * @param UserRepository           $repository
+     * @param UserRepositoryInterface  $repository
      * @param EventDispatcherInterface $eventDispatcher
      * @param LoggerInterface          $logger
      * @todo Auto-generated docblock — review and replace this description.
      */
     public function __construct(
-        private UserRepository $repository,
+        private UserRepositoryInterface $repository,
         private EventDispatcherInterface $eventDispatcher,
         private LoggerInterface $logger,
     ) {

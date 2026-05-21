@@ -6,7 +6,7 @@ namespace App\Domain\User\Queries\GetUserById;
 
 use App\Domain\User\DTOs\UserDTO;
 use App\Domain\User\Entities\User;
-use App\Infrastructure\Persistence\Repositories\UserRepository;
+use App\Domain\User\Ports\UserRepositoryInterface;
 use Config\Logging;
 use Psr\Log\LoggerInterface;
 
@@ -20,13 +20,13 @@ final readonly class GetUserByIdHandler
     /**
      * __construct.
      *
-     * @param UserRepository  $repository
-     * @param LoggerInterface $logger
-     * @param Logging         $loggingConfig
+     * @param UserRepositoryInterface $repository
+     * @param LoggerInterface         $logger
+     * @param Logging                 $loggingConfig
      * @todo Auto-generated docblock — review and replace this description.
      */
     public function __construct(
-        private UserRepository $repository,
+        private UserRepositoryInterface $repository,
         private LoggerInterface $logger,
         private Logging $loggingConfig
     ) {

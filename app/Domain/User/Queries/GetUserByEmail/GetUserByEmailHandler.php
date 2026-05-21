@@ -6,8 +6,8 @@ namespace App\Domain\User\Queries\GetUserByEmail;
 
 use App\Domain\User\DTOs\UserDTO;
 use App\Domain\User\Entities\User;
+use App\Domain\User\Ports\UserRepositoryInterface;
 use App\Domain\User\ValueObjects\Email;
-use App\Infrastructure\Persistence\Repositories\UserRepository;
 use Config\Logging;
 use Psr\Log\LoggerInterface;
 
@@ -21,13 +21,13 @@ final readonly class GetUserByEmailHandler
     /**
      * __construct.
      *
-     * @param UserRepository  $repository
-     * @param LoggerInterface $logger
-     * @param Logging         $loggingConfig
+     * @param UserRepositoryInterface $repository
+     * @param LoggerInterface         $logger
+     * @param Logging                 $loggingConfig
      * @todo Auto-generated docblock — review and replace this description.
      */
     public function __construct(
-        private UserRepository $repository,
+        private UserRepositoryInterface $repository,
         private LoggerInterface $logger,
         private Logging $loggingConfig
     ) {
