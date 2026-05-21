@@ -9,7 +9,7 @@ use App\Domain\User\Commands\DeleteUser\DeleteUserCommand;
 use App\Domain\User\Commands\DeleteUser\DeleteUserHandler;
 use App\Domain\User\ErrorCodes;
 use App\Domain\User\Events\UserDeleted\UserDeletedEvent;
-use App\Infrastructure\Bus\EventDispatcherInterface;
+use App\Domain\Shared\Events\EventDispatcherInterface;
 use App\Infrastructure\Logging\LoggerFactory;
 use App\Domain\User\Ports\UserRepositoryInterface;
 use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;

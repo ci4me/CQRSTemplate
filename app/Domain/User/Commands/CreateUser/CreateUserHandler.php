@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\User\Commands\CreateUser;
 
+use App\Domain\Shared\Events\EventDispatcherInterface;
 use App\Domain\Shared\Exceptions\DomainException;
 use App\Domain\User\Entities\User;
 use App\Domain\User\ErrorCodes;
@@ -13,7 +14,6 @@ use App\Domain\User\ValueObjects\Email;
 use App\Domain\User\ValueObjects\HashedPassword;
 use App\Domain\User\ValueObjects\UserName;
 use App\Domain\User\ValueObjects\UserRole;
-use App\Infrastructure\Bus\EventDispatcherInterface;
 use Psr\Log\LoggerInterface;
 
 /**

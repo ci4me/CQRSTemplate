@@ -10,7 +10,7 @@ use App\Domain\Cookie\Commands\DeleteCookie\DeleteCookieHandler;
 use App\Domain\Cookie\Events\CookieDeleted\CookieDeletedEvent;
 use App\Domain\Cookie\Ports\CookieRepositoryInterface;
 use App\Domain\Shared\Exceptions\DomainException;
-use App\Infrastructure\Bus\EventDispatcherInterface;
+use App\Domain\Shared\Events\EventDispatcherInterface;
 use App\Infrastructure\Logging\LoggerFactory;
 use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 use Tests\Support\Factories\CookieFactory;

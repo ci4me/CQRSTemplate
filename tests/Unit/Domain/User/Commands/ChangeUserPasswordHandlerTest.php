@@ -9,7 +9,7 @@ use App\Domain\User\Commands\ChangeUserPassword\ChangeUserPasswordCommand;
 use App\Domain\User\Commands\ChangeUserPassword\ChangeUserPasswordHandler;
 use App\Domain\User\ErrorCodes;
 use App\Domain\User\Events\PasswordChanged\PasswordChangedEvent;
-use App\Infrastructure\Bus\EventDispatcherInterface;
+use App\Domain\Shared\Events\EventDispatcherInterface;
 use App\Infrastructure\Logging\LoggerFactory;
 use App\Domain\User\Ports\UserRepositoryInterface;
 use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;

@@ -143,14 +143,6 @@ deptrac:
       - CodeIgniterFramework
       - Config
   skip_violations:
-    App\Domain\Cookie\Commands\CreateCookie\CreateCookieHandler:
-      - App\Infrastructure\Bus\EventDispatcherInterface
-    App\Domain\Cookie\Commands\DeleteCookie\DeleteCookieHandler:
-      - App\Infrastructure\Bus\EventDispatcherInterface
-    App\Domain\Cookie\Commands\RestoreCookie\RestoreCookieHandler:
-      - App\Infrastructure\Bus\EventDispatcherInterface
-    App\Domain\Cookie\Commands\UpdateCookie\UpdateCookieHandler:
-      - App\Infrastructure\Bus\EventDispatcherInterface
     App\Domain\Cookie\CookieServiceProvider:
       - App\Infrastructure\Attributes\DomainServiceProvider
       - App\Infrastructure\Bus\CommandBus
@@ -172,17 +164,9 @@ deptrac:
       - Config\Logging
     App\Domain\User\Commands\ChangeUserPassword\ChangeUserPasswordHandler:
       - App\Infrastructure\Auth\Services\SessionManagementService
-      - App\Infrastructure\Bus\EventDispatcherInterface
       - App\Infrastructure\Persistence\Repositories\PasswordHistoryRepository
-    App\Domain\User\Commands\CreateUser\CreateUserHandler:
-      - App\Infrastructure\Bus\EventDispatcherInterface
-    App\Domain\User\Commands\DeleteUser\DeleteUserHandler:
-      - App\Infrastructure\Bus\EventDispatcherInterface
-    App\Domain\User\Commands\RegisterUser\RegisterUserHandler:
-      - App\Infrastructure\Bus\EventDispatcherInterface
     App\Domain\User\Commands\UpdateUser\UpdateUserHandler:
       - App\Infrastructure\Auth\Services\PermissionService
-      - App\Infrastructure\Bus\EventDispatcherInterface
     App\Domain\User\Queries\GetAllUsers\GetAllUsersHandler:
       - Config\Logging
     App\Domain\User\Queries\GetUserByEmail\GetUserByEmailHandler:

@@ -7,8 +7,8 @@ namespace App\Domain\Cookie\Commands\RestoreCookie;
 use App\Domain\Cookie\ErrorCodes;
 use App\Domain\Cookie\Events\CookieRestored\CookieRestoredEvent;
 use App\Domain\Cookie\Ports\CookieRepositoryInterface;
+use App\Domain\Shared\Events\EventDispatcherInterface;
 use App\Domain\Shared\Exceptions\DomainException;
-use App\Infrastructure\Bus\EventDispatcherInterface;
 use Psr\Log\LoggerInterface;
 
 /**

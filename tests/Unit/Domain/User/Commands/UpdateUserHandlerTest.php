@@ -9,7 +9,7 @@ use App\Domain\User\Commands\UpdateUser\UpdateUserCommand;
 use App\Domain\User\Commands\UpdateUser\UpdateUserHandler;
 use App\Domain\User\ErrorCodes;
 use App\Domain\User\Events\UserUpdated\UserUpdatedEvent;
-use App\Infrastructure\Bus\EventDispatcherInterface;
+use App\Domain\Shared\Events\EventDispatcherInterface;
 use App\Infrastructure\Logging\LoggerFactory;
 use App\Domain\User\Ports\UserRepositoryInterface;
 use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;

@@ -7,8 +7,8 @@ namespace App\Domain\Cookie\Commands\DeleteCookie;
 use App\Domain\Cookie\ErrorCodes;
 use App\Domain\Cookie\Events\CookieDeleted\CookieDeletedEvent;
 use App\Domain\Cookie\Ports\CookieRepositoryInterface;
+use App\Domain\Shared\Events\EventDispatcherInterface;
 use App\Domain\Shared\Exceptions\DomainException;
-use App\Infrastructure\Bus\EventDispatcherInterface;
 use Psr\Log\LoggerInterface;
 
 /**

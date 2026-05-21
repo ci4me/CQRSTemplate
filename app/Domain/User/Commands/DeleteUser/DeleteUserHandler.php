@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace App\Domain\User\Commands\DeleteUser;
 
+use App\Domain\Shared\Events\EventDispatcherInterface;
 use App\Domain\User\ErrorCodes;
 use App\Domain\User\Events\UserDeleted\UserDeletedEvent;
 use App\Domain\User\Ports\UserRepositoryInterface;
-use App\Infrastructure\Bus\EventDispatcherInterface;
 use Psr\Log\LoggerInterface;
 
 /**

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Bus;
 
+use App\Domain\Shared\Events\EventDispatcherInterface;
 use App\Infrastructure\Logging\CorrelationIdService;
 use App\Infrastructure\Logging\LoggerFactory;
 use Psr\Log\LoggerInterface;

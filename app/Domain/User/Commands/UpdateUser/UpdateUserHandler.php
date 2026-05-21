@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\User\Commands\UpdateUser;
 
+use App\Domain\Shared\Events\EventDispatcherInterface;
 use App\Domain\Shared\Exceptions\DomainException;
 use App\Domain\User\ErrorCodes;
 use App\Domain\User\Events\UserUpdated\UserUpdatedEvent;
@@ -13,7 +14,6 @@ use App\Domain\User\ValueObjects\UserName;
 use App\Domain\User\ValueObjects\UserRole;
 use App\Domain\User\ValueObjects\UserStatus;
 use App\Infrastructure\Auth\Services\PermissionService;
-use App\Infrastructure\Bus\EventDispatcherInterface;
 use Psr\Log\LoggerInterface;
 
 /**
