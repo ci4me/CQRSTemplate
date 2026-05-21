@@ -182,6 +182,8 @@ deptrac:
     # ahead of the #[InfrastructureAdapter] deptrac classifier landing in Group B.3.
     # These skips are REMOVED at end of Group B.3.
     App\Domain\Cookie\Repositories\CookieRepository:
+      - App\Infrastructure\Attributes\AutoBind
+      - App\Infrastructure\Attributes\InfrastructureAdapter
       - App\Infrastructure\Bus\EventDispatcher
       - App\Infrastructure\Outbox\EventOutboxWriter
       - App\Infrastructure\Tenancy\TenantContext
@@ -191,14 +193,20 @@ deptrac:
       - CodeIgniter\Database\Exceptions\DatabaseException
       - Config\Logging
     App\Domain\Cookie\Repositories\CookieQueryRepository:
+      - App\Infrastructure\Attributes\AutoBind
+      - App\Infrastructure\Attributes\InfrastructureAdapter
       - App\Infrastructure\Tenancy\TenantContext
       - CodeIgniter\Database\BaseBuilder
       - CodeIgniter\Database\BaseConnection
       - Config\Database
     App\Domain\User\Repositories\UserRepository:
+      - App\Infrastructure\Attributes\AutoBind
+      - App\Infrastructure\Attributes\InfrastructureAdapter
       - App\Infrastructure\Persistence\Models\UserModel
       - Config\Logging
     App\Domain\User\Repositories\PasswordHistoryRepository:
+      - App\Infrastructure\Attributes\AutoBind
+      - App\Infrastructure\Attributes\InfrastructureAdapter
       - CodeIgniter\Database\BaseConnection
     # Helpers are infrastructure glue; these violations are permanent and intentional.
     can():

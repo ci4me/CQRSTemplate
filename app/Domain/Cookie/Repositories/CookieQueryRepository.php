@@ -7,6 +7,8 @@ namespace App\Domain\Cookie\Repositories;
 use App\Domain\Cookie\DTOs\CookieDTO;
 use App\Domain\Cookie\Ports\CookieQueryRepositoryInterface;
 use App\Domain\Cookie\ValueObjects\CookiePrice;
+use App\Infrastructure\Attributes\AutoBind;
+use App\Infrastructure\Attributes\InfrastructureAdapter;
 use App\Infrastructure\Tenancy\TenantContext;
 use CodeIgniter\Database\BaseConnection;
 use Config\Database;
@@ -32,6 +34,8 @@ use Config\Database;
  * reference projection is preserved at
  * `app/Domain/Cookie/Projections/CookieReadModelProjection.php.example`.
  */
+#[InfrastructureAdapter]
+#[AutoBind]
 final class CookieQueryRepository implements CookieQueryRepositoryInterface
 {
     private const string TABLE = 'cookies';

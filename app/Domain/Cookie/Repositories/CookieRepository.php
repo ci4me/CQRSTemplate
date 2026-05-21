@@ -11,6 +11,8 @@ use App\Domain\Cookie\ValueObjects\CookieName;
 use App\Domain\Cookie\ValueObjects\CookiePrice;
 use App\Domain\Shared\Exceptions\DomainException;
 use App\Domain\Shared\ValueObjects\Actor;
+use App\Infrastructure\Attributes\AutoBind;
+use App\Infrastructure\Attributes\InfrastructureAdapter;
 use App\Infrastructure\Bus\EventDispatcher;
 use App\Infrastructure\Outbox\EventOutboxWriter;
 use App\Models\Cookie\CookieModel;
@@ -43,6 +45,8 @@ use Psr\Log\LoggerInterface;
  *
  * @package App\Models\Cookie
  */
+#[InfrastructureAdapter]
+#[AutoBind]
 final class CookieRepository implements CookieRepositoryInterface
 {
     use BusinessMetricsLogging;

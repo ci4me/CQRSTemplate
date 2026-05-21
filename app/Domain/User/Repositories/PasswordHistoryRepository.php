@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Domain\User\Repositories;
 
+use App\Infrastructure\Attributes\AutoBind;
+use App\Infrastructure\Attributes\InfrastructureAdapter;
 use CodeIgniter\Database\BaseConnection;
 
 /**
@@ -20,6 +22,8 @@ use CodeIgniter\Database\BaseConnection;
  *
  * NOTE: Not final to allow mocking in unit tests (pragmatic exception to "final by default" rule)
  */
+#[InfrastructureAdapter]
+#[AutoBind]
 readonly class PasswordHistoryRepository
 {
     private const int MAX_HISTORY_COUNT = 5;

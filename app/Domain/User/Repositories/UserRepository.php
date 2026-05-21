@@ -12,6 +12,8 @@ use App\Domain\User\ValueObjects\HashedPassword;
 use App\Domain\User\ValueObjects\UserName;
 use App\Domain\User\ValueObjects\UserRole;
 use App\Domain\User\ValueObjects\UserStatus;
+use App\Infrastructure\Attributes\AutoBind;
+use App\Infrastructure\Attributes\InfrastructureAdapter;
 use App\Infrastructure\Persistence\Models\UserModel;
 use Config\Logging;
 use Psr\Log\LoggerInterface;
@@ -21,6 +23,8 @@ use Psr\Log\LoggerInterface;
  *
  * NOTE: Not final to allow mocking in unit tests (pragmatic exception to "final by default" rule)
  */
+#[InfrastructureAdapter]
+#[AutoBind]
 readonly class UserRepository implements UserRepositoryInterface
 {
     /**
