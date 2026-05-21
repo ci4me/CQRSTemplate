@@ -104,7 +104,6 @@ final class CsvWriter
      * contents.
      *
      * @return string
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function contents(): string
     {
@@ -117,7 +116,6 @@ final class CsvWriter
      * close.
      *
      * @return void
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function close(): void
     {
@@ -133,7 +131,6 @@ final class CsvWriter
      *
      * @param mixed $value
      * @return string
-     * @todo Auto-generated docblock — review and replace this description.
      */
     private function stringify(mixed $value): string
     {
@@ -161,8 +158,6 @@ final class CsvWriter
 
     /**
      * __destruct.
-     *
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function __destruct()
     {

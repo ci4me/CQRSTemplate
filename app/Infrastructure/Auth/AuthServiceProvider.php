@@ -49,7 +49,6 @@ final class AuthServiceProvider implements DomainServiceProviderInterface
      * @param CommandBus $commandBus
      * @return void
      * @throws \RuntimeException
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function registerCommands(CommandBus $commandBus): void
     {
@@ -117,7 +116,6 @@ final class AuthServiceProvider implements DomainServiceProviderInterface
      *
      * @param QueryBus $_queryBus
      * @return void
-     * @todo Auto-generated docblock — review and replace this description.
      * @phpcsSuppress SlevomatCodingStandard.Functions.UnusedParameter.UnusedParameter
      */
     public function registerQueries(QueryBus $_queryBus): void
@@ -130,7 +128,6 @@ final class AuthServiceProvider implements DomainServiceProviderInterface
      *
      * @param EventDispatcher $_dispatcher
      * @return void
-     * @todo Auto-generated docblock — review and replace this description.
      * @phpcsSuppress SlevomatCodingStandard.Functions.UnusedParameter.UnusedParameter
      */
     public function registerEvents(EventDispatcher $_dispatcher): void
@@ -171,7 +168,6 @@ final class AuthServiceProvider implements DomainServiceProviderInterface
      *
      * @param string $name
      * @return object
-     * @todo Auto-generated docblock — review and replace this description.
      */
     private function getRepository(string $name): object
     {

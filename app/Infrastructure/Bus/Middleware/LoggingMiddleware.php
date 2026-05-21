@@ -26,7 +26,6 @@ final readonly class LoggingMiddleware implements CommandMiddlewareInterface
      * __construct.
      *
      * @param LoggerInterface $logger
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function __construct(private LoggerInterface $logger)
     {
@@ -38,7 +37,6 @@ final readonly class LoggingMiddleware implements CommandMiddlewareInterface
      * @param object   $command
      * @param callable $next
      * @return mixed
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function handle(object $command, callable $next): mixed
     {

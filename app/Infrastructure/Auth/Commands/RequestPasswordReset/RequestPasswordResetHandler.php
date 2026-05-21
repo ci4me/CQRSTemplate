@@ -34,7 +34,6 @@ final readonly class RequestPasswordResetHandler
      *
      * @param UserRepository $userRepository
      * @param EmailService   $emailService
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function __construct(
         private UserRepository $userRepository,
@@ -48,7 +47,6 @@ final readonly class RequestPasswordResetHandler
      *
      * @param RequestPasswordResetCommand $command
      * @return void
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function handle(RequestPasswordResetCommand $command): void
     {
@@ -122,7 +120,6 @@ final readonly class RequestPasswordResetHandler
      *
      * @param int $userId
      * @return void
-     * @todo Auto-generated docblock — review and replace this description.
      */
     private function deleteExistingTokens(int $userId): void
     {
@@ -139,7 +136,6 @@ final readonly class RequestPasswordResetHandler
      * @param int                $userId
      * @param PasswordResetToken $token
      * @return void
-     * @todo Auto-generated docblock — review and replace this description.
      */
     private function storeResetToken(int $userId, PasswordResetToken $token): void
     {

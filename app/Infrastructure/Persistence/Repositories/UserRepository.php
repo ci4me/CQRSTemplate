@@ -18,8 +18,6 @@ use Psr\Log\LoggerInterface;
 
 /**
  * UserRepository.
- *
- * @todo Auto-generated docblock — review and replace this description.
  */
 readonly class UserRepository implements UserRepositoryInterface
 {
@@ -29,7 +27,6 @@ readonly class UserRepository implements UserRepositoryInterface
      * @param UserModel       $model
      * @param LoggerInterface $logger
      * @param Logging         $loggingConfig
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function __construct(
         private UserModel $model,
@@ -44,7 +41,6 @@ readonly class UserRepository implements UserRepositoryInterface
      * @param User $user
      * @return int
      * @throws \RuntimeException
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function save(User $user): int
     {
@@ -82,7 +78,6 @@ readonly class UserRepository implements UserRepositoryInterface
      *
      * @param int $id
      * @return User|null
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function findById(int $id): ?User
     {
@@ -117,7 +112,6 @@ readonly class UserRepository implements UserRepositoryInterface
      *
      * @param Email $email
      * @return User|null
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function findByEmail(Email $email): ?User
     {
@@ -152,7 +146,6 @@ readonly class UserRepository implements UserRepositoryInterface
      *
      * @param User $user
      * @return bool
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function update(User $user): bool
     {
@@ -184,7 +177,6 @@ readonly class UserRepository implements UserRepositoryInterface
      *
      * @param int $id
      * @return bool
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function delete(int $id): bool
     {
@@ -399,7 +391,6 @@ readonly class UserRepository implements UserRepositoryInterface
      * @param float  $durationMs
      * @param bool   $found
      * @return void
-     * @todo Auto-generated docblock — review and replace this description.
      */
     private function logQuery(string $method, float $durationMs, bool $found): void
     {

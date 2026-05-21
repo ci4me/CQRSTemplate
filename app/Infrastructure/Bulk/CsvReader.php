@@ -55,7 +55,6 @@ final class CsvReader
      * @param string $enclosure
      * @return self
      * @throws \RuntimeException
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public static function fromString(string $csv, string $delimiter = ',', string $enclosure = '"'): self
     {
@@ -77,7 +76,6 @@ final class CsvReader
      * @param string $enclosure
      * @return self
      * @throws \RuntimeException
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public static function fromFile(string $path, string $delimiter = ',', string $enclosure = '"'): self
     {
@@ -121,7 +119,6 @@ final class CsvReader
      * close.
      *
      * @return void
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function close(): void
     {
@@ -156,8 +153,6 @@ final class CsvReader
 
     /**
      * __destruct.
-     *
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function __destruct()
     {

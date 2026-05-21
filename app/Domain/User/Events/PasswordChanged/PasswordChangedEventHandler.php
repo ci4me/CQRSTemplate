@@ -31,7 +31,6 @@ final readonly class PasswordChangedEventHandler
      * __construct.
      *
      * @param LoggerInterface $logger
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function __construct(
         private LoggerInterface $logger
@@ -43,7 +42,6 @@ final readonly class PasswordChangedEventHandler
      *
      * @param PasswordChangedEvent $event
      * @return void
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function __invoke(PasswordChangedEvent $event): void
     {

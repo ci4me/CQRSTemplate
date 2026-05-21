@@ -44,7 +44,6 @@ final readonly class UpdateUserHandler
      * @param EventDispatcherInterface $eventDispatcher
      * @param LoggerInterface          $logger
      * @param PermissionService|null   $permissions
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function __construct(
         private UserRepositoryInterface $repository,
@@ -60,7 +59,6 @@ final readonly class UpdateUserHandler
      * @param UpdateUserCommand $command
      * @return void
      * @throws \RuntimeException
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function handle(UpdateUserCommand $command): void
     {
@@ -218,7 +216,6 @@ final readonly class UpdateUserHandler
      *
      * @param UpdateUserCommand $command
      * @return bool
-     * @todo Auto-generated docblock — review and replace this description.
      */
     private function actorIsAdmin(UpdateUserCommand $command): bool
     {

@@ -8,8 +8,6 @@ use App\Domain\User\Ports\PasswordHasherInterface;
 
 /**
  * PasswordHashingService.
- *
- * @todo Auto-generated docblock — review and replace this description.
  */
 final readonly class PasswordHashingService implements PasswordHasherInterface
 {
@@ -18,7 +16,6 @@ final readonly class PasswordHashingService implements PasswordHasherInterface
      *
      * @param string $plaintext
      * @return string
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function hash(string $plaintext): string
     {
@@ -31,7 +28,6 @@ final readonly class PasswordHashingService implements PasswordHasherInterface
      * @param string $plaintext
      * @param string $hash
      * @return bool
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function verify(string $plaintext, string $hash): bool
     {

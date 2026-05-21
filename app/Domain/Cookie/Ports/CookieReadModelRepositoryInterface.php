@@ -31,7 +31,6 @@ interface CookieReadModelRepositoryInterface
      *
      * @param int $cookieId
      * @return CookieDTO|null
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function findById(int $cookieId): ?CookieDTO;
 

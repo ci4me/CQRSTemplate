@@ -44,7 +44,6 @@ final readonly class CookiePrice
      * __construct.
      *
      * @param Money $money
-     * @todo Auto-generated docblock — review and replace this description.
      */
     private function __construct(Money $money)
     {
@@ -86,7 +85,6 @@ final readonly class CookiePrice
      * @param Currency $currency
      * @return Money
      * @throws ValidationException
-     * @todo Auto-generated docblock — review and replace this description.
      */
     private static function parseMoneyOrFail(string $value, Currency $currency): Money
     {
@@ -107,7 +105,6 @@ final readonly class CookiePrice
      * @param int           $minorUnits
      * @param Currency|null $currency
      * @return self
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public static function fromMinorUnits(int $minorUnits, ?Currency $currency = null): self
     {
@@ -133,7 +130,6 @@ final readonly class CookiePrice
      * getMoney.
      *
      * @return Money
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function getMoney(): Money
     {
@@ -144,7 +140,6 @@ final readonly class CookiePrice
      * getCurrency.
      *
      * @return Currency
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function getCurrency(): Currency
     {
@@ -155,7 +150,6 @@ final readonly class CookiePrice
      * getMinorUnits.
      *
      * @return int
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function getMinorUnits(): int
     {
@@ -176,7 +170,6 @@ final readonly class CookiePrice
      * toDecimalString.
      *
      * @return string
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function toDecimalString(): string
     {
@@ -187,7 +180,6 @@ final readonly class CookiePrice
      * toString.
      *
      * @return string
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function toString(): string
     {
@@ -216,7 +208,6 @@ final readonly class CookiePrice
      *
      * @param self $other
      * @return bool
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function equals(self $other): bool
     {
@@ -228,7 +219,6 @@ final readonly class CookiePrice
      *
      * @param self $other
      * @return bool
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function greaterThan(self $other): bool
     {
@@ -240,7 +230,6 @@ final readonly class CookiePrice
      *
      * @param self $other
      * @return bool
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function isGreaterThan(self $other): bool
     {
@@ -252,7 +241,6 @@ final readonly class CookiePrice
      *
      * @param self $other
      * @return bool
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function lessThan(self $other): bool
     {
@@ -264,7 +252,6 @@ final readonly class CookiePrice
      *
      * @param self $other
      * @return bool
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function isLessThan(self $other): bool
     {
@@ -276,7 +263,6 @@ final readonly class CookiePrice
      *
      * @param self $other
      * @return self
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function add(self $other): self
     {
@@ -288,7 +274,6 @@ final readonly class CookiePrice
      *
      * @param self $other
      * @return self
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function subtract(self $other): self
     {
@@ -301,7 +286,6 @@ final readonly class CookiePrice
      * @param int $quantity
      * @return self
      * @throws ValidationException
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function multiplyBy(int $quantity): self
     {
@@ -317,7 +301,6 @@ final readonly class CookiePrice
      * @param float $discountPercent
      * @return self
      * @throws ValidationException
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function applyDiscount(float $discountPercent): self
     {
@@ -338,7 +321,6 @@ final readonly class CookiePrice
      * __toString.
      *
      * @return string
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function __toString(): string
     {
@@ -351,7 +333,6 @@ final readonly class CookiePrice
      * @param int $minorUnits
      * @return void
      * @throws ValidationException
-     * @todo Auto-generated docblock — review and replace this description.
      */
     private function assertPositiveAndInRange(int $minorUnits): void
     {

@@ -60,7 +60,6 @@ final class UserServiceProvider implements DomainServiceProviderInterface
      * @param CommandBus $commandBus
      * @return void
      * @throws \RuntimeException
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function registerCommands(CommandBus $commandBus): void
     {
@@ -116,7 +115,6 @@ final class UserServiceProvider implements DomainServiceProviderInterface
      * @param QueryBus $queryBus
      * @return void
      * @throws \RuntimeException
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function registerQueries(QueryBus $queryBus): void
     {
@@ -156,7 +154,6 @@ final class UserServiceProvider implements DomainServiceProviderInterface
      * @param EventDispatcher $dispatcher
      * @return void
      * @throws \RuntimeException
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function registerEvents(EventDispatcher $dispatcher): void
     {
@@ -216,7 +213,6 @@ final class UserServiceProvider implements DomainServiceProviderInterface
      *
      * @param string $name
      * @return object
-     * @todo Auto-generated docblock — review and replace this description.
      */
     private function getRepository(string $name): object
     {

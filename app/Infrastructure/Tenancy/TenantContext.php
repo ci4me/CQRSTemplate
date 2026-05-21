@@ -39,7 +39,6 @@ final class TenantContext
      * __construct.
      *
      * @param RequestInterface|null $request
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function __construct(
         private readonly ?RequestInterface $request = null
@@ -80,7 +79,6 @@ final class TenantContext
      * currentTenantId.
      *
      * @return int
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function currentTenantId(): int
     {
@@ -110,7 +108,6 @@ final class TenantContext
      * tenantFromHeader.
      *
      * @return int|null
-     * @todo Auto-generated docblock — review and replace this description.
      */
     private function tenantFromHeader(): ?int
     {
@@ -129,7 +126,6 @@ final class TenantContext
      * tenantFromSession.
      *
      * @return int|null
-     * @todo Auto-generated docblock — review and replace this description.
      */
     private function tenantFromSession(): ?int
     {

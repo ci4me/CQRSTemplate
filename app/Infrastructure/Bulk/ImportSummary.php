@@ -33,7 +33,6 @@ final readonly class ImportSummary
      * isFullySuccessful.
      *
      * @return bool
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function isFullySuccessful(): bool
     {

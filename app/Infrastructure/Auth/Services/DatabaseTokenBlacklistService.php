@@ -51,7 +51,6 @@ class DatabaseTokenBlacklistService implements TokenBlacklistInterface
      *
      * @param string $token
      * @return void
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function blacklist(string $token): void
     {
@@ -86,7 +85,6 @@ class DatabaseTokenBlacklistService implements TokenBlacklistInterface
      *
      * @param string $token
      * @return bool
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function isBlacklisted(string $token): bool
     {
@@ -124,7 +122,6 @@ class DatabaseTokenBlacklistService implements TokenBlacklistInterface
      *
      * @param string $token
      * @return string
-     * @todo Auto-generated docblock — review and replace this description.
      */
     private function hash(string $token): string
     {
@@ -136,7 +133,6 @@ class DatabaseTokenBlacklistService implements TokenBlacklistInterface
      *
      * @param \Throwable $e
      * @return bool
-     * @todo Auto-generated docblock — review and replace this description.
      */
     private function isDuplicate(\Throwable $e): bool
     {

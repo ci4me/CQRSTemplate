@@ -43,7 +43,6 @@ class RateLimitResult
      * isAllowed.
      *
      * @return bool
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function isAllowed(): bool
     {
@@ -54,7 +53,6 @@ class RateLimitResult
      * getAttemptsRemaining.
      *
      * @return int
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function getAttemptsRemaining(): int
     {
@@ -65,7 +63,6 @@ class RateLimitResult
      * getResetTime.
      *
      * @return int
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function getResetTime(): int
     {
@@ -76,7 +73,6 @@ class RateLimitResult
      * getSecondsUntilReset.
      *
      * @return int
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function getSecondsUntilReset(): int
     {

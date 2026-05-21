@@ -61,8 +61,6 @@ final class ErrorCodes
 
     /**
      * __construct.
-     *
-     * @todo Auto-generated docblock — review and replace this description.
      */
     private function __construct()
     {

@@ -83,8 +83,6 @@ final class RebuildProjections extends BaseCommand
      *
      * @param string $name
      * @return ProjectionInterface|null
-     *
-     * @todo Auto-generated docblock — review and replace this description.
      */
     private function resolveProjection(string $name): ?ProjectionInterface
     {

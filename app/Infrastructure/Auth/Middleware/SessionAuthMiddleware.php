@@ -39,7 +39,6 @@ final class SessionAuthMiddleware implements FilterInterface
      *
      * @param UserRepository|null  $userRepository
      * @param LoggerInterface|null $logger
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function __construct(
         ?UserRepository $userRepository = null,
@@ -103,7 +102,6 @@ final class SessionAuthMiddleware implements FilterInterface
      * @param RequestInterface $request
      * @param string           $reason
      * @return ResponseInterface
-     * @todo Auto-generated docblock — review and replace this description.
      */
     private function redirectToLogin(Session $session, RequestInterface $request, string $reason): ResponseInterface
     {

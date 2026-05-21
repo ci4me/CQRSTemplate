@@ -40,7 +40,6 @@ final readonly class Currency
      * @param string $iso
      * @param int    $decimals
      * @param string $symbol
-     * @todo Auto-generated docblock — review and replace this description.
      */
     private function __construct(
         public string $iso,
@@ -56,7 +55,6 @@ final readonly class Currency
      * @param string|null $symbol
      * @return self
      * @throws \InvalidArgumentException
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public static function fromIso(string $iso, ?string $symbol = null): self
     {
@@ -79,7 +77,6 @@ final readonly class Currency
      * usd.
      *
      * @return self
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public static function usd(): self
     {
@@ -90,7 +87,6 @@ final readonly class Currency
      * eur.
      *
      * @return self
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public static function eur(): self
     {
@@ -101,7 +97,6 @@ final readonly class Currency
      * brl.
      *
      * @return self
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public static function brl(): self
     {
@@ -138,7 +133,6 @@ final readonly class Currency
      *
      * @param self $other
      * @return bool
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function equals(self $other): bool
     {
@@ -150,7 +144,6 @@ final readonly class Currency
      *
      * @param string $iso
      * @return string
-     * @todo Auto-generated docblock — review and replace this description.
      */
     private static function defaultSymbolFor(string $iso): string
     {

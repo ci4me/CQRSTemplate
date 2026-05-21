@@ -6,8 +6,6 @@ namespace App\Domain\Shared\Events;
 
 /**
  * EventDispatcherInterface.
- *
- * @todo Auto-generated docblock — review and replace this description.
  */
 interface EventDispatcherInterface
 {
@@ -17,7 +15,6 @@ interface EventDispatcherInterface
      * @param string   $eventClass
      * @param callable $listener
      * @return void
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function subscribe(string $eventClass, callable $listener): void;
 
@@ -26,7 +23,6 @@ interface EventDispatcherInterface
      *
      * @param object $event
      * @return void
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function dispatch(object $event): void;
 

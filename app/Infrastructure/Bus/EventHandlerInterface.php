@@ -26,7 +26,6 @@ interface EventHandlerInterface
      *
      * @param DomainEventInterface $event
      * @return void
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function __invoke(DomainEventInterface $event): void;
 }

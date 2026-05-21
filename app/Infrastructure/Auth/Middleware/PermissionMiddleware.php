@@ -43,7 +43,6 @@ final class PermissionMiddleware implements FilterInterface
      * @param ActorResolver|null     $actorResolver
      * @param PermissionService|null $permissions
      * @param LoggerInterface|null   $logger
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function __construct(
         ?ActorResolver $actorResolver = null,
@@ -61,7 +60,6 @@ final class PermissionMiddleware implements FilterInterface
      * @param RequestInterface $request
      * @param mixed            $arguments
      * @return RequestInterface|ResponseInterface
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function before(RequestInterface $request, mixed $arguments = null): RequestInterface|ResponseInterface
     {
@@ -112,7 +110,6 @@ final class PermissionMiddleware implements FilterInterface
      *
      * @param mixed $arguments
      * @return Permission|null
-     * @todo Auto-generated docblock — review and replace this description.
      */
     private function parseArgument(mixed $arguments): ?Permission
     {
@@ -143,7 +140,6 @@ final class PermissionMiddleware implements FilterInterface
      *
      * @param string $detail
      * @return ResponseInterface
-     * @todo Auto-generated docblock — review and replace this description.
      */
     private function forbidden(string $detail): ResponseInterface
     {

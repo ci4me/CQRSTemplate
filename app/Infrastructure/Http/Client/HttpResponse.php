@@ -29,7 +29,6 @@ final readonly class HttpResponse
      * isSuccessful.
      *
      * @return bool
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function isSuccessful(): bool
     {
@@ -40,7 +39,6 @@ final readonly class HttpResponse
      * isClientError.
      *
      * @return bool
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function isClientError(): bool
     {
@@ -51,7 +49,6 @@ final readonly class HttpResponse
      * isServerError.
      *
      * @return bool
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function isServerError(): bool
     {
@@ -63,7 +60,6 @@ final readonly class HttpResponse
      *
      * @param string $name
      * @return string|null
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function header(string $name): ?string
     {

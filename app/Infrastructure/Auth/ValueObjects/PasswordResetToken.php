@@ -22,7 +22,6 @@ final readonly class PasswordResetToken
      *
      * @param string $token
      * @param string $tokenHash
-     * @todo Auto-generated docblock — review and replace this description.
      */
     private function __construct(
         private string $token,

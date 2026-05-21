@@ -27,7 +27,6 @@ final readonly class CookieDTO
      * @param bool        $isActive
      * @param string|null $createdAt
      * @param string|null $updatedAt
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function __construct(
         public ?int $id,
@@ -47,7 +46,6 @@ final readonly class CookieDTO
      *
      * @param Cookie $cookie
      * @return self
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public static function fromEntity(Cookie $cookie): self
     {
@@ -68,7 +66,6 @@ final readonly class CookieDTO
      * isOutOfStock.
      *
      * @return bool
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function isOutOfStock(): bool
     {

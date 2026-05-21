@@ -29,7 +29,6 @@ final class LocaleMiddleware implements FilterInterface
      * __construct.
      *
      * @param LocaleResolver|null $resolver
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function __construct(private readonly ?LocaleResolver $resolver = null)
     {
@@ -41,7 +40,6 @@ final class LocaleMiddleware implements FilterInterface
      * @param RequestInterface $request
      * @param mixed            $arguments
      * @return RequestInterface
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function before(RequestInterface $request, mixed $arguments = null): RequestInterface
     {
@@ -76,7 +74,6 @@ final class LocaleMiddleware implements FilterInterface
      * @param ResponseInterface $response
      * @param mixed             $arguments
      * @return ResponseInterface
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function after(RequestInterface $request, ResponseInterface $response, mixed $arguments = null): ResponseInterface
     {

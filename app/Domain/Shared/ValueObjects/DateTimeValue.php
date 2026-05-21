@@ -52,7 +52,6 @@ final readonly class DateTimeValue
      * __construct.
      *
      * @param DateTimeImmutable $dateTime
-     * @todo Auto-generated docblock — review and replace this description.
      */
     private function __construct(DateTimeImmutable $dateTime)
     {

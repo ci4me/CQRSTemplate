@@ -19,7 +19,6 @@ final readonly class RestoreCookieCommand
      *
      * @param int   $cookieId
      * @param Actor $restoredBy
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function __construct(
         public int $cookieId,

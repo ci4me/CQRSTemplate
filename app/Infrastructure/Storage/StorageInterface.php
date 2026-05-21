@@ -21,7 +21,6 @@ interface StorageInterface
      * name.
      *
      * @return string
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function name(): string;
 
@@ -49,7 +48,6 @@ interface StorageInterface
      *
      * @param string $key
      * @return bool
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function exists(string $key): bool;
 
@@ -58,7 +56,6 @@ interface StorageInterface
      *
      * @param string $key
      * @return void
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function delete(string $key): void;
 
@@ -67,7 +64,6 @@ interface StorageInterface
      *
      * @param string $key
      * @return int
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function sizeBytes(string $key): int;
 }

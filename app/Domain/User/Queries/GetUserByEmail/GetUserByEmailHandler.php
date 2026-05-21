@@ -13,8 +13,6 @@ use Psr\Log\LoggerInterface;
 
 /**
  * GetUserByEmailHandler.
- *
- * @todo Auto-generated docblock — review and replace this description.
  */
 final readonly class GetUserByEmailHandler
 {
@@ -24,7 +22,6 @@ final readonly class GetUserByEmailHandler
      * @param UserRepositoryInterface $repository
      * @param LoggerInterface         $logger
      * @param Logging                 $loggingConfig
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function __construct(
         private UserRepositoryInterface $repository,
@@ -38,7 +35,6 @@ final readonly class GetUserByEmailHandler
      *
      * @param GetUserByEmailQuery $query
      * @return UserDTO|null
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function handle(GetUserByEmailQuery $query): ?UserDTO
     {
@@ -60,7 +56,6 @@ final readonly class GetUserByEmailHandler
      * @param User|null $result
      * @param float     $durationMs
      * @return void
-     * @todo Auto-generated docblock — review and replace this description.
      */
     private function logQueryExecution(string $email, ?User $result, float $durationMs): void
     {
@@ -94,7 +89,6 @@ final readonly class GetUserByEmailHandler
      * @param float     $durationMs
      * @param bool      $isSlowQuery
      * @return void
-     * @todo Auto-generated docblock — review and replace this description.
      */
     private function logQuery(string $email, ?User $result, float $durationMs, bool $isSlowQuery): void
     {

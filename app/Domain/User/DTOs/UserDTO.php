@@ -28,7 +28,6 @@ final readonly class UserDTO
      * @param string      $createdAt
      * @param string|null $updatedAt
      * @param string|null $deletedAt
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function __construct(
         public ?int $id,
@@ -49,7 +48,6 @@ final readonly class UserDTO
      *
      * @param User $user
      * @return self
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public static function fromEntity(User $user): self
     {

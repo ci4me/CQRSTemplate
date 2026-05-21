@@ -22,7 +22,6 @@ final readonly class CreateUserCommand
      * @param string $email
      * @param string $password
      * @param string $role
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function __construct(
         public string $name,

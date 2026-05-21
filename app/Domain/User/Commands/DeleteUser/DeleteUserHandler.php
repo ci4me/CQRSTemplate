@@ -36,7 +36,6 @@ final readonly class DeleteUserHandler
      * @param UserRepositoryInterface  $repository
      * @param EventDispatcherInterface $eventDispatcher
      * @param LoggerInterface          $logger
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function __construct(
         private UserRepositoryInterface $repository,
@@ -52,7 +51,6 @@ final readonly class DeleteUserHandler
      * @return void
      * @throws \InvalidArgumentException
      * @throws \RuntimeException
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function handle(DeleteUserCommand $command): void
     {

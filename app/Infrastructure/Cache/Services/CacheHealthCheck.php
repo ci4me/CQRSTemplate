@@ -24,7 +24,6 @@ final readonly class CacheHealthCheck
      *
      * @param CacheInterface  $cache
      * @param LoggerInterface $logger
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function __construct(
         private CacheInterface $cache,

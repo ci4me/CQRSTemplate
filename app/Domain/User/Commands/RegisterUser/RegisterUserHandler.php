@@ -18,8 +18,6 @@ use Psr\Log\LoggerInterface;
 
 /**
  * RegisterUserHandler.
- *
- * @todo Auto-generated docblock — review and replace this description.
  */
 final readonly class RegisterUserHandler
 {
@@ -29,7 +27,6 @@ final readonly class RegisterUserHandler
      * @param UserRepositoryInterface  $repository
      * @param EventDispatcherInterface $eventDispatcher
      * @param LoggerInterface          $logger
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function __construct(
         private UserRepositoryInterface $repository,
@@ -44,7 +41,6 @@ final readonly class RegisterUserHandler
      * @param RegisterUserCommand $command
      * @return int
      * @throws DomainException
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function handle(RegisterUserCommand $command): int
     {
@@ -115,7 +111,6 @@ final readonly class RegisterUserHandler
      * @param Email $email
      * @return void
      * @throws DomainException
-     * @todo Auto-generated docblock — review and replace this description.
      */
     private function checkEmailUniqueness(Email $email): void
     {

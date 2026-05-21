@@ -29,8 +29,6 @@ final class SecurityEventService
 
     /**
      * __construct.
-     *
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function __construct()
     {

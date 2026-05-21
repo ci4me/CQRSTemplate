@@ -24,7 +24,6 @@ final readonly class CookieStockChangedEvent implements DomainEventInterface
      * @param int      $previousStock
      * @param int      $newStock
      * @param string   $reason
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function __construct(
         public ?int $cookieId,

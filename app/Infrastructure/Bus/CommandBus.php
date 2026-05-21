@@ -47,7 +47,6 @@ final class CommandBus
      *
      * @param CommandMiddlewareInterface $middleware
      * @return void
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function pushMiddleware(CommandMiddlewareInterface $middleware): void
     {
@@ -133,7 +132,6 @@ final class CommandBus
      *
      * @param string $commandClass
      * @return bool
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function hasHandler(string $commandClass): bool
     {

@@ -24,7 +24,6 @@ final class LocalStorage implements StorageInterface
      *
      * @param string|null $baseDir
      * @throws StorageException
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function __construct(?string $baseDir = null)
     {
@@ -43,7 +42,6 @@ final class LocalStorage implements StorageInterface
      * name.
      *
      * @return string
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function name(): string
     {
@@ -57,7 +55,6 @@ final class LocalStorage implements StorageInterface
      * @param string $contents
      * @return void
      * @throws StorageException
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function put(string $key, string $contents): void
     {
@@ -79,7 +76,6 @@ final class LocalStorage implements StorageInterface
      * @param string $key
      * @return string
      * @throws StorageException
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function get(string $key): string
     {
@@ -99,7 +95,6 @@ final class LocalStorage implements StorageInterface
      *
      * @param string $key
      * @return bool
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function exists(string $key): bool
     {
@@ -116,7 +111,6 @@ final class LocalStorage implements StorageInterface
      *
      * @param string $key
      * @return void
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function delete(string $key): void
     {
@@ -133,7 +127,6 @@ final class LocalStorage implements StorageInterface
      * @param string $key
      * @return int
      * @throws StorageException
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function sizeBytes(string $key): int
     {
@@ -154,7 +147,6 @@ final class LocalStorage implements StorageInterface
      * @param string $key
      * @return string
      * @throws StorageException
-     * @todo Auto-generated docblock — review and replace this description.
      */
     private function resolveKey(string $key): string
     {
@@ -179,7 +171,6 @@ final class LocalStorage implements StorageInterface
      * baseDirectory.
      *
      * @return string
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function baseDirectory(): string
     {

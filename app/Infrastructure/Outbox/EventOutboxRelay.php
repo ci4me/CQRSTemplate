@@ -150,7 +150,6 @@ final class EventOutboxRelay
      *
      * @param int $id
      * @return bool
-     * @todo Auto-generated docblock — review and replace this description.
      */
     private function claim(int $id): bool
     {
@@ -176,7 +175,6 @@ final class EventOutboxRelay
      * @param string $json
      * @return object
      * @throws \RuntimeException
-     * @todo Auto-generated docblock — review and replace this description.
      */
     private function rehydrate(string $eventClass, string $json): object
     {
@@ -233,7 +231,6 @@ final class EventOutboxRelay
      * @param int        $currentAttempts
      * @param \Throwable $e
      * @return string
-     * @todo Auto-generated docblock — review and replace this description.
      */
     private function onDispatchFailure(int $id, int $currentAttempts, \Throwable $e): string
     {
@@ -272,7 +269,6 @@ final class EventOutboxRelay
      *
      * @param int $id
      * @return void
-     * @todo Auto-generated docblock — review and replace this description.
      */
     private function markDelivered(int $id): void
     {
@@ -291,7 +287,6 @@ final class EventOutboxRelay
      * @param int    $id
      * @param string $reason
      * @return void
-     * @todo Auto-generated docblock — review and replace this description.
      */
     private function markFailed(int $id, string $reason): void
     {

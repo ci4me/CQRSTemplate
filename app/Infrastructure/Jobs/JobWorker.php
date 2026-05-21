@@ -138,7 +138,6 @@ final class JobWorker
      *
      * @param int $id
      * @return bool
-     * @todo Auto-generated docblock — review and replace this description.
      */
     private function claim(int $id): bool
     {
@@ -161,7 +160,6 @@ final class JobWorker
      * @param string $class
      * @return JobHandlerInterface
      * @throws \RuntimeException
-     * @todo Auto-generated docblock — review and replace this description.
      */
     private function resolveHandler(string $class): JobHandlerInterface
     {
@@ -189,7 +187,6 @@ final class JobWorker
      * @param int        $maxAttempts
      * @param \Throwable $e
      * @return string
-     * @todo Auto-generated docblock — review and replace this description.
      */
     private function onFailure(int $id, int $attempts, int $maxAttempts, \Throwable $e): string
     {
@@ -232,7 +229,6 @@ final class JobWorker
      *
      * @param int $id
      * @return void
-     * @todo Auto-generated docblock — review and replace this description.
      */
     private function markDone(int $id): void
     {

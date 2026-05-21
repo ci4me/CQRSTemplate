@@ -9,8 +9,6 @@ use CodeIgniter\Session\Session;
 
 /**
  * Home.
- *
- * @todo Auto-generated docblock — review and replace this description.
  */
 final class Home extends BaseController
 {
@@ -18,7 +16,6 @@ final class Home extends BaseController
      * index.
      *
      * @return RedirectResponse
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function index(): RedirectResponse
     {
@@ -36,7 +33,6 @@ final class Home extends BaseController
      * dashboard.
      *
      * @return string
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function dashboard(): string
     {

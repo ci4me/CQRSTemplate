@@ -22,7 +22,6 @@ final class AuthController extends BaseController
      * showRegister.
      *
      * @return string
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function showRegister(): string
     {
@@ -33,7 +32,6 @@ final class AuthController extends BaseController
      * register.
      *
      * @return ResponseInterface
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function register(): ResponseInterface
     {
@@ -71,7 +69,6 @@ final class AuthController extends BaseController
      * showLogin.
      *
      * @return string
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function showLogin(): string
     {
@@ -82,7 +79,6 @@ final class AuthController extends BaseController
      * login.
      *
      * @return ResponseInterface
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function login(): ResponseInterface
     {
@@ -125,7 +121,6 @@ final class AuthController extends BaseController
      * logout.
      *
      * @return ResponseInterface
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function logout(): ResponseInterface
     {

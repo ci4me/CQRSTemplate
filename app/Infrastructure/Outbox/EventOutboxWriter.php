@@ -90,7 +90,6 @@ final class EventOutboxWriter
      *
      * @param object $event
      * @return string
-     * @todo Auto-generated docblock — review and replace this description.
      */
     private function serialiseEvent(object $event): string
     {

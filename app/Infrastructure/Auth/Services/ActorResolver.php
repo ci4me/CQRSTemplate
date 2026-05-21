@@ -36,7 +36,6 @@ final class ActorResolver
      *
      * @param RequestInterface|null $request
      * @return Actor
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function resolve(?RequestInterface $request = null): Actor
     {
@@ -54,7 +53,6 @@ final class ActorResolver
      *
      * @param string $systemLabel
      * @return Actor
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function resolveOrSystem(string $systemLabel = 'system'): Actor
     {
@@ -66,7 +64,6 @@ final class ActorResolver
      *
      * @param RequestInterface|null $request
      * @return int|null
-     * @todo Auto-generated docblock — review and replace this description.
      */
     private function extractUserId(?RequestInterface $request): ?int
     {
@@ -84,7 +81,6 @@ final class ActorResolver
      *
      * @param RequestInterface|null $request
      * @return int|null
-     * @todo Auto-generated docblock — review and replace this description.
      */
     private function extractFromRequest(?RequestInterface $request): ?int
     {
@@ -107,7 +103,6 @@ final class ActorResolver
      * extractFromSession.
      *
      * @return int|null
-     * @todo Auto-generated docblock — review and replace this description.
      */
     private function extractFromSession(): ?int
     {

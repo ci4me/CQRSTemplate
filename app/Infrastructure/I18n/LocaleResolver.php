@@ -40,7 +40,6 @@ final readonly class LocaleResolver
      *
      * @param RequestInterface $request
      * @return string
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function resolve(RequestInterface $request): string
     {
@@ -98,7 +97,6 @@ final readonly class LocaleResolver
      * default.
      *
      * @return string
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function default(): string
     {
@@ -110,7 +108,6 @@ final readonly class LocaleResolver
      *
      * @param RequestInterface $request
      * @return string|null
-     * @todo Auto-generated docblock — review and replace this description.
      */
     private function fromAcceptLanguage(RequestInterface $request): ?string
     {
@@ -188,7 +185,6 @@ final readonly class LocaleResolver
      * session.
      *
      * @return Session|null
-     * @todo Auto-generated docblock — review and replace this description.
      */
     private function session(): ?Session
     {

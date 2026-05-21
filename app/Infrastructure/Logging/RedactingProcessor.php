@@ -61,7 +61,6 @@ final class RedactingProcessor
      *
      * @param int|string $key
      * @return bool
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public static function isSensitive(int|string $key): bool
     {
@@ -79,7 +78,6 @@ final class RedactingProcessor
      *
      * @param LogRecord $record
      * @return LogRecord
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function __invoke(LogRecord $record): LogRecord
     {

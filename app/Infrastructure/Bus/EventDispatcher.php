@@ -66,7 +66,6 @@ class EventDispatcher implements EventDispatcherInterface
      * __construct.
      *
      * @param LoggerInterface|null $logger
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function __construct(?LoggerInterface $logger = null)
     {
@@ -183,7 +182,6 @@ class EventDispatcher implements EventDispatcherInterface
      *
      * @param callable $listener
      * @return string
-     * @todo Auto-generated docblock — review and replace this description.
      */
     private function describeListener(callable $listener): string
     {

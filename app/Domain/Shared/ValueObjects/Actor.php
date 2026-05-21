@@ -21,7 +21,6 @@ final readonly class Actor
      *
      * @param int    $id
      * @param string $label
-     * @todo Auto-generated docblock — review and replace this description.
      */
     private function __construct(
         public int $id,
@@ -35,7 +34,6 @@ final readonly class Actor
      * @param int $userId
      * @return self
      * @throws \InvalidArgumentException
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public static function user(int $userId): self
     {
@@ -53,7 +51,6 @@ final readonly class Actor
      *
      * @param string $label
      * @return self
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public static function system(string $label = 'system'): self
     {
@@ -64,7 +61,6 @@ final readonly class Actor
      * isSystem.
      *
      * @return bool
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function isSystem(): bool
     {

@@ -161,7 +161,6 @@ class CookieRepository implements CookieRepositoryInterface
      *
      * @param \Throwable $e
      * @return bool
-     * @todo Auto-generated docblock — review and replace this description.
      */
     private function isDuplicateKey(\Throwable $e): bool
     {
@@ -176,7 +175,6 @@ class CookieRepository implements CookieRepositoryInterface
      *
      * @param Cookie $cookie
      * @return void
-     * @todo Auto-generated docblock — review and replace this description.
      */
     private function dispatchPendingEvents(Cookie $cookie): void
     {
@@ -521,7 +519,6 @@ class CookieRepository implements CookieRepositoryInterface
      * @param int    $expectedVersion
      * @return never
      * @throws DomainException
-     * @todo Auto-generated docblock — review and replace this description.
      */
     private function raiseConcurrentModification(Cookie $cookie, int $expectedVersion): never
     {

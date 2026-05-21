@@ -215,7 +215,6 @@ final class Cookie
      * getVersion.
      *
      * @return int
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function getVersion(): int
     {
@@ -296,7 +295,6 @@ final class Cookie
      *
      * @return void
      * @throws DomainException
-     * @todo Auto-generated docblock — review and replace this description.
      */
     private function assertNotDeleted(): void
     {
@@ -479,7 +477,6 @@ final class Cookie
      * getId.
      *
      * @return int|null
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function getId(): ?int
     {
@@ -490,7 +487,6 @@ final class Cookie
      * getName.
      *
      * @return CookieName
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function getName(): CookieName
     {
@@ -501,7 +497,6 @@ final class Cookie
      * getDescription.
      *
      * @return string|null
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function getDescription(): ?string
     {
@@ -512,7 +507,6 @@ final class Cookie
      * getPrice.
      *
      * @return CookiePrice
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function getPrice(): CookiePrice
     {
@@ -523,7 +517,6 @@ final class Cookie
      * getStock.
      *
      * @return int
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function getStock(): int
     {
@@ -534,7 +527,6 @@ final class Cookie
      * getIsActive.
      *
      * @return bool
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function getIsActive(): bool
     {
@@ -545,7 +537,6 @@ final class Cookie
      * getCreatedAt.
      *
      * @return string|null
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function getCreatedAt(): ?string
     {
@@ -556,7 +547,6 @@ final class Cookie
      * getUpdatedAt.
      *
      * @return string|null
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function getUpdatedAt(): ?string
     {
@@ -567,7 +557,6 @@ final class Cookie
      * getDeletedAt.
      *
      * @return string|null
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function getDeletedAt(): ?string
     {

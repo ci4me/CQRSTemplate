@@ -37,7 +37,6 @@ final readonly class UpdateCookieCommand
      * @param bool        $isActive
      * @param Actor       $updatedBy
      * @param int|null    $expectedVersion
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function __construct(
         public int $id,

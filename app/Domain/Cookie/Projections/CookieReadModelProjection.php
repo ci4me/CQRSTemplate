@@ -51,7 +51,6 @@ final class CookieReadModelProjection implements ProjectionInterface
      * name.
      *
      * @return string
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function name(): string
     {
@@ -77,7 +76,6 @@ final class CookieReadModelProjection implements ProjectionInterface
      *
      * @param object $event
      * @return void
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function apply(object $event): void
     {
@@ -95,7 +93,6 @@ final class CookieReadModelProjection implements ProjectionInterface
      * truncate.
      *
      * @return void
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function truncate(): void
     {
@@ -107,7 +104,6 @@ final class CookieReadModelProjection implements ProjectionInterface
      *
      * @param callable|null $progressCallback
      * @return void
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function rebuildFromSource(?callable $progressCallback = null): void
     {
@@ -253,7 +249,6 @@ final class CookieReadModelProjection implements ProjectionInterface
      *
      * @param CookieCreatedEvent $event
      * @return void
-     * @todo Auto-generated docblock — review and replace this description.
      */
     private function onCreated(CookieCreatedEvent $event): void
     {
@@ -269,7 +264,6 @@ final class CookieReadModelProjection implements ProjectionInterface
      *
      * @param CookieUpdatedEvent $event
      * @return void
-     * @todo Auto-generated docblock — review and replace this description.
      */
     private function onUpdated(CookieUpdatedEvent $event): void
     {
@@ -285,7 +279,6 @@ final class CookieReadModelProjection implements ProjectionInterface
      *
      * @param CookieDeletedEvent $event
      * @return void
-     * @todo Auto-generated docblock — review and replace this description.
      */
     private function onDeleted(CookieDeletedEvent $event): void
     {
@@ -305,7 +298,6 @@ final class CookieReadModelProjection implements ProjectionInterface
      *
      * @param CookieRestoredEvent $event
      * @return void
-     * @todo Auto-generated docblock — review and replace this description.
      */
     private function onRestored(CookieRestoredEvent $event): void
     {
@@ -321,7 +313,6 @@ final class CookieReadModelProjection implements ProjectionInterface
      *
      * @param CookieStockChangedEvent $event
      * @return void
-     * @todo Auto-generated docblock — review and replace this description.
      */
     private function onStockChanged(CookieStockChangedEvent $event): void
     {
@@ -345,7 +336,6 @@ final class CookieReadModelProjection implements ProjectionInterface
      * @param Cookie $cookie
      * @param string $targetTable
      * @return void
-     * @todo Auto-generated docblock — review and replace this description.
      */
     private function upsertFromEntity(Cookie $cookie, string $targetTable = 'cookie_read_model'): void
     {

@@ -12,8 +12,6 @@ use Psr\Log\LoggerInterface;
 
 /**
  * GetUserByIdHandler.
- *
- * @todo Auto-generated docblock — review and replace this description.
  */
 final readonly class GetUserByIdHandler
 {
@@ -23,7 +21,6 @@ final readonly class GetUserByIdHandler
      * @param UserRepositoryInterface $repository
      * @param LoggerInterface         $logger
      * @param Logging                 $loggingConfig
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function __construct(
         private UserRepositoryInterface $repository,
@@ -37,7 +34,6 @@ final readonly class GetUserByIdHandler
      *
      * @param GetUserByIdQuery $query
      * @return UserDTO|null
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function handle(GetUserByIdQuery $query): ?UserDTO
     {
@@ -57,7 +53,6 @@ final readonly class GetUserByIdHandler
      * @param User|null $result
      * @param float     $durationMs
      * @return void
-     * @todo Auto-generated docblock — review and replace this description.
      */
     private function logQueryExecution(int $id, ?User $result, float $durationMs): void
     {
@@ -91,7 +86,6 @@ final readonly class GetUserByIdHandler
      * @param float     $durationMs
      * @param bool      $isSlowQuery
      * @return void
-     * @todo Auto-generated docblock — review and replace this description.
      */
     private function logQuery(int $id, ?User $result, float $durationMs, bool $isSlowQuery): void
     {

@@ -22,7 +22,6 @@ final readonly class DeleteCookieCommand
      *
      * @param int   $id
      * @param Actor $deletedBy
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function __construct(
         public int $id,

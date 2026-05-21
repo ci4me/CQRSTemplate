@@ -6,8 +6,6 @@ namespace App\Infrastructure\Auth\Commands\LogoutUser;
 
 /**
  * LogoutUserCommand.
- *
- * @todo Auto-generated docblock — review and replace this description.
  */
 final readonly class LogoutUserCommand
 {
@@ -17,7 +15,6 @@ final readonly class LogoutUserCommand
      * @param string      $token
      * @param string|null $refreshToken
      * @param int|null    $userId
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function __construct(
         public string $token,

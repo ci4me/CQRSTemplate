@@ -348,7 +348,6 @@ final class User
      * getId.
      *
      * @return int|null
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function getId(): ?int
     {
@@ -359,7 +358,6 @@ final class User
      * getName.
      *
      * @return UserName
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function getName(): UserName
     {
@@ -370,7 +368,6 @@ final class User
      * getEmail.
      *
      * @return Email
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function getEmail(): Email
     {
@@ -381,7 +378,6 @@ final class User
      * getHashedPassword.
      *
      * @return HashedPassword
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function getHashedPassword(): HashedPassword
     {
@@ -392,7 +388,6 @@ final class User
      * getRole.
      *
      * @return UserRole
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function getRole(): UserRole
     {
@@ -403,7 +398,6 @@ final class User
      * getStatus.
      *
      * @return UserStatus
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function getStatus(): UserStatus
     {
@@ -414,7 +408,6 @@ final class User
      * getFailedLoginAttempts.
      *
      * @return int
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function getFailedLoginAttempts(): int
     {
@@ -425,7 +418,6 @@ final class User
      * getLockedUntil.
      *
      * @return \DateTimeImmutable|null
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function getLockedUntil(): ?\DateTimeImmutable
     {
@@ -436,7 +428,6 @@ final class User
      * getCreatedAt.
      *
      * @return \DateTimeImmutable
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function getCreatedAt(): \DateTimeImmutable
     {
@@ -447,7 +438,6 @@ final class User
      * getUpdatedAt.
      *
      * @return \DateTimeImmutable|null
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function getUpdatedAt(): ?\DateTimeImmutable
     {
@@ -458,7 +448,6 @@ final class User
      * getDeletedAt.
      *
      * @return \DateTimeImmutable|null
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function getDeletedAt(): ?\DateTimeImmutable
     {

@@ -67,7 +67,6 @@ final class JwtAuthenticationMiddleware implements FilterInterface
      * @param UserRepository|null           $userRepository
      * @param SessionManagementService|null $sessionManager
      * @param LoggerInterface|null          $logger
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function __construct(
         ?JwtService $jwtService = null,

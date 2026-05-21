@@ -81,7 +81,6 @@ final readonly class StateMachine
      * @param State|string $from
      * @param State|string $to
      * @return bool
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function canTransition(State|string $from, State|string $to): bool
     {
@@ -107,7 +106,6 @@ final readonly class StateMachine
      *
      * @param State|string $state
      * @return bool
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function isTerminal(State|string $state): bool
     {
@@ -119,7 +117,6 @@ final readonly class StateMachine
      *
      * @param State|string $value
      * @return string
-     * @todo Auto-generated docblock — review and replace this description.
      */
     private function nameOf(State|string $value): string
     {

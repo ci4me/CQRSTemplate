@@ -33,7 +33,6 @@ final class AuthController extends ResourceController
      * register.
      *
      * @return ResponseInterface
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function register(): ResponseInterface
     {
@@ -71,7 +70,6 @@ final class AuthController extends ResourceController
      * login.
      *
      * @return ResponseInterface
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function login(): ResponseInterface
     {
@@ -119,7 +117,6 @@ final class AuthController extends ResourceController
      * logout.
      *
      * @return ResponseInterface
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function logout(): ResponseInterface
     {
@@ -167,7 +164,6 @@ final class AuthController extends ResourceController
      * refresh.
      *
      * @return ResponseInterface
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function refresh(): ResponseInterface
     {
@@ -201,7 +197,6 @@ final class AuthController extends ResourceController
      * requestPasswordReset.
      *
      * @return ResponseInterface
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function requestPasswordReset(): ResponseInterface
     {
@@ -239,7 +234,6 @@ final class AuthController extends ResourceController
      * resetPassword.
      *
      * @return ResponseInterface
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function resetPassword(): ResponseInterface
     {
@@ -273,7 +267,6 @@ final class AuthController extends ResourceController
      * me.
      *
      * @return ResponseInterface
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function me(): ResponseInterface
     {

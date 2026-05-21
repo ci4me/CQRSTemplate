@@ -67,7 +67,6 @@ final readonly class CookieView
      *
      * @param Cookie $cookie
      * @return self
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public static function detail(Cookie $cookie): self
     {

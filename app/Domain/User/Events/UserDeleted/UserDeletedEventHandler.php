@@ -23,7 +23,6 @@ final readonly class UserDeletedEventHandler
      * __construct.
      *
      * @param LoggerInterface $logger
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function __construct(
         private LoggerInterface $logger
@@ -35,7 +34,6 @@ final readonly class UserDeletedEventHandler
      *
      * @param UserDeletedEvent $event
      * @return void
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function __invoke(UserDeletedEvent $event): void
     {

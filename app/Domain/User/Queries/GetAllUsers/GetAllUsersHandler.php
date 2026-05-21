@@ -31,7 +31,6 @@ final readonly class GetAllUsersHandler
      * @param UserRepositoryInterface $repository
      * @param LoggerInterface         $logger
      * @param Logging                 $loggingConfig
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function __construct(
         private UserRepositoryInterface $repository,

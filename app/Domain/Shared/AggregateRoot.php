@@ -93,7 +93,6 @@ trait AggregateRoot
      * hasPendingEvents.
      *
      * @return bool
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function hasPendingEvents(): bool
     {

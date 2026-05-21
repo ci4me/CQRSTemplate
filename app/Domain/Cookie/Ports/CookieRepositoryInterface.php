@@ -36,7 +36,6 @@ interface CookieRepositoryInterface
      *
      * @param int $id
      * @return Cookie|null
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function findById(int $id): ?Cookie;
 
@@ -65,7 +64,6 @@ interface CookieRepositoryInterface
      *
      * @param string $name
      * @return bool
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function existsByName(string $name): bool;
 
@@ -75,7 +73,6 @@ interface CookieRepositoryInterface
      * @param string $name
      * @param int    $excludeId
      * @return bool
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function existsByNameExcludingId(string $name, int $excludeId): bool;
 
@@ -85,7 +82,6 @@ interface CookieRepositoryInterface
      * @param int        $id
      * @param Actor|null $actor
      * @return bool
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function delete(int $id, ?Actor $actor = null): bool;
 

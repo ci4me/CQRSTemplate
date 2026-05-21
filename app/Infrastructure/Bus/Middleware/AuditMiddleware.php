@@ -56,7 +56,6 @@ final readonly class AuditMiddleware implements CommandMiddlewareInterface
      * @param object   $command
      * @param callable $next
      * @return mixed
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function handle(object $command, callable $next): mixed
     {
@@ -100,7 +99,6 @@ final readonly class AuditMiddleware implements CommandMiddlewareInterface
      * @param \Throwable|null $error
      * @param float           $durationMs
      * @return void
-     * @todo Auto-generated docblock — review and replace this description.
      */
     private function writeRow(
         object $command,
@@ -281,7 +279,6 @@ final readonly class AuditMiddleware implements CommandMiddlewareInterface
      *
      * @param mixed $value
      * @return mixed
-     * @todo Auto-generated docblock — review and replace this description.
      */
     private function normaliseForJson(mixed $value): mixed
     {

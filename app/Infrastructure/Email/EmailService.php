@@ -32,7 +32,6 @@ final class EmailService
      * __construct.
      *
      * @param LoggerInterface $logger
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function __construct(
         private readonly LoggerInterface $logger
@@ -114,7 +113,6 @@ final class EmailService
      * @param string $subject
      * @param string $message
      * @return bool
-     * @todo Auto-generated docblock — review and replace this description.
      */
     private function sendEmail(string $to, string $subject, string $message): bool
     {
@@ -132,7 +130,6 @@ final class EmailService
      * @param string $subject
      * @param string $message
      * @return bool
-     * @todo Auto-generated docblock — review and replace this description.
      */
     private function dispatchViaTransport(string $to, string $subject, string $message): bool
     {
@@ -159,7 +156,6 @@ final class EmailService
      * @param string $subject
      * @param string $message
      * @return bool
-     * @todo Auto-generated docblock — review and replace this description.
      */
     private function dispatchViaCodeIgniter(string $to, string $subject, string $message): bool
     {
@@ -226,7 +222,6 @@ final class EmailService
      * @param string $key
      * @param string $default
      * @return string
-     * @todo Auto-generated docblock — review and replace this description.
      */
     private function envOr(string $key, string $default): string
     {

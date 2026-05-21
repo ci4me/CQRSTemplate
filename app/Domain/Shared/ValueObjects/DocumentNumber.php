@@ -24,7 +24,6 @@ final readonly class DocumentNumber
      * @param string $scope
      * @param int    $value
      * @param string $formatted
-     * @todo Auto-generated docblock — review and replace this description.
      */
     private function __construct(
         public string $series,
@@ -71,7 +70,6 @@ final readonly class DocumentNumber
      * __toString.
      *
      * @return string
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function __toString(): string
     {
@@ -83,7 +81,6 @@ final readonly class DocumentNumber
      *
      * @return void
      * @throws \InvalidArgumentException
-     * @todo Auto-generated docblock — review and replace this description.
      */
     private function assertValid(): void
     {

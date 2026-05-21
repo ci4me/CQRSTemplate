@@ -14,8 +14,6 @@ use App\Infrastructure\Persistence\Repositories\UserRepository;
 
 /**
  * FirebaseJwtAdapter.
- *
- * @todo Auto-generated docblock — review and replace this description.
  */
 final readonly class FirebaseJwtAdapter implements AuthenticationServiceInterface
 {
@@ -25,7 +23,6 @@ final readonly class FirebaseJwtAdapter implements AuthenticationServiceInterfac
      * @param JwtService              $jwtService
      * @param TokenBlacklistInterface $blacklist
      * @param UserRepository          $userRepository
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function __construct(
         private JwtService $jwtService,
@@ -40,7 +37,6 @@ final readonly class FirebaseJwtAdapter implements AuthenticationServiceInterfac
      * @param User   $user
      * @param string $password
      * @return AuthenticationResult
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function authenticate(User $user, string $password): AuthenticationResult
     {
@@ -71,7 +67,6 @@ final readonly class FirebaseJwtAdapter implements AuthenticationServiceInterfac
      *
      * @param string $token
      * @return User|null
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function validateToken(string $token): ?User
     {
@@ -98,7 +93,6 @@ final readonly class FirebaseJwtAdapter implements AuthenticationServiceInterfac
      *
      * @param User $user
      * @return AccessToken
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function generateToken(User $user): AccessToken
     {

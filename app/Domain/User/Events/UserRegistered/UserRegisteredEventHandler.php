@@ -8,8 +8,6 @@ use Psr\Log\LoggerInterface;
 
 /**
  * UserRegisteredEventHandler.
- *
- * @todo Auto-generated docblock — review and replace this description.
  */
 final readonly class UserRegisteredEventHandler
 {
@@ -17,7 +15,6 @@ final readonly class UserRegisteredEventHandler
      * __construct.
      *
      * @param LoggerInterface $logger
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function __construct(
         private LoggerInterface $logger,
@@ -29,7 +26,6 @@ final readonly class UserRegisteredEventHandler
      *
      * @param UserRegisteredEvent $event
      * @return void
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function __invoke(UserRegisteredEvent $event): void
     {

@@ -51,7 +51,6 @@ final class DocumentNumberingService
      * @param int    $padLength
      * @return DocumentNumber
      * @throws \InvalidArgumentException
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function allocate(
         string $series,
@@ -196,7 +195,6 @@ final class DocumentNumberingService
      * @param int    $padLength
      * @param string $suffix
      * @return string
-     * @todo Auto-generated docblock — review and replace this description.
      */
     private function format(string $prefix, int $value, int $padLength, string $suffix): string
     {

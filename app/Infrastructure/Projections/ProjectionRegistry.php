@@ -30,7 +30,6 @@ final class ProjectionRegistry
      * __construct.
      *
      * @param EventDispatcher $dispatcher
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function __construct(private readonly EventDispatcher $dispatcher)
     {
@@ -41,7 +40,6 @@ final class ProjectionRegistry
      *
      * @param ProjectionInterface $projection
      * @return void
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function register(ProjectionInterface $projection): void
     {
@@ -71,7 +69,6 @@ final class ProjectionRegistry
      * @param string $name
      * @return ProjectionInterface
      * @throws \RuntimeException
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function get(string $name): ProjectionInterface
     {

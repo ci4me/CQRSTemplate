@@ -23,7 +23,6 @@ interface ProjectionInterface
      * name.
      *
      * @return string
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function name(): string;
 

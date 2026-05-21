@@ -39,7 +39,6 @@ final class TokenBlacklistService implements TokenBlacklistInterface
      * __construct.
      *
      * @param CacheInterface $cache
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function __construct(
         private CacheInterface $cache
@@ -52,7 +51,6 @@ final class TokenBlacklistService implements TokenBlacklistInterface
      *
      * @param string $token
      * @return void
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function blacklist(string $token): void
     {
@@ -74,7 +72,6 @@ final class TokenBlacklistService implements TokenBlacklistInterface
      *
      * @param string $token
      * @return bool
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function isBlacklisted(string $token): bool
     {
@@ -138,7 +135,6 @@ final class TokenBlacklistService implements TokenBlacklistInterface
      * cleanupIfNeeded.
      *
      * @return void
-     * @todo Auto-generated docblock — review and replace this description.
      */
     private function cleanupIfNeeded(): void
     {
@@ -165,7 +161,6 @@ final class TokenBlacklistService implements TokenBlacklistInterface
      * checkCapacityWarning.
      *
      * @return void
-     * @todo Auto-generated docblock — review and replace this description.
      */
     private function checkCapacityWarning(): void
     {
@@ -191,7 +186,6 @@ final class TokenBlacklistService implements TokenBlacklistInterface
      * getCounter.
      *
      * @return int
-     * @todo Auto-generated docblock — review and replace this description.
      */
     private function getCounter(): int
     {
@@ -203,7 +197,6 @@ final class TokenBlacklistService implements TokenBlacklistInterface
      * incrementCounter.
      *
      * @return void
-     * @todo Auto-generated docblock — review and replace this description.
      */
     private function incrementCounter(): void
     {

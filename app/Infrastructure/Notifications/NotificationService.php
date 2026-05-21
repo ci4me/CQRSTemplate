@@ -123,7 +123,6 @@ final class NotificationService
      *
      * @param int $userId
      * @return int
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function countUnread(int $userId): int
     {
@@ -158,7 +157,6 @@ final class NotificationService
      *
      * @param int $userId
      * @return int
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function markAllRead(int $userId): int
     {

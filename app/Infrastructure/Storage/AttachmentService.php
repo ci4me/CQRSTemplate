@@ -56,7 +56,6 @@ final class AttachmentService
      * @param int|null $tenantId
      * @return AttachmentRef
      * @throws \InvalidArgumentException
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function attachTo(
         string $attachableType,
@@ -202,7 +201,6 @@ final class AttachmentService
      * @param string $id
      * @param string $name
      * @return string
-     * @todo Auto-generated docblock — review and replace this description.
      */
     private function buildKey(string $type, string $id, string $name): string
     {
@@ -225,7 +223,6 @@ final class AttachmentService
      *
      * @param string $name
      * @return string
-     * @todo Auto-generated docblock — review and replace this description.
      */
     private function safeName(string $name): string
     {

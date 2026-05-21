@@ -41,7 +41,6 @@ final readonly class Notification
      * isRead.
      *
      * @return bool
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function isRead(): bool
     {

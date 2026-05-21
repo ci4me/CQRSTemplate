@@ -16,8 +16,6 @@ use Psr\Log\LoggerInterface;
 
 /**
  * LoginUserHandler.
- *
- * @todo Auto-generated docblock — review and replace this description.
  */
 final readonly class LoginUserHandler
 {
@@ -30,7 +28,6 @@ final readonly class LoginUserHandler
      * @param LoginAttemptTracker            $loginAttemptTracker
      * @param SecurityEventService           $securityEvents
      * @param LoggerInterface                $logger
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function __construct(
         private UserRepository $userRepository,
@@ -47,7 +44,6 @@ final readonly class LoginUserHandler
      *
      * @param LoginUserCommand $command
      * @return AuthenticationResult
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function handle(LoginUserCommand $command): AuthenticationResult
     {

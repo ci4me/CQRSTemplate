@@ -23,7 +23,6 @@ final class AuthContext
      *
      * @param int|null $userId
      * @return void
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public static function setCurrentUserId(?int $userId): void
     {
@@ -34,7 +33,6 @@ final class AuthContext
      * getCurrentUserId.
      *
      * @return int
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public static function getCurrentUserId(): int
     {
@@ -45,7 +43,6 @@ final class AuthContext
      * reset.
      *
      * @return void
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public static function reset(): void
     {

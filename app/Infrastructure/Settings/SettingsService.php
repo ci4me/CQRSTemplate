@@ -132,7 +132,6 @@ final class SettingsService
      * @param string   $key
      * @param int|null $tenantId
      * @return bool
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function has(string $key, ?int $tenantId = null): bool
     {
@@ -183,7 +182,6 @@ final class SettingsService
      * @param string   $key
      * @param int|null $tenantId
      * @return int|null
-     * @todo Auto-generated docblock — review and replace this description.
      */
     private function existingRowId(string $key, ?int $tenantId): ?int
     {
@@ -200,7 +198,6 @@ final class SettingsService
      *
      * @param string $json
      * @return mixed
-     * @todo Auto-generated docblock — review and replace this description.
      */
     private function decodeValue(string $json): mixed
     {
@@ -216,7 +213,6 @@ final class SettingsService
      *
      * @param mixed $value
      * @return string
-     * @todo Auto-generated docblock — review and replace this description.
      */
     private function encodeValue(mixed $value): string
     {
@@ -229,7 +225,6 @@ final class SettingsService
      * @param string   $key
      * @param int|null $tenantId
      * @return string
-     * @todo Auto-generated docblock — review and replace this description.
      */
     private function cacheKey(string $key, ?int $tenantId): string
     {

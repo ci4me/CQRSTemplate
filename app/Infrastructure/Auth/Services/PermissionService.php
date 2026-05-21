@@ -43,7 +43,6 @@ readonly class PermissionService
      * @param Actor      $actor
      * @param Permission $permission
      * @return bool
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function allows(Actor $actor, Permission $permission): bool
     {
@@ -70,7 +69,6 @@ readonly class PermissionService
      * @param Actor      $actor
      * @param Permission $permission
      * @return bool
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function denies(Actor $actor, Permission $permission): bool
     {
@@ -112,7 +110,6 @@ readonly class PermissionService
      * @param Actor      $actor
      * @param Permission $permission
      * @return bool
-     * @todo Auto-generated docblock — review and replace this description.
      */
     private function rbacCheck(Actor $actor, Permission $permission): bool
     {

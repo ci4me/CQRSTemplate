@@ -40,7 +40,6 @@ final readonly class Money implements \JsonSerializable
      *
      * @param int      $amountMinor
      * @param Currency $currency
-     * @todo Auto-generated docblock — review and replace this description.
      */
     private function __construct(int $amountMinor, Currency $currency)
     {
@@ -160,7 +159,6 @@ final readonly class Money implements \JsonSerializable
      * amountMinor.
      *
      * @return int
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function amountMinor(): int
     {
@@ -171,7 +169,6 @@ final readonly class Money implements \JsonSerializable
      * toDecimalString.
      *
      * @return string
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function toDecimalString(): string
     {
@@ -187,7 +184,6 @@ final readonly class Money implements \JsonSerializable
      * format.
      *
      * @return string
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function format(): string
     {
@@ -200,7 +196,6 @@ final readonly class Money implements \JsonSerializable
      * __toString.
      *
      * @return string
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function __toString(): string
     {
@@ -228,7 +223,6 @@ final readonly class Money implements \JsonSerializable
      * isZero.
      *
      * @return bool
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function isZero(): bool
     {
@@ -239,7 +233,6 @@ final readonly class Money implements \JsonSerializable
      * isNegative.
      *
      * @return bool
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function isNegative(): bool
     {
@@ -251,7 +244,6 @@ final readonly class Money implements \JsonSerializable
      *
      * @param self $other
      * @return bool
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function equals(self $other): bool
     {
@@ -264,7 +256,6 @@ final readonly class Money implements \JsonSerializable
      *
      * @param self $other
      * @return bool
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function greaterThan(self $other): bool
     {
@@ -277,7 +268,6 @@ final readonly class Money implements \JsonSerializable
      *
      * @param self $other
      * @return bool
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function lessThan(self $other): bool
     {
@@ -290,7 +280,6 @@ final readonly class Money implements \JsonSerializable
      *
      * @param self $other
      * @return self
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function add(self $other): self
     {
@@ -303,7 +292,6 @@ final readonly class Money implements \JsonSerializable
      *
      * @param self $other
      * @return self
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function subtract(self $other): self
     {
@@ -316,7 +304,6 @@ final readonly class Money implements \JsonSerializable
      *
      * @param int $multiplier
      * @return self
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function multiply(int $multiplier): self
     {
@@ -327,7 +314,6 @@ final readonly class Money implements \JsonSerializable
      * absoluteDecimal.
      *
      * @return string
-     * @todo Auto-generated docblock — review and replace this description.
      */
     private function absoluteDecimal(): string
     {
@@ -346,7 +332,6 @@ final readonly class Money implements \JsonSerializable
      * @param self $other
      * @return void
      * @throws \InvalidArgumentException
-     * @todo Auto-generated docblock — review and replace this description.
      */
     private function assertSameCurrency(self $other): void
     {
@@ -366,7 +351,6 @@ final readonly class Money implements \JsonSerializable
      * @param string $value
      * @return string
      * @throws ValidationException
-     * @todo Auto-generated docblock — review and replace this description.
      */
     private static function cleanDecimalInput(string $value): string
     {

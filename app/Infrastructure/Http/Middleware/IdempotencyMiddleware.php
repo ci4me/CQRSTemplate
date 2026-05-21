@@ -159,7 +159,6 @@ final class IdempotencyMiddleware implements FilterInterface
      *
      * @param RequestInterface $request
      * @return bool
-     * @todo Auto-generated docblock — review and replace this description.
      */
     private function shouldProcess(RequestInterface $request): bool
     {
@@ -171,7 +170,6 @@ final class IdempotencyMiddleware implements FilterInterface
      *
      * @param string $key
      * @return bool
-     * @todo Auto-generated docblock — review and replace this description.
      */
     private function isValidKey(string $key): bool
     {
@@ -187,7 +185,6 @@ final class IdempotencyMiddleware implements FilterInterface
      *
      * @param RequestInterface $request
      * @return int
-     * @todo Auto-generated docblock — review and replace this description.
      */
     private function actorId(RequestInterface $request): int
     {
@@ -199,7 +196,6 @@ final class IdempotencyMiddleware implements FilterInterface
      *
      * @param RequestInterface $request
      * @return string
-     * @todo Auto-generated docblock — review and replace this description.
      */
     private function requestHash(RequestInterface $request): string
     {

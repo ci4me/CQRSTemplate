@@ -36,7 +36,6 @@ final readonly class OutboundHttpClient
      * @param float                  $timeoutSeconds
      * @param array<mixed>           $retryStatuses
      * @param array<mixed>           $backoffSeconds
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function __construct(
         private HttpTransportInterface $transport,
@@ -202,7 +201,6 @@ final readonly class OutboundHttpClient
      *
      * @param string $method
      * @return bool
-     * @todo Auto-generated docblock — review and replace this description.
      */
     private function isMutating(string $method): bool
     {
@@ -214,7 +212,6 @@ final readonly class OutboundHttpClient
      *
      * @param int $attempts
      * @return bool
-     * @todo Auto-generated docblock — review and replace this description.
      */
     private function shouldRetry(int $attempts): bool
     {
@@ -226,7 +223,6 @@ final readonly class OutboundHttpClient
      *
      * @param int $attempts
      * @return void
-     * @todo Auto-generated docblock — review and replace this description.
      */
     private function sleepBackoff(int $attempts): void
     {
@@ -248,7 +244,6 @@ final readonly class OutboundHttpClient
      * @param string       $url
      * @return void
      * @throws HttpException
-     * @todo Auto-generated docblock — review and replace this description.
      */
     private function ensureSuccessful(HttpResponse $response, string $method, string $url): void
     {

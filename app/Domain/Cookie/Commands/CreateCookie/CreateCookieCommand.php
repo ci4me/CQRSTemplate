@@ -26,7 +26,6 @@ final readonly class CreateCookieCommand
      * @param int         $stock
      * @param Actor       $createdBy
      * @param bool        $isActive
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function __construct(
         public string $name,

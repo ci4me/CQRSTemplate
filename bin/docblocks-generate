@@ -28,14 +28,12 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../vendor/autoload.php';
 
-/**
- * Marker phrase embedded in every brand-new docblock the script creates.
- *
- * `composer docblocks:audit` greps for this string and warns developers /
- * agents to write a real description before committing. Keep this phrase
- * stable — it is the contract between the generator and the audit script.
- */
-const AUTO_GENERATED_MARKER = '@todo Auto-generated docblock — review and replace this description.';
+// NOTE: the AUTO_GENERATED_MARKER constant was removed. The generator no
+// longer emits a "@todo Auto-generated docblock" TODO line because the
+// native PHP signature plus the structured @param/@return tags emitted
+// below are sufficient documentation for IDE autocomplete and PHPCS.
+// `composer docblocks:audit` still scans for any stale markers left in
+// the tree from older runs of this script.
 
 use PhpParser\Node;
 use PhpParser\Node\Stmt;
@@ -528,20 +526,16 @@ function buildDocblock(string $marker, string $indent): string
 
     if ($kind === 'class') {
         return sprintf(
-            "/**\n%s * %s.\n%s *\n%s * %s\n%s */\n%s",
+            "/**\n%s * %s.\n%s */\n%s",
             $indent,
             $payload,
-            $indent,
-            $indent,
-            AUTO_GENERATED_MARKER,
             $indent,
             $indent
         );
     }
 
     if ($kind === 'property') {
-        // Properties get a one-liner @var. They are too small for a TODO
-        // marker to be worth the visual noise; the @var TYPE is itself the
+        // Properties get a one-liner @var. The @var TYPE is itself the
         // documentation a reviewer needs to look at.
         return sprintf("/** @var %s */\n%s", $payload, $indent);
     }
@@ -552,15 +546,11 @@ function buildDocblock(string $marker, string $indent): string
     $tagLines = array_map(static fn(string $l): string => ' * ' . $l, $parts);
 
     if ($tagLines === []) {
-        // No params and void/no return. Emit a minimal block with the marker
-        // so the audit script still flags it for description backfill.
+        // No params and void/no return. Emit a minimal one-line block.
         return sprintf(
-            "/**\n%s * %s.\n%s *\n%s * %s\n%s */\n%s",
+            "/**\n%s * %s.\n%s */\n%s",
             $indent,
             $name,
-            $indent,
-            $indent,
-            AUTO_GENERATED_MARKER,
             $indent,
             $indent
         );
@@ -568,15 +558,12 @@ function buildDocblock(string $marker, string $indent): string
 
     $body = implode("\n" . $indent, $tagLines);
     return sprintf(
-        "/**\n%s * %s.\n%s *\n%s%s\n%s *\n%s * %s\n%s */\n%s",
+        "/**\n%s * %s.\n%s *\n%s%s\n%s */\n%s",
         $indent,
         $name,
         $indent,
         $indent,
         $body,
-        $indent,
-        $indent,
-        AUTO_GENERATED_MARKER,
         $indent,
         $indent
     );

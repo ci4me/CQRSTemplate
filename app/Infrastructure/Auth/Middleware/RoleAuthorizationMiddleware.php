@@ -36,7 +36,6 @@ final readonly class RoleAuthorizationMiddleware implements FilterInterface
      * __construct.
      *
      * @param LoggerInterface|null $logger
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function __construct(
         ?LoggerInterface $logger = null

@@ -13,8 +13,6 @@ use Psr\Log\LoggerInterface;
 
 /**
  * RestoreCookieHandler.
- *
- * @todo Auto-generated docblock — review and replace this description.
  */
 final readonly class RestoreCookieHandler
 {
@@ -24,7 +22,6 @@ final readonly class RestoreCookieHandler
      * @param CookieRepositoryInterface $repository
      * @param EventDispatcherInterface  $eventDispatcher
      * @param LoggerInterface           $logger
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function __construct(
         private CookieRepositoryInterface $repository,
@@ -40,7 +37,6 @@ final readonly class RestoreCookieHandler
      * @return void
      * @throws DomainException
      * @throws \RuntimeException
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function handle(RestoreCookieCommand $command): void
     {

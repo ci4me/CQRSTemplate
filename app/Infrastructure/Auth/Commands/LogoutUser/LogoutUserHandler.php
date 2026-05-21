@@ -10,8 +10,6 @@ use Psr\Log\LoggerInterface;
 
 /**
  * LogoutUserHandler.
- *
- * @todo Auto-generated docblock — review and replace this description.
  */
 final readonly class LogoutUserHandler
 {
@@ -21,7 +19,6 @@ final readonly class LogoutUserHandler
      * @param TokenBlacklistInterface  $blacklistService
      * @param SessionManagementService $sessionManager
      * @param LoggerInterface          $logger
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function __construct(
         private TokenBlacklistInterface $blacklistService,
@@ -35,7 +32,6 @@ final readonly class LogoutUserHandler
      *
      * @param LogoutUserCommand $command
      * @return void
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function handle(LogoutUserCommand $command): void
     {

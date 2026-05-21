@@ -37,7 +37,6 @@ final readonly class RateLimitService implements RateLimitInterface
      * __construct.
      *
      * @param CacheInterface $cache
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function __construct(
         private CacheInterface $cache

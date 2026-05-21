@@ -53,7 +53,6 @@ final readonly class TransactionMiddleware implements CommandMiddlewareInterface
      * @param callable $next
      * @return mixed
      * @throws \RuntimeException
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function handle(object $command, callable $next): mixed
     {

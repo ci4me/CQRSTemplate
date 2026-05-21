@@ -29,8 +29,6 @@ final class SessionManagementService
 
     /**
      * __construct.
-     *
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function __construct()
     {

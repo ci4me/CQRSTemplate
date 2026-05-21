@@ -6,8 +6,6 @@ namespace App\Infrastructure\Bus;
 
 /**
  * HandlerInterface.
- *
- * @todo Auto-generated docblock — review and replace this description.
  */
 interface HandlerInterface
 {
@@ -16,7 +14,6 @@ interface HandlerInterface
      *
      * @param object $message
      * @return mixed
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function handle(object $message): mixed;
 }

@@ -40,7 +40,6 @@ final readonly class RateLimitMiddleware implements FilterInterface
      *
      * @param RateLimitInterface|null $rateLimitService
      * @param LoggerInterface|null    $logger
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function __construct(
         ?RateLimitInterface $rateLimitService = null,

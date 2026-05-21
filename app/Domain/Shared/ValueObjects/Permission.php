@@ -21,7 +21,6 @@ final readonly class Permission
      * @param string $module
      * @param string $action
      * @param string $name
-     * @todo Auto-generated docblock — review and replace this description.
      */
     private function __construct(
         public string $module,
@@ -36,7 +35,6 @@ final readonly class Permission
      * @param string $value
      * @return self
      * @throws \InvalidArgumentException
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public static function fromString(string $value): self
     {
@@ -57,7 +55,6 @@ final readonly class Permission
      *
      * @param self $other
      * @return bool
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function equals(self $other): bool
     {
@@ -68,7 +65,6 @@ final readonly class Permission
      * __toString.
      *
      * @return string
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function __toString(): string
     {

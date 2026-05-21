@@ -33,7 +33,6 @@ final readonly class CreateUserHandler
      * @param UserRepositoryInterface  $repository
      * @param EventDispatcherInterface $eventDispatcher
      * @param LoggerInterface          $logger
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function __construct(
         private UserRepositoryInterface $repository,
@@ -47,7 +46,6 @@ final readonly class CreateUserHandler
      *
      * @param CreateUserCommand $command
      * @return int
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function handle(CreateUserCommand $command): int
     {
@@ -107,7 +105,6 @@ final readonly class CreateUserHandler
      * @param Email $email
      * @return void
      * @throws DomainException
-     * @todo Auto-generated docblock — review and replace this description.
      */
     private function checkEmailUniqueness(Email $email): void
     {

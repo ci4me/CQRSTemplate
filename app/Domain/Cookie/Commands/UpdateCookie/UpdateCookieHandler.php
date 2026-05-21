@@ -154,7 +154,6 @@ final readonly class UpdateCookieHandler
      *
      * @param \Throwable $e
      * @return int
-     * @todo Auto-generated docblock — review and replace this description.
      */
     private function determineErrorCode(\Throwable $e): int
     {

@@ -25,7 +25,6 @@ final readonly class AttachmentRef
      * @param int         $sizeBytes
      * @param string|null $checksumSha256
      * @param int         $uploadedBy
-     * @todo Auto-generated docblock — review and replace this description.
      */
     private function __construct(
         public int $id,
@@ -119,7 +118,6 @@ final readonly class AttachmentRef
      *
      * @return void
      * @throws \InvalidArgumentException
-     * @todo Auto-generated docblock — review and replace this description.
      */
     private function assertValid(): void
     {

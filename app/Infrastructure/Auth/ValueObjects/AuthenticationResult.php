@@ -26,7 +26,6 @@ final readonly class AuthenticationResult
      * @param string $accessToken
      * @param string $refreshToken
      * @param int    $expiresAt
-     * @todo Auto-generated docblock — review and replace this description.
      */
     private function __construct(
         private User $user,
@@ -58,7 +57,6 @@ final readonly class AuthenticationResult
      * getUser.
      *
      * @return User
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function getUser(): User
     {
@@ -69,7 +67,6 @@ final readonly class AuthenticationResult
      * getAccessToken.
      *
      * @return string
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function getAccessToken(): string
     {
@@ -80,7 +77,6 @@ final readonly class AuthenticationResult
      * getRefreshToken.
      *
      * @return string
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function getRefreshToken(): string
     {
@@ -91,7 +87,6 @@ final readonly class AuthenticationResult
      * getExpiresAt.
      *
      * @return int
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function getExpiresAt(): int
     {

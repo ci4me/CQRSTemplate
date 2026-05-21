@@ -34,7 +34,6 @@ final readonly class ResetPasswordHandler
      *
      * @param UserRepository            $userRepository
      * @param PasswordHistoryRepository $passwordHistory
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function __construct(
         private UserRepository $userRepository,
@@ -49,7 +48,6 @@ final readonly class ResetPasswordHandler
      * @param ResetPasswordCommand $command
      * @return void
      * @throws \RuntimeException
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function handle(ResetPasswordCommand $command): void
     {
@@ -160,7 +158,6 @@ final readonly class ResetPasswordHandler
      *
      * @param int $tokenId
      * @return void
-     * @todo Auto-generated docblock — review and replace this description.
      */
     private function deleteResetToken(int $tokenId): void
     {
@@ -176,7 +173,6 @@ final readonly class ResetPasswordHandler
      *
      * @param int $userId
      * @return void
-     * @todo Auto-generated docblock — review and replace this description.
      */
     private function revokeAllUserTokens(int $userId): void
     {

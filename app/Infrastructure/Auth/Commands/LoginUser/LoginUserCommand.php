@@ -6,8 +6,6 @@ namespace App\Infrastructure\Auth\Commands\LoginUser;
 
 /**
  * LoginUserCommand.
- *
- * @todo Auto-generated docblock — review and replace this description.
  */
 final readonly class LoginUserCommand
 {
@@ -18,7 +16,6 @@ final readonly class LoginUserCommand
      * @param string      $password
      * @param string|null $ipAddress
      * @param string|null $userAgent
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function __construct(
         public string $email,

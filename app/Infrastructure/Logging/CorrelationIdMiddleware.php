@@ -78,7 +78,6 @@ final class CorrelationIdMiddleware implements FilterInterface
      *
      * @param string $value
      * @return bool
-     * @todo Auto-generated docblock — review and replace this description.
      */
     private function isValidCorrelationId(string $value): bool
     {

@@ -30,7 +30,6 @@ final class BulkImportRunner
      * __construct.
      *
      * @param LoggerInterface $logger
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function __construct(private readonly LoggerInterface $logger = new NullLogger())
     {
@@ -43,7 +42,6 @@ final class BulkImportRunner
      * @param CsvReader           $reader
      * @param bool                $dryRun
      * @return ImportSummary
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function run(BulkImportInterface $importer, CsvReader $reader, bool $dryRun = false): ImportSummary
     {

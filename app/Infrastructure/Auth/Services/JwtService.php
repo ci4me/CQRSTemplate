@@ -13,8 +13,6 @@ use Psr\Log\LoggerInterface;
 
 /**
  * JwtService.
- *
- * @todo Auto-generated docblock — review and replace this description.
  */
 final readonly class JwtService implements TokenGeneratorInterface
 {
@@ -33,7 +31,6 @@ final readonly class JwtService implements TokenGeneratorInterface
      * __construct.
      *
      * @throws \RuntimeException
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function __construct()
     {
@@ -132,7 +129,6 @@ final readonly class JwtService implements TokenGeneratorInterface
      *
      * @param User $user
      * @return string
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function generateAccessToken(User $user): string
     {
@@ -155,7 +151,6 @@ final readonly class JwtService implements TokenGeneratorInterface
      *
      * @param User $user
      * @return string
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function generateRefreshToken(User $user): string
     {

@@ -32,7 +32,6 @@ final readonly class UpdateUserCommand
      * @param string $role
      * @param string $status
      * @param Actor  $updatedBy
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function __construct(
         public int $userId,

@@ -17,7 +17,6 @@ final readonly class CookieRestoredEventHandler
      * __construct.
      *
      * @param LoggerInterface $logger
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function __construct(
         private LoggerInterface $logger,
@@ -29,7 +28,6 @@ final readonly class CookieRestoredEventHandler
      *
      * @param CookieRestoredEvent $event
      * @return void
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function __invoke(CookieRestoredEvent $event): void
     {

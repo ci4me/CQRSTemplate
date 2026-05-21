@@ -41,7 +41,6 @@ final readonly class RefreshTokenHandler
      * @param JwtService                   $jwtService
      * @param UserRepository               $userRepository
      * @param TokenBlacklistInterface|null $blacklist
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function __construct(
         private JwtService $jwtService,
@@ -57,7 +56,6 @@ final readonly class RefreshTokenHandler
      * @param RefreshTokenCommand $command
      * @return AuthenticationResult
      * @throws \RuntimeException
-     * @todo Auto-generated docblock — review and replace this description.
      */
     public function handle(RefreshTokenCommand $command): AuthenticationResult
     {
@@ -166,7 +164,6 @@ final readonly class RefreshTokenHandler
      *
      * @param string $jti
      * @return bool
-     * @todo Auto-generated docblock — review and replace this description.
      */
     private function isRefreshTokenRevoked(string $jti): bool
     {
@@ -185,7 +182,6 @@ final readonly class RefreshTokenHandler
      *
      * @param string $jti
      * @return void
-     * @todo Auto-generated docblock — review and replace this description.
      */
     private function revokeRefreshToken(string $jti): void
     {
@@ -206,7 +202,6 @@ final readonly class RefreshTokenHandler
      * @param string $jti
      * @param int    $expiresAt
      * @return void
-     * @todo Auto-generated docblock — review and replace this description.
      */
     private function storeRefreshToken(int $userId, string $jti, int $expiresAt): void
     {
@@ -227,7 +222,6 @@ final readonly class RefreshTokenHandler
      *
      * @param int $userId
      * @return void
-     * @todo Auto-generated docblock — review and replace this description.
      */
     private function revokeAllUserTokens(int $userId): void
     {
