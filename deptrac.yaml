@@ -96,10 +96,11 @@ deptrac:
 
     # CodeIgniter Model subclasses (active record gateways used by the
     # repository adapters). They sit beside Infrastructure in the
-    # dependency graph.
+    # dependency graph and may map rows into Domain types.
     Models:
       - CodeIgniterFramework
       - Config
+      - Domain
 
     # Spark CLI commands wire infrastructure + domain to do scheduled
     # background work (outbox relay, projection rebuild, etc.).
@@ -191,11 +192,6 @@ deptrac:
       - App\Infrastructure\Logging\DomainLogger
     App\Domain\User\ValueObjects\UserName:
       - App\Infrastructure\Logging\DomainLogger
-    App\Models\Cookie\Traits\BusinessMetricsLogging:
-      - App\Domain\Cookie\Entities\Cookie
-      - App\Domain\Cookie\ValueObjects\CookiePrice
-    App\Models\Cookie\Traits\RepositoryLogging:
-      - App\Domain\Cookie\ErrorCodes
     # Helpers are infrastructure glue; these violations are permanent and intentional.
     can():
       - App\Domain\Shared\ValueObjects\Permission
