@@ -18,10 +18,6 @@ final readonly class GetUserByEmailHandler
 {
     /**
      * __construct.
-     *
-     * @param UserRepositoryInterface $repository
-     * @param LoggerInterface         $logger
-     * @param Logging                 $loggingConfig
      */
     public function __construct(
         private UserRepositoryInterface $repository,
@@ -32,9 +28,6 @@ final readonly class GetUserByEmailHandler
 
     /**
      * handle.
-     *
-     * @param GetUserByEmailQuery $query
-     * @return UserDTO|null
      */
     public function handle(GetUserByEmailQuery $query): ?UserDTO
     {
@@ -51,11 +44,6 @@ final readonly class GetUserByEmailHandler
 
     /**
      * logQueryExecution.
-     *
-     * @param string    $email
-     * @param User|null $result
-     * @param float     $durationMs
-     * @return void
      */
     private function logQueryExecution(string $email, ?User $result, float $durationMs): void
     {
@@ -83,12 +71,6 @@ final readonly class GetUserByEmailHandler
 
     /**
      * logQuery.
-     *
-     * @param string    $email
-     * @param User|null $result
-     * @param float     $durationMs
-     * @param bool      $isSlowQuery
-     * @return void
      */
     private function logQuery(string $email, ?User $result, float $durationMs, bool $isSlowQuery): void
     {

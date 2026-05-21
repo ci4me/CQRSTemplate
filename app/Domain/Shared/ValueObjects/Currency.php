@@ -36,10 +36,6 @@ final readonly class Currency
 
     /**
      * __construct.
-     *
-     * @param string $iso
-     * @param int    $decimals
-     * @param string $symbol
      */
     private function __construct(
         public string $iso,
@@ -51,9 +47,6 @@ final readonly class Currency
     /**
      * fromIso.
      *
-     * @param string      $iso
-     * @param string|null $symbol
-     * @return self
      * @throws \InvalidArgumentException
      */
     public static function fromIso(string $iso, ?string $symbol = null): self
@@ -75,8 +68,6 @@ final readonly class Currency
 
     /**
      * usd.
-     *
-     * @return self
      */
     public static function usd(): self
     {
@@ -85,8 +76,6 @@ final readonly class Currency
 
     /**
      * eur.
-     *
-     * @return self
      */
     public static function eur(): self
     {
@@ -95,8 +84,6 @@ final readonly class Currency
 
     /**
      * brl.
-     *
-     * @return self
      */
     public static function brl(): self
     {
@@ -112,8 +99,6 @@ final readonly class Currency
      * "default currency" decision is being made (e.g. CookiePrice when
      * the request doesn't specify one) so the choice has a single
      * source of truth.
-     *
-     * @return self
      */
     public static function default(): self
     {
@@ -130,9 +115,6 @@ final readonly class Currency
 
     /**
      * equals.
-     *
-     * @param self $other
-     * @return bool
      */
     public function equals(self $other): bool
     {
@@ -141,9 +123,6 @@ final readonly class Currency
 
     /**
      * defaultSymbolFor.
-     *
-     * @param string $iso
-     * @return string
      */
     private static function defaultSymbolFor(string $iso): string
     {

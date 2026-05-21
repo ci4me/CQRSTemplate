@@ -16,15 +16,6 @@ final readonly class AttachmentRef
 {
     /**
      * __construct.
-     *
-     * @param int         $id
-     * @param string      $attachableType
-     * @param string      $attachableId
-     * @param string      $originalName
-     * @param string      $mimeType
-     * @param int         $sizeBytes
-     * @param string|null $checksumSha256
-     * @param int         $uploadedBy
      */
     private function __construct(
         public int $id,
@@ -44,16 +35,6 @@ final readonly class AttachmentRef
      * are validated (positive id, non-empty type/name/mime, non-negative
      * size) so the rest of the domain doesn't have to worry about
      * malformed values smuggled in via direct construction.
-     *
-     * @param int         $id
-     * @param string      $attachableType
-     * @param string      $attachableId
-     * @param string      $originalName
-     * @param string      $mimeType
-     * @param int         $sizeBytes
-     * @param string|null $checksumSha256
-     * @param int         $uploadedBy
-     * @return self
      */
     public static function create(
         int $id,
@@ -80,16 +61,6 @@ final readonly class AttachmentRef
     /**
      * Rebuild from a persisted row. Same invariants — a database column
      * could have been edited by hand.
-     *
-     * @param int         $id
-     * @param string      $attachableType
-     * @param string      $attachableId
-     * @param string      $originalName
-     * @param string      $mimeType
-     * @param int         $sizeBytes
-     * @param string|null $checksumSha256
-     * @param int         $uploadedBy
-     * @return self
      */
     public static function reconstitute(
         int $id,
@@ -116,7 +87,6 @@ final readonly class AttachmentRef
     /**
      * assertValid.
      *
-     * @return void
      * @throws \InvalidArgumentException
      */
     private function assertValid(): void

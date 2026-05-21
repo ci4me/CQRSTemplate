@@ -27,7 +27,6 @@ interface RateLimitInterface
      * Reset rate limit for a specific identifier.
      *
      * @param string $identifier Unique identifier to reset
-     * @return void
      */
     public function reset(string $identifier): void;
 }

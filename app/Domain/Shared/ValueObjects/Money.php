@@ -30,16 +30,11 @@ use App\Domain\Shared\Exceptions\ValidationException;
  */
 final readonly class Money implements \JsonSerializable
 {
-    /** @var Currency */
     public Currency $currency;
-    /** @var int */
     private int $amountMinor;
 
     /**
      * __construct.
-     *
-     * @param int      $amountMinor
-     * @param Currency $currency
      */
     private function __construct(int $amountMinor, Currency $currency)
     {
@@ -54,10 +49,6 @@ final readonly class Money implements \JsonSerializable
      * USD default would silently convert "1500 yen" into "$15.00" when a
      * caller forgot to specify the currency. Pass {@see Currency::usd()}
      * explicitly when USD is intended.
-     *
-     * @param int      $amountMinor
-     * @param Currency $currency
-     * @return self
      */
     public static function fromMinorUnits(int $amountMinor, Currency $currency): self
     {
@@ -70,9 +61,6 @@ final readonly class Money implements \JsonSerializable
      * with too many fractional digits — silent rounding is never
      * acceptable for money.
      *
-     * @param string   $value
-     * @param Currency $currency
-     * @return self
      * @throws ValidationException
      */
     public static function fromDecimalString(string $value, Currency $currency): self
@@ -132,9 +120,6 @@ final readonly class Money implements \JsonSerializable
      * that exceeds PHP_INT_MAX would otherwise wrap into a small negative
      * value and silently corrupt downstream totals.
      *
-     * @param float    $value
-     * @param Currency $currency
-     * @return self
      * @throws ValidationException
      */
     public static function fromFloat(float $value, Currency $currency): self
@@ -157,8 +142,6 @@ final readonly class Money implements \JsonSerializable
 
     /**
      * amountMinor.
-     *
-     * @return int
      */
     public function amountMinor(): int
     {
@@ -167,8 +150,6 @@ final readonly class Money implements \JsonSerializable
 
     /**
      * toDecimalString.
-     *
-     * @return string
      */
     public function toDecimalString(): string
     {
@@ -182,8 +163,6 @@ final readonly class Money implements \JsonSerializable
 
     /**
      * format.
-     *
-     * @return string
      */
     public function format(): string
     {
@@ -194,8 +173,6 @@ final readonly class Money implements \JsonSerializable
 
     /**
      * __toString.
-     *
-     * @return string
      */
     public function __toString(): string
     {
@@ -221,8 +198,6 @@ final readonly class Money implements \JsonSerializable
 
     /**
      * isZero.
-     *
-     * @return bool
      */
     public function isZero(): bool
     {
@@ -231,8 +206,6 @@ final readonly class Money implements \JsonSerializable
 
     /**
      * isNegative.
-     *
-     * @return bool
      */
     public function isNegative(): bool
     {
@@ -241,9 +214,6 @@ final readonly class Money implements \JsonSerializable
 
     /**
      * equals.
-     *
-     * @param self $other
-     * @return bool
      */
     public function equals(self $other): bool
     {
@@ -253,9 +223,6 @@ final readonly class Money implements \JsonSerializable
 
     /**
      * greaterThan.
-     *
-     * @param self $other
-     * @return bool
      */
     public function greaterThan(self $other): bool
     {
@@ -265,9 +232,6 @@ final readonly class Money implements \JsonSerializable
 
     /**
      * lessThan.
-     *
-     * @param self $other
-     * @return bool
      */
     public function lessThan(self $other): bool
     {
@@ -277,9 +241,6 @@ final readonly class Money implements \JsonSerializable
 
     /**
      * add.
-     *
-     * @param self $other
-     * @return self
      */
     public function add(self $other): self
     {
@@ -289,9 +250,6 @@ final readonly class Money implements \JsonSerializable
 
     /**
      * subtract.
-     *
-     * @param self $other
-     * @return self
      */
     public function subtract(self $other): self
     {
@@ -301,9 +259,6 @@ final readonly class Money implements \JsonSerializable
 
     /**
      * multiply.
-     *
-     * @param int $multiplier
-     * @return self
      */
     public function multiply(int $multiplier): self
     {
@@ -312,8 +267,6 @@ final readonly class Money implements \JsonSerializable
 
     /**
      * absoluteDecimal.
-     *
-     * @return string
      */
     private function absoluteDecimal(): string
     {
@@ -329,8 +282,6 @@ final readonly class Money implements \JsonSerializable
     /**
      * assertSameCurrency.
      *
-     * @param self $other
-     * @return void
      * @throws \InvalidArgumentException
      */
     private function assertSameCurrency(self $other): void
@@ -348,8 +299,6 @@ final readonly class Money implements \JsonSerializable
     /**
      * cleanDecimalInput.
      *
-     * @param string $value
-     * @return string
      * @throws ValidationException
      */
     private static function cleanDecimalInput(string $value): string

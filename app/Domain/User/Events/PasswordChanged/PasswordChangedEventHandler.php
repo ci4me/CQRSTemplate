@@ -29,8 +29,6 @@ final readonly class PasswordChangedEventHandler
 {
     /**
      * __construct.
-     *
-     * @param LoggerInterface $logger
      */
     public function __construct(
         private LoggerInterface $logger
@@ -39,9 +37,6 @@ final readonly class PasswordChangedEventHandler
 
     /**
      * __invoke.
-     *
-     * @param PasswordChangedEvent $event
-     * @return void
      */
     public function __invoke(PasswordChangedEvent $event): void
     {

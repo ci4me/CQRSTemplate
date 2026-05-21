@@ -45,7 +45,6 @@ final readonly class DeleteCookieHandler
      * Handle the DeleteCookieCommand.
      *
      * @param DeleteCookieCommand $command The delete command
-     * @return void
      * @throws DomainException If cookie not found
      */
     public function handle(DeleteCookieCommand $command): void

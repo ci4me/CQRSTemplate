@@ -27,10 +27,6 @@ final readonly class GetAllUsersHandler
 {
     /**
      * __construct.
-     *
-     * @param UserRepositoryInterface $repository
-     * @param LoggerInterface         $logger
-     * @param Logging                 $loggingConfig
      */
     public function __construct(
         private UserRepositoryInterface $repository,
@@ -40,7 +36,6 @@ final readonly class GetAllUsersHandler
     }
 
     /**
-     * @param GetAllUsersQuery $query
      * @return array{data: array<UserDTO>, total: int, page: int, perPage: int, lastPage: int}
      */
     public function handle(GetAllUsersQuery $query): array

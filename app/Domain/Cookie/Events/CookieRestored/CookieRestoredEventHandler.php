@@ -15,8 +15,6 @@ final readonly class CookieRestoredEventHandler
 {
     /**
      * __construct.
-     *
-     * @param LoggerInterface $logger
      */
     public function __construct(
         private LoggerInterface $logger,
@@ -25,9 +23,6 @@ final readonly class CookieRestoredEventHandler
 
     /**
      * __invoke.
-     *
-     * @param CookieRestoredEvent $event
-     * @return void
      */
     public function __invoke(CookieRestoredEvent $event): void
     {

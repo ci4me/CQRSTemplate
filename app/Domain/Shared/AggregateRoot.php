@@ -57,9 +57,6 @@ trait AggregateRoot
      * an entity from accidentally enqueuing a random object (typo, copy/
      * paste from a command) and shipping it to the bus where the relay
      * would refuse to rehydrate it.
-     *
-     * @param DomainEventInterface $event
-     * @return void
      */
     protected function raiseEvent(DomainEventInterface $event): void
     {
@@ -91,8 +88,6 @@ trait AggregateRoot
 
     /**
      * hasPendingEvents.
-     *
-     * @return bool
      */
     public function hasPendingEvents(): bool
     {

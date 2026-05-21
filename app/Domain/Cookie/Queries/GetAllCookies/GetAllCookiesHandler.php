@@ -68,7 +68,6 @@ final readonly class GetAllCookiesHandler
      * @param bool  $includeInactive Whether inactive cookies were included
      * @param int   $resultCount     Number of cookies returned
      * @param float $durationMs      Execution duration in milliseconds
-     * @return void
      */
     private function logQueryExecution(bool $includeInactive, int $resultCount, float $durationMs): void
     {
@@ -109,7 +108,6 @@ final readonly class GetAllCookiesHandler
      * @param int   $resultCount     Number of cookies returned
      * @param float $durationMs      Execution duration in milliseconds
      * @param bool  $isSlowQuery     Whether this is a slow query
-     * @return void
      */
     private function logQuery(bool $includeInactive, int $resultCount, float $durationMs, bool $isSlowQuery): void
     {

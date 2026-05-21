@@ -41,7 +41,6 @@ final readonly class CookieUpdatedEventHandler
      * Handle the CookieUpdatedEvent.
      *
      * @param CookieUpdatedEvent $event The event containing cookie update data
-     * @return void
      */
     public function __invoke(CookieUpdatedEvent $event): void
     {

@@ -16,9 +16,6 @@ final readonly class RestoreCookieCommand
 {
     /**
      * __construct.
-     *
-     * @param int   $cookieId
-     * @param Actor $restoredBy
      */
     public function __construct(
         public int $cookieId,

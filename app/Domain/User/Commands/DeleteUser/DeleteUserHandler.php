@@ -32,10 +32,6 @@ final readonly class DeleteUserHandler
 {
     /**
      * __construct.
-     *
-     * @param UserRepositoryInterface  $repository
-     * @param EventDispatcherInterface $eventDispatcher
-     * @param LoggerInterface          $logger
      */
     public function __construct(
         private UserRepositoryInterface $repository,
@@ -47,8 +43,6 @@ final readonly class DeleteUserHandler
     /**
      * handle.
      *
-     * @param DeleteUserCommand $command
-     * @return void
      * @throws \InvalidArgumentException
      * @throws \RuntimeException
      */

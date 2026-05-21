@@ -17,17 +17,6 @@ final readonly class UserDTO
 {
     /**
      * __construct.
-     *
-     * @param int|null    $id
-     * @param string      $name
-     * @param string      $email
-     * @param string      $role
-     * @param string      $status
-     * @param int         $failedLoginAttempts
-     * @param string|null $lockedUntil
-     * @param string      $createdAt
-     * @param string|null $updatedAt
-     * @param string|null $deletedAt
      */
     public function __construct(
         public ?int $id,
@@ -45,9 +34,6 @@ final readonly class UserDTO
 
     /**
      * fromEntity.
-     *
-     * @param User $user
-     * @return self
      */
     public static function fromEntity(User $user): self
     {

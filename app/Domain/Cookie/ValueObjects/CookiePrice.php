@@ -37,13 +37,10 @@ final readonly class CookiePrice
     private const int MIN_MINOR_UNITS = 1;
     private const int MAX_MINOR_UNITS = 999_999; // 9,999.99 in 2-decimal currencies
 
-    /** @var Money */
     private Money $money;
 
     /**
      * __construct.
-     *
-     * @param Money $money
      */
     private function __construct(Money $money)
     {
@@ -58,9 +55,6 @@ final readonly class CookiePrice
      * strings instead so invalid precision is rejected instead of silently
      * rounded by the float conversion.
      *
-     * @param string        $price
-     * @param Currency|null $currency
-     * @return self
      * @throws ValidationException
      */
     public static function fromString(string $price, ?Currency $currency = null): self
@@ -81,9 +75,6 @@ final readonly class CookiePrice
     /**
      * parseMoneyOrFail.
      *
-     * @param string   $value
-     * @param Currency $currency
-     * @return Money
      * @throws ValidationException
      */
     private static function parseMoneyOrFail(string $value, Currency $currency): Money
@@ -101,10 +92,6 @@ final readonly class CookiePrice
 
     /**
      * fromMinorUnits.
-     *
-     * @param int           $minorUnits
-     * @param Currency|null $currency
-     * @return self
      */
     public static function fromMinorUnits(int $minorUnits, ?Currency $currency = null): self
     {
@@ -116,10 +103,6 @@ final readonly class CookiePrice
      *
      * Prefer fromString() at boundaries because float values may already have
      * lost decimal precision before they reach this method.
-     *
-     * @param float         $price
-     * @param Currency|null $currency
-     * @return self
      */
     public static function fromFloat(float $price, ?Currency $currency = null): self
     {
@@ -128,8 +111,6 @@ final readonly class CookiePrice
 
     /**
      * getMoney.
-     *
-     * @return Money
      */
     public function getMoney(): Money
     {
@@ -138,8 +119,6 @@ final readonly class CookiePrice
 
     /**
      * getCurrency.
-     *
-     * @return Currency
      */
     public function getCurrency(): Currency
     {
@@ -148,8 +127,6 @@ final readonly class CookiePrice
 
     /**
      * getMinorUnits.
-     *
-     * @return int
      */
     public function getMinorUnits(): int
     {
@@ -159,7 +136,6 @@ final readonly class CookiePrice
     /**
      * @deprecated Prefer ::getMinorUnits or ::toDecimalString. Float drift
      *             may bite at the boundary; kept for legacy code paths.
-     * @return float
      */
     public function getValue(): float
     {
@@ -168,8 +144,6 @@ final readonly class CookiePrice
 
     /**
      * toDecimalString.
-     *
-     * @return string
      */
     public function toDecimalString(): string
     {
@@ -178,8 +152,6 @@ final readonly class CookiePrice
 
     /**
      * toString.
-     *
-     * @return string
      */
     public function toString(): string
     {
@@ -191,9 +163,6 @@ final readonly class CookiePrice
      * parameter is preserved for callers that want to override the symbol
      * (e.g. for a localised display) without changing the underlying
      * monetary value.
-     *
-     * @param string|null $currencySymbol
-     * @return string
      */
     public function format(?string $currencySymbol = null): string
     {
@@ -205,9 +174,6 @@ final readonly class CookiePrice
 
     /**
      * equals.
-     *
-     * @param self $other
-     * @return bool
      */
     public function equals(self $other): bool
     {
@@ -216,9 +182,6 @@ final readonly class CookiePrice
 
     /**
      * greaterThan.
-     *
-     * @param self $other
-     * @return bool
      */
     public function greaterThan(self $other): bool
     {
@@ -227,9 +190,6 @@ final readonly class CookiePrice
 
     /**
      * isGreaterThan.
-     *
-     * @param self $other
-     * @return bool
      */
     public function isGreaterThan(self $other): bool
     {
@@ -238,9 +198,6 @@ final readonly class CookiePrice
 
     /**
      * lessThan.
-     *
-     * @param self $other
-     * @return bool
      */
     public function lessThan(self $other): bool
     {
@@ -249,9 +206,6 @@ final readonly class CookiePrice
 
     /**
      * isLessThan.
-     *
-     * @param self $other
-     * @return bool
      */
     public function isLessThan(self $other): bool
     {
@@ -260,9 +214,6 @@ final readonly class CookiePrice
 
     /**
      * add.
-     *
-     * @param self $other
-     * @return self
      */
     public function add(self $other): self
     {
@@ -271,9 +222,6 @@ final readonly class CookiePrice
 
     /**
      * subtract.
-     *
-     * @param self $other
-     * @return self
      */
     public function subtract(self $other): self
     {
@@ -283,8 +231,6 @@ final readonly class CookiePrice
     /**
      * multiplyBy.
      *
-     * @param int $quantity
-     * @return self
      * @throws ValidationException
      */
     public function multiplyBy(int $quantity): self
@@ -298,8 +244,6 @@ final readonly class CookiePrice
     /**
      * applyDiscount.
      *
-     * @param float $discountPercent
-     * @return self
      * @throws ValidationException
      */
     public function applyDiscount(float $discountPercent): self
@@ -319,8 +263,6 @@ final readonly class CookiePrice
 
     /**
      * __toString.
-     *
-     * @return string
      */
     public function __toString(): string
     {
@@ -330,8 +272,6 @@ final readonly class CookiePrice
     /**
      * assertPositiveAndInRange.
      *
-     * @param int $minorUnits
-     * @return void
      * @throws ValidationException
      */
     private function assertPositiveAndInRange(int $minorUnits): void
@@ -358,8 +298,6 @@ final readonly class CookiePrice
     /**
      * Cookie domain default currency. Becomes configurable via
      * SettingsService when multi-currency catalogues land.
-     *
-     * @return Currency
      */
     private static function defaultCurrency(): Currency
     {

@@ -19,11 +19,6 @@ final readonly class DocumentNumber
 {
     /**
      * __construct.
-     *
-     * @param string $series
-     * @param string $scope
-     * @param int    $value
-     * @param string $formatted
      */
     private function __construct(
         public string $series,
@@ -39,12 +34,6 @@ final readonly class DocumentNumber
      * after it allocates a fresh sequence row. The arguments are validated
      * to catch corrupted/badly configured rows before they reach a document
      * (an invoice with `series=""` would silently slip past a public ctor).
-     *
-     * @param string $series
-     * @param string $scope
-     * @param int    $value
-     * @param string $formatted
-     * @return self
      */
     public static function create(string $series, string $scope, int $value, string $formatted): self
     {
@@ -54,12 +43,6 @@ final readonly class DocumentNumber
     /**
      * Rebuild from persistence. Same validation rules — the column may
      * have been edited by hand or by a buggy migration.
-     *
-     * @param string $series
-     * @param string $scope
-     * @param int    $value
-     * @param string $formatted
-     * @return self
      */
     public static function reconstitute(string $series, string $scope, int $value, string $formatted): self
     {
@@ -68,8 +51,6 @@ final readonly class DocumentNumber
 
     /**
      * __toString.
-     *
-     * @return string
      */
     public function __toString(): string
     {
@@ -79,7 +60,6 @@ final readonly class DocumentNumber
     /**
      * assertValid.
      *
-     * @return void
      * @throws \InvalidArgumentException
      */
     private function assertValid(): void

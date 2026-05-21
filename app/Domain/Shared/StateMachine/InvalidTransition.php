@@ -17,11 +17,7 @@ use App\Domain\Shared\Exceptions\DomainException;
 final class InvalidTransition extends DomainException
 {
     /**
-     * @param string       $entityName
-     * @param string       $from
-     * @param string       $to
      * @param list<string> $allowed
-     * @return self
      */
     public static function create(
         string $entityName,

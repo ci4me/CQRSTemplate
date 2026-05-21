@@ -41,7 +41,6 @@ final readonly class CookieCreatedEventHandler
      * Handle the CookieCreatedEvent.
      *
      * @param CookieCreatedEvent $event The event containing cookie creation data
-     * @return void
      */
     public function __invoke(CookieCreatedEvent $event): void
     {

@@ -28,15 +28,6 @@ final readonly class UpdateCookieCommand
 {
     /**
      * __construct.
-     *
-     * @param int         $id
-     * @param string      $name
-     * @param string|null $description
-     * @param string      $price
-     * @param int         $stock
-     * @param bool        $isActive
-     * @param Actor       $updatedBy
-     * @param int|null    $expectedVersion
      */
     public function __construct(
         public int $id,

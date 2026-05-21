@@ -38,7 +38,6 @@ class ValidationException extends InvalidArgumentException
      */
     private array $errors = [];
 
-    /** @var int */
     private int $errorCode = 0;
 
     /**
@@ -91,7 +90,6 @@ class ValidationException extends InvalidArgumentException
      *
      * @param string $fieldName Name of the required field
      * @param int    $errorCode Domain-specific error code
-     * @return self
      */
     public static function required(string $fieldName, int $errorCode = 0): self
     {
@@ -109,7 +107,6 @@ class ValidationException extends InvalidArgumentException
      * @param int    $minLength    Minimum required length
      * @param int    $actualLength Actual length provided
      * @param int    $errorCode    Domain-specific error code
-     * @return self
      */
     public static function fieldTooShort(string $fieldName, int $minLength, int $actualLength, int $errorCode = 0): self
     {
@@ -127,7 +124,6 @@ class ValidationException extends InvalidArgumentException
      * @param int    $maxLength    Maximum allowed length
      * @param int    $actualLength Actual length provided
      * @param int    $errorCode    Domain-specific error code
-     * @return self
      */
     public static function fieldTooLong(string $fieldName, int $maxLength, int $actualLength, int $errorCode = 0): self
     {
@@ -146,7 +142,6 @@ class ValidationException extends InvalidArgumentException
      * @param float|int $max       Maximum allowed value
      * @param float|int $actual    Actual value provided
      * @param int       $errorCode Domain-specific error code
-     * @return self
      */
     public static function outOfRange(string $fieldName, float|int $min, float|int $max, float|int $actual, int $errorCode = 0): self
     {
@@ -164,7 +159,6 @@ class ValidationException extends InvalidArgumentException
      * @param float|int $min       Minimum allowed value
      * @param float|int $actual    Actual value provided
      * @param int       $errorCode Domain-specific error code
-     * @return self
      */
     public static function tooSmall(string $fieldName, float|int $min, float|int $actual, int $errorCode = 0): self
     {
@@ -181,7 +175,6 @@ class ValidationException extends InvalidArgumentException
      * @param string $fieldName      Name of the field
      * @param string $expectedFormat Description of expected format
      * @param int    $errorCode      Domain-specific error code
-     * @return self
      */
     public static function invalidFormat(string $fieldName, string $expectedFormat, int $errorCode = 0): self
     {
@@ -197,7 +190,6 @@ class ValidationException extends InvalidArgumentException
      *
      * @param array<string, array<string>> $errors    Errors grouped by field name
      * @param int                          $errorCode Domain-specific error code
-     * @return self
      */
     public static function withErrors(array $errors, int $errorCode = 0): self
     {

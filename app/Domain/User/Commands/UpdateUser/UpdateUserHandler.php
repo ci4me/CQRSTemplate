@@ -39,11 +39,6 @@ final readonly class UpdateUserHandler
 {
     /**
      * __construct.
-     *
-     * @param UserRepositoryInterface  $repository
-     * @param EventDispatcherInterface $eventDispatcher
-     * @param LoggerInterface          $logger
-     * @param PermissionService|null   $permissions
      */
     public function __construct(
         private UserRepositoryInterface $repository,
@@ -56,8 +51,6 @@ final readonly class UpdateUserHandler
     /**
      * handle.
      *
-     * @param UpdateUserCommand $command
-     * @return void
      * @throws \RuntimeException
      */
     public function handle(UpdateUserCommand $command): void
@@ -173,9 +166,6 @@ final readonly class UpdateUserHandler
      * stays explicit), but we DO require that the values match what is
      * already in the database.
      *
-     * @param UpdateUserCommand              $command
-     * @param \App\Domain\User\Entities\User $user
-     * @return void
      * @throws DomainException
      */
     private function assertRoleAndStatusChangesAllowed(
@@ -213,9 +203,6 @@ final readonly class UpdateUserHandler
 
     /**
      * actorIsAdmin.
-     *
-     * @param UpdateUserCommand $command
-     * @return bool
      */
     private function actorIsAdmin(UpdateUserCommand $command): bool
     {

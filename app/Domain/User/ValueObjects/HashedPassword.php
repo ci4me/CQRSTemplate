@@ -50,8 +50,6 @@ final readonly class HashedPassword
      *
      * This hash is safe to store in the database and never contains
      * the original plaintext password.
-     *
-     * @var string
      */
     private string $hash;
 
@@ -69,7 +67,6 @@ final readonly class HashedPassword
      * Create from existing hash (when reconstituting from database).
      *
      * @param string $hash The existing password hash
-     * @return self
      */
     public static function fromHash(string $hash): self
     {

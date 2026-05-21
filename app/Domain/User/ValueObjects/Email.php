@@ -39,8 +39,6 @@ final readonly class Email
 {
     /**
      * The validated and normalized email address.
-     *
-     * @var string
      */
     private string $value;
 

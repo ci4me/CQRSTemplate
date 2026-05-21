@@ -56,9 +56,6 @@ final class CookieQueryRepository implements CookieQueryRepositoryInterface
 
     /**
      * findById.
-     *
-     * @param int $cookieId
-     * @return CookieDTO|null
      */
     public function findById(int $cookieId): ?CookieDTO
     {
@@ -79,7 +76,6 @@ final class CookieQueryRepository implements CookieQueryRepositoryInterface
     }
 
     /**
-     * @param bool $includeInactive
      * @return list<CookieDTO>
      */
     public function findAll(bool $includeInactive = false): array
@@ -106,10 +102,6 @@ final class CookieQueryRepository implements CookieQueryRepositoryInterface
     }
 
     /**
-     * @param int         $page
-     * @param int         $perPage
-     * @param string|null $searchTerm
-     * @param bool        $includeInactive
      * @return array{data: list<CookieDTO>, total: int, page: int, perPage: int, lastPage: int}
      */
     public function findPaginated(
@@ -177,7 +169,6 @@ final class CookieQueryRepository implements CookieQueryRepositoryInterface
      * should not blow up on bad source data.
      *
      * @param array<string, mixed> $row
-     * @return CookieDTO
      */
     private function toDto(array $row): CookieDTO
     {
@@ -199,9 +190,6 @@ final class CookieQueryRepository implements CookieQueryRepositoryInterface
 
     /**
      * Best-effort formatting of a stored decimal price.
-     *
-     * @param string $decimalPrice
-     * @return string
      */
     private function formatPrice(string $decimalPrice): string
     {
@@ -230,9 +218,6 @@ final class CookieQueryRepository implements CookieQueryRepositoryInterface
      * filter restricts reads to the current tenant's slice — the write
      * side stamps `tenant_id` on every insert (see CookieRepository) so
      * the columns line up.
-     *
-     * @param \CodeIgniter\Database\BaseBuilder $builder
-     * @return void
      */
     private function applyTenantFilter(\CodeIgniter\Database\BaseBuilder $builder): void
     {

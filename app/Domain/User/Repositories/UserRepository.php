@@ -29,10 +29,6 @@ readonly class UserRepository implements UserRepositoryInterface
 {
     /**
      * __construct.
-     *
-     * @param UserModel       $model
-     * @param LoggerInterface $logger
-     * @param Logging         $loggingConfig
      */
     public function __construct(
         private UserModel $model,
@@ -44,8 +40,6 @@ readonly class UserRepository implements UserRepositoryInterface
     /**
      * save.
      *
-     * @param User $user
-     * @return int
      * @throws \RuntimeException
      */
     public function save(User $user): int
@@ -81,9 +75,6 @@ readonly class UserRepository implements UserRepositoryInterface
 
     /**
      * findById.
-     *
-     * @param int $id
-     * @return User|null
      */
     public function findById(int $id): ?User
     {
@@ -115,9 +106,6 @@ readonly class UserRepository implements UserRepositoryInterface
 
     /**
      * findByEmail.
-     *
-     * @param Email $email
-     * @return User|null
      */
     public function findByEmail(Email $email): ?User
     {
@@ -149,9 +137,6 @@ readonly class UserRepository implements UserRepositoryInterface
 
     /**
      * update.
-     *
-     * @param User $user
-     * @return bool
      */
     public function update(User $user): bool
     {
@@ -180,9 +165,6 @@ readonly class UserRepository implements UserRepositoryInterface
 
     /**
      * delete.
-     *
-     * @param int $id
-     * @return bool
      */
     public function delete(int $id): bool
     {
@@ -351,7 +333,6 @@ readonly class UserRepository implements UserRepositoryInterface
 
     /**
      * @param array<int|string, mixed> $row Raw database row from CI4 Model::find / first / getResultArray
-     * @return User
      */
     private function toDomainEntity(array $row): User
     {
@@ -374,7 +355,6 @@ readonly class UserRepository implements UserRepositoryInterface
     }
 
     /**
-     * @param User $user
      * @return array<string, scalar|null>
      */
     private function toArray(User $user): array
@@ -392,11 +372,6 @@ readonly class UserRepository implements UserRepositoryInterface
 
     /**
      * logQuery.
-     *
-     * @param string $method
-     * @param float  $durationMs
-     * @param bool   $found
-     * @return void
      */
     private function logQuery(string $method, float $durationMs, bool $found): void
     {

@@ -15,8 +15,6 @@ final readonly class CookieStockChangedEventHandler
 {
     /**
      * __construct.
-     *
-     * @param LoggerInterface $logger
      */
     public function __construct(private LoggerInterface $logger)
     {
@@ -24,9 +22,6 @@ final readonly class CookieStockChangedEventHandler
 
     /**
      * __invoke.
-     *
-     * @param CookieStockChangedEvent $event
-     * @return void
      */
     public function __invoke(CookieStockChangedEvent $event): void
     {

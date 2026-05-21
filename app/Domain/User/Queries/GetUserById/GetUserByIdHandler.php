@@ -17,10 +17,6 @@ final readonly class GetUserByIdHandler
 {
     /**
      * __construct.
-     *
-     * @param UserRepositoryInterface $repository
-     * @param LoggerInterface         $logger
-     * @param Logging                 $loggingConfig
      */
     public function __construct(
         private UserRepositoryInterface $repository,
@@ -31,9 +27,6 @@ final readonly class GetUserByIdHandler
 
     /**
      * handle.
-     *
-     * @param GetUserByIdQuery $query
-     * @return UserDTO|null
      */
     public function handle(GetUserByIdQuery $query): ?UserDTO
     {
@@ -48,11 +41,6 @@ final readonly class GetUserByIdHandler
 
     /**
      * logQueryExecution.
-     *
-     * @param int       $id
-     * @param User|null $result
-     * @param float     $durationMs
-     * @return void
      */
     private function logQueryExecution(int $id, ?User $result, float $durationMs): void
     {
@@ -80,12 +68,6 @@ final readonly class GetUserByIdHandler
 
     /**
      * logQuery.
-     *
-     * @param int       $id
-     * @param User|null $result
-     * @param float     $durationMs
-     * @param bool      $isSlowQuery
-     * @return void
      */
     private function logQuery(int $id, ?User $result, float $durationMs, bool $isSlowQuery): void
     {

@@ -60,27 +60,16 @@ final class User
     private const int MAX_FAILED_LOGIN_ATTEMPTS = 5;
     private const int LOCKOUT_DURATION_MINUTES = 15;
 
-    /** @var int|null */
     private ?int $id = null;
-    /** @var UserName */
     private UserName $name;
-    /** @var Email */
     private Email $email;
-    /** @var HashedPassword */
     private HashedPassword $hashedPassword;
-    /** @var UserRole */
     private UserRole $role;
-    /** @var UserStatus */
     private UserStatus $status;
-    /** @var int */
     private int $failedLoginAttempts;
-    /** @var \DateTimeImmutable|null */
     private ?\DateTimeImmutable $lockedUntil;
-    /** @var \DateTimeImmutable */
     private \DateTimeImmutable $createdAt;
-    /** @var \DateTimeImmutable|null */
     private ?\DateTimeImmutable $updatedAt;
-    /** @var \DateTimeImmutable|null */
     private ?\DateTimeImmutable $deletedAt;
 
     /**
@@ -225,8 +214,6 @@ final class User
      * Activate the user account.
      *
      * Sets status to Active, allowing the user to login.
-     *
-     * @return void
      */
     public function activate(): void
     {
@@ -238,8 +225,6 @@ final class User
      * Deactivate the user account.
      *
      * Sets status to Inactive, preventing login.
-     *
-     * @return void
      */
     public function deactivate(): void
     {
@@ -251,8 +236,6 @@ final class User
      * Increment failed login attempts counter.
      *
      * Business Rule: After 5 failed attempts, lock account for 15 minutes.
-     *
-     * @return void
      */
     public function incrementFailedLoginAttempts(): void
     {
@@ -269,8 +252,6 @@ final class User
      * Reset failed login attempts counter and clear lock.
      *
      * Called after successful login.
-     *
-     * @return void
      */
     public function resetFailedLoginAttempts(): void
     {
@@ -285,7 +266,6 @@ final class User
      * Business Rule: Suspended accounts require admin intervention to reactivate.
      *
      * @param string $reason Reason for suspension (retained for domain event dispatch)
-     * @return void
      * @phpcsSuppress SlevomatCodingStandard.Functions.UnusedParameter.UnusedParameter
      */
     public function suspend(string $reason): void
@@ -306,7 +286,6 @@ final class User
      * @param Email      $email  New email address
      * @param UserRole   $role   New role
      * @param UserStatus $status New status
-     * @return void
      */
     public function update(UserName $name, Email $email, UserRole $role, UserStatus $status): void
     {
@@ -321,7 +300,6 @@ final class User
      * Change user password.
      *
      * @param HashedPassword $newPassword The new hashed password
-     * @return void
      */
     public function changePassword(HashedPassword $newPassword): void
     {
@@ -333,8 +311,6 @@ final class User
      * Lock user account for lockout duration.
      *
      * Business Rule: Lock for 15 minutes after 5 failed attempts.
-     *
-     * @return void
      */
     private function lockAccount(): void
     {
@@ -346,8 +322,6 @@ final class User
 
     /**
      * getId.
-     *
-     * @return int|null
      */
     public function getId(): ?int
     {
@@ -356,8 +330,6 @@ final class User
 
     /**
      * getName.
-     *
-     * @return UserName
      */
     public function getName(): UserName
     {
@@ -366,8 +338,6 @@ final class User
 
     /**
      * getEmail.
-     *
-     * @return Email
      */
     public function getEmail(): Email
     {
@@ -376,8 +346,6 @@ final class User
 
     /**
      * getHashedPassword.
-     *
-     * @return HashedPassword
      */
     public function getHashedPassword(): HashedPassword
     {
@@ -386,8 +354,6 @@ final class User
 
     /**
      * getRole.
-     *
-     * @return UserRole
      */
     public function getRole(): UserRole
     {
@@ -396,8 +362,6 @@ final class User
 
     /**
      * getStatus.
-     *
-     * @return UserStatus
      */
     public function getStatus(): UserStatus
     {
@@ -406,8 +370,6 @@ final class User
 
     /**
      * getFailedLoginAttempts.
-     *
-     * @return int
      */
     public function getFailedLoginAttempts(): int
     {
@@ -416,8 +378,6 @@ final class User
 
     /**
      * getLockedUntil.
-     *
-     * @return \DateTimeImmutable|null
      */
     public function getLockedUntil(): ?\DateTimeImmutable
     {
@@ -426,8 +386,6 @@ final class User
 
     /**
      * getCreatedAt.
-     *
-     * @return \DateTimeImmutable
      */
     public function getCreatedAt(): \DateTimeImmutable
     {
@@ -436,8 +394,6 @@ final class User
 
     /**
      * getUpdatedAt.
-     *
-     * @return \DateTimeImmutable|null
      */
     public function getUpdatedAt(): ?\DateTimeImmutable
     {
@@ -446,8 +402,6 @@ final class User
 
     /**
      * getDeletedAt.
-     *
-     * @return \DateTimeImmutable|null
      */
     public function getDeletedAt(): ?\DateTimeImmutable
     {

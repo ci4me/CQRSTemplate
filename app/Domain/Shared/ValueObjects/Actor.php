@@ -18,9 +18,6 @@ final readonly class Actor
 
     /**
      * __construct.
-     *
-     * @param int    $id
-     * @param string $label
      */
     private function __construct(
         public int $id,
@@ -31,8 +28,6 @@ final readonly class Actor
     /**
      * user.
      *
-     * @param int $userId
-     * @return self
      * @throws \InvalidArgumentException
      */
     public static function user(int $userId): self
@@ -48,9 +43,6 @@ final readonly class Actor
 
     /**
      * system.
-     *
-     * @param string $label
-     * @return self
      */
     public static function system(string $label = 'system'): self
     {
@@ -59,8 +51,6 @@ final readonly class Actor
 
     /**
      * isSystem.
-     *
-     * @return bool
      */
     public function isSystem(): bool
     {

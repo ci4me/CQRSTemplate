@@ -59,11 +59,6 @@
         <exclude-pattern>app/Controllers/Api/*Controller.php</exclude-pattern>
         <!-- Exclude AbiSageIntacct library - third-party namespace with different conventions -->
         <exclude-pattern>app/Libraries/AbiSageIntacct/*</exclude-pattern>
-        <!-- We want FULL docblocks for Intelephense (Squiz.Commenting.FunctionComment
-             requires @param on every parameter). Slevomat's "useless annotation"
-             check would call those duplicate, so we silence it where the duplication
-             is mandated by the docblock policy. -->
-        <exclude name="SlevomatCodingStandard.TypeHints.ParameterTypeHint.UselessAnnotation"/>
     </rule>
     <rule ref="SlevomatCodingStandard.TypeHints.PropertyTypeHint">
         <!-- Exclude BaseController and API controllers due to CodeIgniter parent class limitations -->
@@ -78,15 +73,39 @@
              types here would break inheritance compatibility. -->
         <exclude-pattern>app/Infrastructure/Persistence/Models/*</exclude-pattern>
         <exclude-pattern>app/Models/*</exclude-pattern>
-        <!-- Same rationale as Parameter/ReturnTypeHint: docblock policy mandates
-             @var on every property, so "useless" duplication is by design. -->
-        <exclude name="SlevomatCodingStandard.TypeHints.PropertyTypeHint.UselessAnnotation"/>
     </rule>
-    <rule ref="SlevomatCodingStandard.TypeHints.ReturnTypeHint">
-        <!-- Same rationale as ParameterTypeHint above: Squiz.Commenting.FunctionComment
-             requires @return on every non-void method, so Slevomat's "useless"
-             check on @return-that-matches-native conflicts with the docblock policy. -->
-        <exclude name="SlevomatCodingStandard.TypeHints.ReturnTypeHint.UselessAnnotation"/>
+    <rule ref="SlevomatCodingStandard.TypeHints.ReturnTypeHint"/>
+
+    <!-- Phase 4 (SV-3): silence UselessAnnotation sniffs OUTSIDE app/Domain/.
+         Non-Domain layers (Controllers, Infrastructure, Models) still carry
+         Squiz.Commenting.FunctionComment, which mandates @param/@return on
+         every method. Slevomat's "useless annotation" check would call those
+         duplicate, so it's silenced there only.
+
+         Inside app/Domain/ the sniff stays active: docblocks that merely
+         repeat the native PHP 8 typehint become redundant and just clutter
+         symbol output for AI agents. Class-level @throws and array generics
+         still apply via Squiz.Commenting.ClassComment and PHPStan. -->
+    <rule ref="SlevomatCodingStandard.TypeHints.ParameterTypeHint.UselessAnnotation">
+        <exclude-pattern>app/Controllers/*</exclude-pattern>
+        <exclude-pattern>app/Infrastructure/*</exclude-pattern>
+        <exclude-pattern>app/Models/*</exclude-pattern>
+        <exclude-pattern>app/Libraries/*</exclude-pattern>
+        <exclude-pattern>tests/*</exclude-pattern>
+    </rule>
+    <rule ref="SlevomatCodingStandard.TypeHints.PropertyTypeHint.UselessAnnotation">
+        <exclude-pattern>app/Controllers/*</exclude-pattern>
+        <exclude-pattern>app/Infrastructure/*</exclude-pattern>
+        <exclude-pattern>app/Models/*</exclude-pattern>
+        <exclude-pattern>app/Libraries/*</exclude-pattern>
+        <exclude-pattern>tests/*</exclude-pattern>
+    </rule>
+    <rule ref="SlevomatCodingStandard.TypeHints.ReturnTypeHint.UselessAnnotation">
+        <exclude-pattern>app/Controllers/*</exclude-pattern>
+        <exclude-pattern>app/Infrastructure/*</exclude-pattern>
+        <exclude-pattern>app/Models/*</exclude-pattern>
+        <exclude-pattern>app/Libraries/*</exclude-pattern>
+        <exclude-pattern>tests/*</exclude-pattern>
     </rule>
 
     <!-- Discourage else (encourage early returns) -->
@@ -246,6 +265,12 @@
         <exclude-pattern>app/Infrastructure/Persistence/Models/*</exclude-pattern>
         <exclude-pattern>app/Models/*</exclude-pattern>
         <exclude-pattern>app/Libraries/AbiSageIntacct/*</exclude-pattern>
+        <!-- Phase 4 (SV-3): drop @param/@return mandate from the pure
+             Domain layer. Native PHP 8 typehints already feed Intelephense;
+             redundant docblocks just clutter symbol output for AI agents.
+             Class-level @throws and array generics still apply via
+             Squiz.Commenting.ClassComment and PHPStan. -->
+        <exclude-pattern>app/Domain/*</exclude-pattern>
         <!-- Native typehints already carry the param/return type; we don't
              also force prose descriptions for every parameter. -->
         <exclude name="Squiz.Commenting.FunctionComment.MissingParamComment"/>
@@ -295,6 +320,10 @@
         <exclude-pattern>app/Infrastructure/Persistence/Models/*</exclude-pattern>
         <exclude-pattern>app/Models/*</exclude-pattern>
         <exclude-pattern>app/Libraries/AbiSageIntacct/*</exclude-pattern>
+        <!-- Phase 4 (SV-3): same rationale as FunctionComment exclusion below.
+             Native PHP 8 typed properties already feed Intelephense; @var on
+             every property is pure ceremony in the pure Domain layer. -->
+        <exclude-pattern>app/Domain/*</exclude-pattern>
         <!-- Same rationale as FunctionComment: keep short-form scalars. -->
         <exclude name="Squiz.Commenting.VariableComment.IncorrectVarType"/>
     </rule>

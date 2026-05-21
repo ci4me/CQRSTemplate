@@ -39,12 +39,6 @@ final readonly class ChangeUserPasswordHandler
 {
     /**
      * __construct.
-     *
-     * @param UserRepositoryInterface       $repository
-     * @param PasswordHistoryRepository     $passwordHistory
-     * @param EventDispatcherInterface      $eventDispatcher
-     * @param LoggerInterface               $logger
-     * @param SessionManagementService|null $sessionManager
      */
     public function __construct(
         private UserRepositoryInterface $repository,
@@ -58,8 +52,6 @@ final readonly class ChangeUserPasswordHandler
     /**
      * handle.
      *
-     * @param ChangeUserPasswordCommand $command
-     * @return void
      * @throws \RuntimeException
      * @throws \InvalidArgumentException
      */

@@ -19,9 +19,6 @@ final readonly class DeleteCookieCommand
 {
     /**
      * __construct.
-     *
-     * @param int   $id
-     * @param Actor $deletedBy
      */
     public function __construct(
         public int $id,

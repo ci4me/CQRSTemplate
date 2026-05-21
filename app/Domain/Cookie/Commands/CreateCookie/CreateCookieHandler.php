@@ -140,9 +140,6 @@ final readonly class CreateCookieHandler
 
     /**
      * Determine appropriate error code based on exception type and context.
-     *
-     * @param \Throwable $e
-     * @return int
      */
     private function determineErrorCode(\Throwable $e): int
     {

@@ -51,7 +51,6 @@ final readonly class UpdateCookieHandler
      * Handle the UpdateCookieCommand.
      *
      * @param UpdateCookieCommand $command The update command
-     * @return void
      * @throws DomainException If cookie not found or business rules violated
      */
     public function handle(UpdateCookieCommand $command): void
@@ -151,9 +150,6 @@ final readonly class UpdateCookieHandler
 
     /**
      * determineErrorCode.
-     *
-     * @param \Throwable $e
-     * @return int
      */
     private function determineErrorCode(\Throwable $e): int
     {

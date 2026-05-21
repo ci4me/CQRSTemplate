@@ -17,10 +17,6 @@ final readonly class Permission
 {
     /**
      * __construct.
-     *
-     * @param string $module
-     * @param string $action
-     * @param string $name
      */
     private function __construct(
         public string $module,
@@ -32,8 +28,6 @@ final readonly class Permission
     /**
      * fromString.
      *
-     * @param string $value
-     * @return self
      * @throws \InvalidArgumentException
      */
     public static function fromString(string $value): self
@@ -52,9 +46,6 @@ final readonly class Permission
 
     /**
      * equals.
-     *
-     * @param self $other
-     * @return bool
      */
     public function equals(self $other): bool
     {
@@ -63,8 +54,6 @@ final readonly class Permission
 
     /**
      * __toString.
-     *
-     * @return string
      */
     public function __toString(): string
     {

@@ -24,13 +24,9 @@ final readonly class GetAllUsersQuery
     private const int DEFAULT_PER_PAGE = 20;
     private const int MAX_PER_PAGE = 100;
 
-    /** @var int */
     public int $page;
-    /** @var int */
     public int $perPage;
-    /** @var bool */
     public bool $includeInactive;
-    /** @var string */
     public string $searchTerm;
 
     /**

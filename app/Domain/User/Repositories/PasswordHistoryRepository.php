@@ -150,7 +150,6 @@ readonly class PasswordHistoryRepository
      * Keeps only the last MAX_HISTORY_COUNT entries per user.
      *
      * @param int $userId User ID
-     * @return void
      */
     private function pruneOldEntries(int $userId): void
     {

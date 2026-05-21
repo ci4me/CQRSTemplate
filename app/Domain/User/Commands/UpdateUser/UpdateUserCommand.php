@@ -25,13 +25,6 @@ final readonly class UpdateUserCommand
 {
     /**
      * __construct.
-     *
-     * @param int    $userId
-     * @param string $name
-     * @param string $email
-     * @param string $role
-     * @param string $status
-     * @param Actor  $updatedBy
      */
     public function __construct(
         public int $userId,

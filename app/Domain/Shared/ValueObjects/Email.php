@@ -33,8 +33,6 @@ final readonly class Email
 {
     /**
      * The normalized email address.
-     *
-     * @var string
      */
     private string $value;
 
@@ -59,7 +57,6 @@ final readonly class Email
      * Create Email from string.
      *
      * @param string $email The email address
-     * @return self
      * @throws ValidationException If validation fails
      */
     public static function fromString(string $email): self
@@ -120,8 +117,6 @@ final readonly class Email
 
     /**
      * Convert to string automatically.
-     *
-     * @return string
      */
     public function __toString(): string
     {

@@ -13,10 +13,6 @@ final readonly class CookieRestoredEvent implements DomainEventInterface
 {
     /**
      * __construct.
-     *
-     * @param int    $cookieId
-     * @param int    $restoredBy
-     * @param string $restoredAt
      */
     public function __construct(
         public int $cookieId,

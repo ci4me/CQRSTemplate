@@ -28,18 +28,6 @@ use App\Domain\Cookie\Entities\Cookie;
 final readonly class CookieView
 {
     /**
-     * @param int                        $id
-     * @param string                     $name
-     * @param string|null                $description
-     * @param string                     $price
-     * @param int                        $stock
-     * @param bool                       $isActive
-     * @param int                        $version
-     * @param string|null                $createdAt
-     * @param string|null                $updatedAt
-     * @param string|null                $deletedAt
-     * @param bool                       $isDeleted
-     * @param bool                       $isAvailable
      * @param array<string, scalar|null> $extra       extra fields (currently unused;
      *                                                reserved for tenant_id, audit
      *                                                fields when those land in the
@@ -64,9 +52,6 @@ final readonly class CookieView
 
     /**
      * detail.
-     *
-     * @param Cookie $cookie
-     * @return self
      */
     public static function detail(Cookie $cookie): self
     {
@@ -88,9 +73,6 @@ final readonly class CookieView
 
     /**
      * Lighter shape for list rendering — no description, no timestamps.
-     *
-     * @param Cookie $cookie
-     * @return self
      */
     public static function summary(Cookie $cookie): self
     {

@@ -35,7 +35,6 @@ use RuntimeException;
  */
 class DomainException extends RuntimeException
 {
-    /** @var int */
     private int $errorCode = 0;
 
     /**
@@ -67,7 +66,6 @@ class DomainException extends RuntimeException
      * @param string $entityName Name of the entity (e.g., "Cookie", "User")
      * @param string $reason     Why the state is invalid
      * @param int    $errorCode  Domain-specific error code
-     * @return self
      */
     public static function invalidState(string $entityName, string $reason, int $errorCode = 0): self
     {
@@ -83,7 +81,6 @@ class DomainException extends RuntimeException
      * @param string $ruleName  Name of the violated business rule
      * @param string $details   Additional details about the violation
      * @param int    $errorCode Domain-specific error code
-     * @return self
      */
     public static function businessRuleViolation(string $ruleName, string $details, int $errorCode = 0): self
     {
@@ -99,7 +96,6 @@ class DomainException extends RuntimeException
      * @param string     $entityName Name of the entity that was not found
      * @param int|string $identifier The identifier that was searched for
      * @param int        $errorCode  Domain-specific error code
-     * @return self
      */
     public static function notFound(string $entityName, int|string $identifier, int $errorCode = 0): self
     {
@@ -119,7 +115,6 @@ class DomainException extends RuntimeException
      * @param int        $expectedVersion Version the caller held
      * @param int        $actualVersion   Current version in the database
      * @param int        $errorCode       Optional domain error code
-     * @return self
      */
     public static function concurrentModification(
         string $entityName,

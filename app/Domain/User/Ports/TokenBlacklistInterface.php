@@ -15,7 +15,6 @@ interface TokenBlacklistInterface
      * Add a token to the blacklist.
      *
      * @param string $token JWT token to blacklist
-     * @return void
      */
     public function blacklist(string $token): void;
 

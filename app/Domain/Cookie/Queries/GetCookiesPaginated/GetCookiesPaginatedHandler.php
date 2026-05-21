@@ -75,7 +75,6 @@ final readonly class GetCookiesPaginatedHandler
      * @param GetCookiesPaginatedQuery                                                               $query      The query being executed
      * @param array{data: array<int, CookieDTO>, total: int, page: int, perPage: int, lastPage: int} $result     The query result
      * @param float                                                                                  $durationMs Execution duration in milliseconds
-     * @return void
      */
     private function logQueryExecution(GetCookiesPaginatedQuery $query, array $result, float $durationMs): void
     {
@@ -109,7 +108,6 @@ final readonly class GetCookiesPaginatedHandler
      * @param array{data: array<int, CookieDTO>, total: int, page: int, perPage: int, lastPage: int} $result      The query result
      * @param float                                                                                  $durationMs  Execution duration in milliseconds
      * @param bool                                                                                   $isSlowQuery Whether this is a slow query
-     * @return void
      */
     private function logQuery(
         GetCookiesPaginatedQuery $query,

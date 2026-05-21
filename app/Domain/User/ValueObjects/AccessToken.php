@@ -39,10 +39,6 @@ final readonly class AccessToken
 
     /**
      * Create AccessToken from string with expiration.
-     *
-     * @param string             $token
-     * @param \DateTimeImmutable $expiresAt
-     * @return self
      */
     public static function fromString(string $token, \DateTimeImmutable $expiresAt): self
     {
@@ -51,8 +47,6 @@ final readonly class AccessToken
 
     /**
      * Get the access token value.
-     *
-     * @return string
      */
     public function getValue(): string
     {
@@ -61,8 +55,6 @@ final readonly class AccessToken
 
     /**
      * Get the token expiration timestamp.
-     *
-     * @return \DateTimeImmutable
      */
     public function getExpiresAt(): \DateTimeImmutable
     {
@@ -71,8 +63,6 @@ final readonly class AccessToken
 
     /**
      * Check if the token is expired.
-     *
-     * @return bool
      */
     public function isExpired(): bool
     {
@@ -82,9 +72,6 @@ final readonly class AccessToken
 
     /**
      * Check if this token equals another.
-     *
-     * @param AccessToken $other
-     * @return bool
      */
     public function equals(AccessToken $other): bool
     {
@@ -94,8 +81,6 @@ final readonly class AccessToken
 
     /**
      * Convert to string automatically.
-     *
-     * @return string
      */
     public function __toString(): string
     {

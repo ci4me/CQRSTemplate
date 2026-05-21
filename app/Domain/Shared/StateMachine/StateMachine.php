@@ -55,9 +55,6 @@ final readonly class StateMachine
     /**
      * Throws {@see InvalidTransition} if the move is not in the table.
      *
-     * @param State|string $from
-     * @param State|string $to
-     * @return void
      * @throws InvalidTransition
      */
     public function transition(State|string $from, State|string $to): void
@@ -77,10 +74,6 @@ final readonly class StateMachine
 
     /**
      * canTransition.
-     *
-     * @param State|string $from
-     * @param State|string $to
-     * @return bool
      */
     public function canTransition(State|string $from, State|string $to): bool
     {
@@ -93,7 +86,6 @@ final readonly class StateMachine
     }
 
     /**
-     * @param State|string $from
      * @return list<string>
      */
     public function allowedFrom(State|string $from): array
@@ -103,9 +95,6 @@ final readonly class StateMachine
 
     /**
      * isTerminal.
-     *
-     * @param State|string $state
-     * @return bool
      */
     public function isTerminal(State|string $state): bool
     {
@@ -114,9 +103,6 @@ final readonly class StateMachine
 
     /**
      * nameOf.
-     *
-     * @param State|string $value
-     * @return string
      */
     private function nameOf(State|string $value): string
     {

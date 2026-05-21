@@ -68,31 +68,20 @@ final class Cookie
 {
     use AggregateRoot;
 
-    /** @var int|null */
     private ?int $id = null;
-    /** @var CookieName */
     private CookieName $name;
-    /** @var string|null */
     private ?string $description;
-    /** @var CookiePrice */
     private CookiePrice $price;
-    /** @var int */
     private int $stock;
-    /** @var bool */
     private bool $isActive;
     /**
      * Optimistic-locking token. Incremented by the repository on every save;
      * UPDATEs include `WHERE version = $version` so concurrent writers detect
      * the race instead of silently overwriting each other.
-     *
-     * @var int
      */
     private int $version = 0;
-    /** @var string|null */
     private ?string $createdAt = null;
-    /** @var string|null */
     private ?string $updatedAt = null;
-    /** @var string|null */
     private ?string $deletedAt = null;
 
     /**
@@ -129,7 +118,6 @@ final class Cookie
      * @param CookiePrice $price       The cookie price
      * @param int         $stock       The initial stock quantity
      * @param bool        $isActive    Whether the cookie is active
-     * @return self
      */
     public static function create(
         CookieName $name,
@@ -155,8 +143,6 @@ final class Cookie
      * @param string|null $createdAt   Creation timestamp
      * @param string|null $updatedAt   Last update timestamp
      * @param string|null $deletedAt   Deletion timestamp (null if not deleted)
-     * @param int         $version
-     * @return self
      */
     public static function reconstitute(
         int $id,
@@ -185,7 +171,6 @@ final class Cookie
      * Called by the repository — should not be called by application code.
      *
      * @internal
-     * @return void
      */
     public function bumpVersion(): void
     {
@@ -197,8 +182,6 @@ final class Cookie
      * Called by the repository — should not be called by application code.
      *
      * @internal
-     * @param int $id
-     * @return void
      * @throws \LogicException
      */
     public function assignId(int $id): void
@@ -213,8 +196,6 @@ final class Cookie
 
     /**
      * getVersion.
-     *
-     * @return int
      */
     public function getVersion(): int
     {
@@ -229,7 +210,6 @@ final class Cookie
      * @param CookiePrice $price       The new price
      * @param int         $stock       The new stock quantity
      * @param bool        $isActive    Whether the cookie is active
-     * @return void
      */
     public function update(
         CookieName $name,
@@ -293,7 +273,6 @@ final class Cookie
     /**
      * assertNotDeleted.
      *
-     * @return void
      * @throws DomainException
      */
     private function assertNotDeleted(): void
@@ -317,8 +296,6 @@ final class Cookie
      * pre-save stock manipulation it must be expressed as the entity's
      * initial `stock` argument to {@see self::create()}.
      *
-     * @param string $operation
-     * @return void
      * @throws DomainException
      */
     private function assertPersisted(string $operation): void
@@ -338,7 +315,6 @@ final class Cookie
      * Business Rule: Stock cannot go negative.
      *
      * @param int $quantity The quantity to decrease
-     * @return void
      * @throws ValidationException
      * @throws DomainException If resulting stock would be negative
      */
@@ -376,7 +352,6 @@ final class Cookie
      * Increase stock by a given quantity.
      *
      * @param int $quantity The quantity to increase
-     * @return void
      * @throws ValidationException If quantity is not positive
      */
     public function increaseStock(int $quantity): void
@@ -405,7 +380,6 @@ final class Cookie
      * Business Rule: Stock cannot be negative.
      *
      * @param int $stock The new stock quantity
-     * @return void
      * @throws ValidationException If stock is negative
      */
     private function setStock(int $stock): void
@@ -419,8 +393,6 @@ final class Cookie
 
     /**
      * Activate the cookie (make it visible to customers).
-     *
-     * @return void
      */
     public function activate(): void
     {
@@ -430,8 +402,6 @@ final class Cookie
 
     /**
      * Deactivate the cookie (hide from customers).
-     *
-     * @return void
      */
     public function deactivate(): void
     {
@@ -475,8 +445,6 @@ final class Cookie
 
     /**
      * getId.
-     *
-     * @return int|null
      */
     public function getId(): ?int
     {
@@ -485,8 +453,6 @@ final class Cookie
 
     /**
      * getName.
-     *
-     * @return CookieName
      */
     public function getName(): CookieName
     {
@@ -495,8 +461,6 @@ final class Cookie
 
     /**
      * getDescription.
-     *
-     * @return string|null
      */
     public function getDescription(): ?string
     {
@@ -505,8 +469,6 @@ final class Cookie
 
     /**
      * getPrice.
-     *
-     * @return CookiePrice
      */
     public function getPrice(): CookiePrice
     {
@@ -515,8 +477,6 @@ final class Cookie
 
     /**
      * getStock.
-     *
-     * @return int
      */
     public function getStock(): int
     {
@@ -525,8 +485,6 @@ final class Cookie
 
     /**
      * getIsActive.
-     *
-     * @return bool
      */
     public function getIsActive(): bool
     {
@@ -535,8 +493,6 @@ final class Cookie
 
     /**
      * getCreatedAt.
-     *
-     * @return string|null
      */
     public function getCreatedAt(): ?string
     {
@@ -545,8 +501,6 @@ final class Cookie
 
     /**
      * getUpdatedAt.
-     *
-     * @return string|null
      */
     public function getUpdatedAt(): ?string
     {
@@ -555,8 +509,6 @@ final class Cookie
 
     /**
      * getDeletedAt.
-     *
-     * @return string|null
      */
     public function getDeletedAt(): ?string
     {

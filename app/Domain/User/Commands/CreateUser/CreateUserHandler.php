@@ -29,10 +29,6 @@ final readonly class CreateUserHandler
 {
     /**
      * __construct.
-     *
-     * @param UserRepositoryInterface  $repository
-     * @param EventDispatcherInterface $eventDispatcher
-     * @param LoggerInterface          $logger
      */
     public function __construct(
         private UserRepositoryInterface $repository,
@@ -43,9 +39,6 @@ final readonly class CreateUserHandler
 
     /**
      * handle.
-     *
-     * @param CreateUserCommand $command
-     * @return int
      */
     public function handle(CreateUserCommand $command): int
     {
@@ -102,8 +95,6 @@ final readonly class CreateUserHandler
     /**
      * checkEmailUniqueness.
      *
-     * @param Email $email
-     * @return void
      * @throws DomainException
      */
     private function checkEmailUniqueness(Email $email): void

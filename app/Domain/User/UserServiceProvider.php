@@ -58,8 +58,6 @@ final class UserServiceProvider implements DomainServiceProviderInterface
     /**
      * registerCommands.
      *
-     * @param CommandBus $commandBus
-     * @return void
      * @throws \RuntimeException
      */
     public function registerCommands(CommandBus $commandBus): void
@@ -113,8 +111,6 @@ final class UserServiceProvider implements DomainServiceProviderInterface
     /**
      * registerQueries.
      *
-     * @param QueryBus $queryBus
-     * @return void
      * @throws \RuntimeException
      */
     public function registerQueries(QueryBus $queryBus): void
@@ -152,8 +148,6 @@ final class UserServiceProvider implements DomainServiceProviderInterface
     /**
      * registerEvents.
      *
-     * @param EventDispatcher $dispatcher
-     * @return void
      * @throws \RuntimeException
      */
     public function registerEvents(EventDispatcher $dispatcher): void
@@ -191,9 +185,6 @@ final class UserServiceProvider implements DomainServiceProviderInterface
      *
      * Moved out of app/Config/Routes.php by Phase 3 Group C so adding a
      * new user-management surface no longer requires editing routes.
-     *
-     * @param RouteCollection $routes
-     * @return void
      */
     public function registerRoutes(RouteCollection $routes): void
     {
@@ -247,7 +238,6 @@ final class UserServiceProvider implements DomainServiceProviderInterface
 
     /**
      * @param array<string, object> $repositories
-     * @return void
      */
     public function setRepositories(array $repositories): void
     {
@@ -256,9 +246,6 @@ final class UserServiceProvider implements DomainServiceProviderInterface
 
     /**
      * getRepository.
-     *
-     * @param string $name
-     * @return object
      */
     private function getRepository(string $name): object
     {

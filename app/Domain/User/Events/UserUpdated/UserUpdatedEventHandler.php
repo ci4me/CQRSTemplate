@@ -21,8 +21,6 @@ final readonly class UserUpdatedEventHandler
 {
     /**
      * __construct.
-     *
-     * @param LoggerInterface $logger
      */
     public function __construct(
         private LoggerInterface $logger
@@ -31,9 +29,6 @@ final readonly class UserUpdatedEventHandler
 
     /**
      * __invoke.
-     *
-     * @param UserUpdatedEvent $event
-     * @return void
      */
     public function __invoke(UserUpdatedEvent $event): void
     {

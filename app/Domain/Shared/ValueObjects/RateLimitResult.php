@@ -41,8 +41,6 @@ class RateLimitResult
 
     /**
      * isAllowed.
-     *
-     * @return bool
      */
     public function isAllowed(): bool
     {
@@ -51,8 +49,6 @@ class RateLimitResult
 
     /**
      * getAttemptsRemaining.
-     *
-     * @return int
      */
     public function getAttemptsRemaining(): int
     {
@@ -61,8 +57,6 @@ class RateLimitResult
 
     /**
      * getResetTime.
-     *
-     * @return int
      */
     public function getResetTime(): int
     {
@@ -71,8 +65,6 @@ class RateLimitResult
 
     /**
      * getSecondsUntilReset.
-     *
-     * @return int
      */
     public function getSecondsUntilReset(): int
     {

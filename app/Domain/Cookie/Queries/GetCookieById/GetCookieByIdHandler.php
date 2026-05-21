@@ -70,7 +70,6 @@ final readonly class GetCookieByIdHandler
      * @param int            $cookieId   The cookie ID being queried
      * @param CookieDTO|null $result     The query result
      * @param float          $durationMs Execution duration in milliseconds
-     * @return void
      */
     private function logQueryExecution(int $cookieId, ?CookieDTO $result, float $durationMs): void
     {
@@ -103,7 +102,6 @@ final readonly class GetCookieByIdHandler
      * @param CookieDTO|null $result      The query result
      * @param float          $durationMs  Execution duration in milliseconds
      * @param bool           $isSlowQuery Whether this is a slow query
-     * @return void
      */
     private function logQuery(int $cookieId, ?CookieDTO $result, float $durationMs, bool $isSlowQuery): void
     {

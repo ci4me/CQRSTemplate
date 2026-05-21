@@ -18,10 +18,6 @@ final readonly class RestoreCookieHandler
 {
     /**
      * __construct.
-     *
-     * @param CookieRepositoryInterface $repository
-     * @param EventDispatcherInterface  $eventDispatcher
-     * @param LoggerInterface           $logger
      */
     public function __construct(
         private CookieRepositoryInterface $repository,
@@ -33,8 +29,6 @@ final readonly class RestoreCookieHandler
     /**
      * handle.
      *
-     * @param RestoreCookieCommand $command
-     * @return void
      * @throws DomainException
      * @throws \RuntimeException
      */

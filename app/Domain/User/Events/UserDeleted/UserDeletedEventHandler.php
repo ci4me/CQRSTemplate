@@ -21,8 +21,6 @@ final readonly class UserDeletedEventHandler
 {
     /**
      * __construct.
-     *
-     * @param LoggerInterface $logger
      */
     public function __construct(
         private LoggerInterface $logger
@@ -31,9 +29,6 @@ final readonly class UserDeletedEventHandler
 
     /**
      * __invoke.
-     *
-     * @param UserDeletedEvent $event
-     * @return void
      */
     public function __invoke(UserDeletedEvent $event): void
     {

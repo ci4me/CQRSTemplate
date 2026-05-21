@@ -20,8 +20,6 @@ interface State
 {
     /**
      * stateName.
-     *
-     * @return string
      */
     public function stateName(): string;
 }
