@@ -5,10 +5,10 @@ declare(strict_types=1);
 namespace App\Infrastructure\Auth\Commands\RefreshToken;
 
 use App\Domain\User\Ports\TokenBlacklistInterface;
+use App\Domain\User\Repositories\UserRepository;
 use App\Infrastructure\Auth\Services\JwtService;
 use App\Infrastructure\Auth\ValueObjects\AuthenticationResult;
 use App\Infrastructure\Logging\LoggerFactory;
-use App\Infrastructure\Persistence\Repositories\UserRepository;
 use Psr\Log\LoggerInterface;
 
 /**

@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Auth\Middleware;
 
-use App\Infrastructure\Persistence\Repositories\UserRepository;
+use App\Domain\User\Repositories\UserRepository;
 use CodeIgniter\Filters\FilterInterface;
 use CodeIgniter\HTTP\RequestInterface;
 use CodeIgniter\HTTP\ResponseInterface;

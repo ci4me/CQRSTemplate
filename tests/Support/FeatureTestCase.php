@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace Tests\Support;
 
 use App\Domain\Cookie\Entities\Cookie;
+use App\Domain\Cookie\Repositories\CookieRepository;
 use App\Infrastructure\Persistence\Models\UserModel;
-use App\Infrastructure\Persistence\Repositories\CookieRepository;
 use CodeIgniter\Test\CIUnitTestCase;
 use CodeIgniter\Test\DatabaseTestTrait;
 use CodeIgniter\Test\FeatureTestTrait;

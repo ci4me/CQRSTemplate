@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Auth\Commands\RequestPasswordReset;
 
+use App\Domain\User\Repositories\UserRepository;
 use App\Domain\User\ValueObjects\Email;
 use App\Infrastructure\Auth\ValueObjects\PasswordResetToken;
 use App\Infrastructure\Email\EmailService;
 use App\Infrastructure\Logging\LoggerFactory;
-use App\Infrastructure\Persistence\Repositories\UserRepository;
 use Psr\Log\LoggerInterface;
 
 /**

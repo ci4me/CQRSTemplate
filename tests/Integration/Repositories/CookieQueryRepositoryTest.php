@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace Tests\Integration\Repositories;
 
 use App\Domain\Cookie\Entities\Cookie;
+use App\Domain\Cookie\Repositories\CookieQueryRepository;
 use App\Domain\Cookie\ValueObjects\CookieName;
 use App\Domain\Cookie\ValueObjects\CookiePrice;
-use App\Infrastructure\Persistence\Repositories\CookieQueryRepository;
 use Tests\Support\IntegrationTestCase;
 
 /**

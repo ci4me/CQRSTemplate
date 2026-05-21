@@ -176,6 +176,11 @@
         <!-- ServiceProviders are DI container wiring; the container holds
              services of arbitrary type by design. -->
         <exclude-pattern>app/Domain/*/*ServiceProvider.php</exclude-pattern>
+        <!-- Repository implementations live under app/Domain/{X}/Repositories/
+             as infrastructure adapters tagged with #[InfrastructureAdapter]
+             (Phase 3). They legitimately map raw DB rows (array<string, mixed>)
+             into domain entities/DTOs at the persistence boundary. -->
+        <exclude-pattern>app/Domain/*/Repositories/</exclude-pattern>
     </rule>
 
     <!-- Identity-only comparisons. `==` allows coercion surprises that
@@ -208,9 +213,9 @@
              interface they implement, but until those tests are
              rewritten we leave the classes non-final. New code should
              prefer interface-based mocking and stay `final`. -->
-        <exclude-pattern>app/Infrastructure/Persistence/Repositories/CookieRepository.php</exclude-pattern>
-        <exclude-pattern>app/Infrastructure/Persistence/Repositories/UserRepository.php</exclude-pattern>
-        <exclude-pattern>app/Infrastructure/Persistence/Repositories/PasswordHistoryRepository.php</exclude-pattern>
+        <exclude-pattern>app/Domain/Cookie/Repositories/CookieRepository.php</exclude-pattern>
+        <exclude-pattern>app/Domain/User/Repositories/UserRepository.php</exclude-pattern>
+        <exclude-pattern>app/Domain/User/Repositories/PasswordHistoryRepository.php</exclude-pattern>
         <exclude-pattern>app/Infrastructure/Auth/Services/PermissionService.php</exclude-pattern>
         <exclude-pattern>app/Infrastructure/Auth/Services/DatabaseTokenBlacklistService.php</exclude-pattern>
     </rule>

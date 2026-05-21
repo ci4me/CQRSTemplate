@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Auth\Commands\ResetPassword;
 
+use App\Domain\User\Repositories\PasswordHistoryRepository;
+use App\Domain\User\Repositories\UserRepository;
 use App\Domain\User\ValueObjects\HashedPassword;
 use App\Infrastructure\Auth\ValueObjects\PasswordResetToken;
 use App\Infrastructure\Logging\LoggerFactory;
-use App\Infrastructure\Persistence\Repositories\PasswordHistoryRepository;
-use App\Infrastructure\Persistence\Repositories\UserRepository;
 use Psr\Log\LoggerInterface;
 
 /**

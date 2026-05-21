@@ -34,7 +34,7 @@ use App\Domain\Shared\Exceptions\ValidationException;
  * Event-emission convention:
  * - The entity raises CookieStockChangedEvent / CookieUpdatedEvent /
  *   CookieDeletedEvent / CookieRestoredEvent through the AggregateRoot
- *   trait; the {@see \App\Infrastructure\Persistence\Repositories\CookieRepository} drains them
+ *   trait; the {@see \App\Domain\Cookie\Repositories\CookieRepository} drains them
  *   after a successful save.
  * - CookieCreatedEvent is dispatched by the create handler (NOT the
  *   entity) because the event payload includes the freshly-allocated

@@ -5,13 +5,13 @@ declare(strict_types=1);
 namespace App\Infrastructure\Auth\Commands\LoginUser;
 
 use App\Domain\User\Ports\AuthenticationServiceInterface;
+use App\Domain\User\Repositories\UserRepository;
 use App\Domain\User\ValueObjects\AuthenticationResult;
 use App\Domain\User\ValueObjects\Email;
 use App\Domain\User\ValueObjects\HashedPassword;
 use App\Infrastructure\Auth\Services\LoginAttemptTracker;
 use App\Infrastructure\Auth\Services\SecurityEventService;
 use App\Infrastructure\Auth\Services\SessionManagementService;
-use App\Infrastructure\Persistence\Repositories\UserRepository;
 use Psr\Log\LoggerInterface;
 
 /**

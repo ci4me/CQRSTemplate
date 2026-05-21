@@ -7,7 +7,7 @@ namespace Tests\Unit\Domain\User\Queries;
 use App\Domain\User\Queries\GetAllUsers\GetAllUsersHandler;
 use App\Domain\User\Queries\GetAllUsers\GetAllUsersQuery;
 use App\Infrastructure\Logging\LoggerFactory;
-use App\Infrastructure\Persistence\Repositories\UserRepository;
+use App\Domain\User\Repositories\UserRepository;
 use Config\Logging;
 use Tests\Support\Factories\UserFactory;
 use Tests\Support\UnitTestCase;

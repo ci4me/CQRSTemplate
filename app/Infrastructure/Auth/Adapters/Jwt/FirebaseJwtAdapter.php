@@ -7,10 +7,10 @@ namespace App\Infrastructure\Auth\Adapters\Jwt;
 use App\Domain\User\Entities\User;
 use App\Domain\User\Ports\AuthenticationServiceInterface;
 use App\Domain\User\Ports\TokenBlacklistInterface;
+use App\Domain\User\Repositories\UserRepository;
 use App\Domain\User\ValueObjects\AccessToken;
 use App\Domain\User\ValueObjects\AuthenticationResult;
 use App\Infrastructure\Auth\Services\JwtService;
-use App\Infrastructure\Persistence\Repositories\UserRepository;
 
 /**
  * FirebaseJwtAdapter.

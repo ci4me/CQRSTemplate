@@ -8,9 +8,9 @@ use App\Domain\Shared\Events\EventDispatcherInterface;
 use App\Domain\User\ErrorCodes;
 use App\Domain\User\Events\PasswordChanged\PasswordChangedEvent;
 use App\Domain\User\Ports\UserRepositoryInterface;
+use App\Domain\User\Repositories\PasswordHistoryRepository;
 use App\Domain\User\ValueObjects\HashedPassword;
 use App\Infrastructure\Auth\Services\SessionManagementService;
-use App\Infrastructure\Persistence\Repositories\PasswordHistoryRepository;
 use Psr\Log\LoggerInterface;
 
 /**

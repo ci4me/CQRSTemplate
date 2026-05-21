@@ -6,6 +6,8 @@ namespace App\Infrastructure\Auth;
 
 use App\Domain\User\Ports\AuthenticationServiceInterface;
 use App\Domain\User\Ports\TokenBlacklistInterface;
+use App\Domain\User\Repositories\PasswordHistoryRepository;
+use App\Domain\User\Repositories\UserRepository;
 use App\Infrastructure\Attributes\DomainServiceProvider;
 use App\Infrastructure\Auth\Commands\LoginUser\LoginUserCommand;
 use App\Infrastructure\Auth\Commands\LoginUser\LoginUserHandler;
@@ -25,8 +27,6 @@ use App\Infrastructure\Bus\CommandBus;
 use App\Infrastructure\Bus\EventDispatcher;
 use App\Infrastructure\Bus\QueryBus;
 use App\Infrastructure\Email\EmailService;
-use App\Infrastructure\Persistence\Repositories\PasswordHistoryRepository;
-use App\Infrastructure\Persistence\Repositories\UserRepository;
 use App\Infrastructure\ServiceProvider\DomainServiceProviderInterface;
 use Psr\Log\LoggerInterface;
 

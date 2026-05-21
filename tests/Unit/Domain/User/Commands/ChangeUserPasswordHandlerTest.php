@@ -38,7 +38,7 @@ final class ChangeUserPasswordHandlerTest extends UnitTestCase
         parent::setUp();
 
         $this->repository = $this->createMock(UserRepositoryInterface::class);
-        $passwordHistory = $this->createMock(\App\Infrastructure\Persistence\Repositories\PasswordHistoryRepository::class);
+        $passwordHistory = $this->createMock(\App\Domain\User\Repositories\PasswordHistoryRepository::class);
         $this->eventDispatcher = $this->createMock(EventDispatcherInterface::class);
         $logger = LoggerFactory::create('test.user.commands');
         $this->handler = new ChangeUserPasswordHandler($this->repository, $passwordHistory, $this->eventDispatcher, $logger);

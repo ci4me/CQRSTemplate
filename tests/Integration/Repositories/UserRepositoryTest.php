@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Integration\Repositories;
 
 use App\Domain\User\Entities\User;
+use App\Domain\User\Repositories\UserRepository;
 use App\Domain\User\ValueObjects\Email;
 use App\Domain\User\ValueObjects\HashedPassword;
 use App\Domain\User\ValueObjects\UserName;
@@ -12,7 +13,6 @@ use App\Domain\User\ValueObjects\UserRole;
 use App\Domain\User\ValueObjects\UserStatus;
 use App\Infrastructure\Logging\LoggerFactory;
 use App\Infrastructure\Persistence\Models\UserModel;
-use App\Infrastructure\Persistence\Repositories\UserRepository;
 use Tests\Support\IntegrationTestCase;
 
 /**

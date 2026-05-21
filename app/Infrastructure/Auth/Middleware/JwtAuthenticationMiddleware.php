@@ -6,10 +6,10 @@ namespace App\Infrastructure\Auth\Middleware;
 
 use App\Domain\User\Entities\User;
 use App\Domain\User\Ports\TokenBlacklistInterface;
+use App\Domain\User\Repositories\UserRepository;
 use App\Infrastructure\Auth\AuthContext;
 use App\Infrastructure\Auth\Services\JwtService;
 use App\Infrastructure\Auth\Services\SessionManagementService;
-use App\Infrastructure\Persistence\Repositories\UserRepository;
 use CodeIgniter\Filters\FilterInterface;
 use CodeIgniter\HTTP\RequestInterface;
 use CodeIgniter\HTTP\ResponseInterface;
