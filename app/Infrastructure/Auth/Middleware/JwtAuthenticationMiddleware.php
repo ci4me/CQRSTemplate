@@ -77,7 +77,12 @@ final class JwtAuthenticationMiddleware implements FilterInterface
     ) {
         $this->jwtService = $jwtService ?? \Config\Services::jwtService();
         $this->blacklistService = $blacklistService ?? \Config\Services::tokenBlacklistService();
-        $this->userRepository = $userRepository ?? \Config\Services::userRepository();
+        if ($userRepository === null) {
+            $resolved = \Config\Services::repository('userRepository');
+            assert($resolved instanceof UserRepository);
+            $userRepository = $resolved;
+        }
+        $this->userRepository = $userRepository;
         $this->sessionManager = $sessionManager ?? \Config\Services::sessionManagementService();
         $this->logger = $logger ?? \Config\Services::logger();
     }

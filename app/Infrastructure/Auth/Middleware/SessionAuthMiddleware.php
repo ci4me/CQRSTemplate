@@ -44,7 +44,12 @@ final class SessionAuthMiddleware implements FilterInterface
         ?UserRepository $userRepository = null,
         ?LoggerInterface $logger = null
     ) {
-        $this->userRepository = $userRepository ?? \Config\Services::userRepository();
+        if ($userRepository === null) {
+            $resolved = \Config\Services::repository('userRepository');
+            assert($resolved instanceof UserRepository);
+            $userRepository = $resolved;
+        }
+        $this->userRepository = $userRepository;
         $this->logger = $logger ?? \Config\Services::logger();
     }
 

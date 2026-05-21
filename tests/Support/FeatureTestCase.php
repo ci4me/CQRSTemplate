@@ -78,7 +78,9 @@ abstract class FeatureTestCase extends CIUnitTestCase
         // regardless of the source row; Phase 2 collapsed that projection
         // into the canonical `cookies` table, so the read and write paths
         // now share the same physical row and must agree on tenant_id.
-        $this->cookieRepository = \Config\Services::cookieRepository();
+        $cookieRepository = \Config\Services::repository('cookieRepository');
+        assert($cookieRepository instanceof CookieRepository);
+        $this->cookieRepository = $cookieRepository;
 
         if (!$this->authenticateByDefault) {
             return;

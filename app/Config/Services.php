@@ -24,7 +24,6 @@ use App\Infrastructure\Bus\Middleware\AuditMiddleware;
 use App\Infrastructure\Bus\Middleware\LoggingMiddleware;
 use App\Infrastructure\Bus\Middleware\TransactionMiddleware;
 use App\Infrastructure\Bus\QueryBus;
-use App\Infrastructure\Outbox\EventOutboxWriter;
 use App\Infrastructure\Projections\ProjectionRegistry;
 use App\Infrastructure\Email\EmailService;
 use App\Infrastructure\I18n\LocaleResolver;
@@ -32,13 +31,8 @@ use App\Infrastructure\Jobs\JobQueue;
 use App\Infrastructure\Logging\LoggerFactory;
 use App\Infrastructure\Logging\LoggingServiceProvider;
 use App\Infrastructure\Notifications\NotificationService;
-use App\Infrastructure\Settings\SettingsService;
-use App\Infrastructure\Persistence\Models\UserModel;
-use App\Domain\User\Repositories\PasswordHistoryRepository;
-use App\Domain\User\Repositories\UserRepository;
 use App\Infrastructure\ServiceProvider\ServiceProviderRegistry;
-use App\Domain\Cookie\Repositories\CookieQueryRepository;
-use App\Domain\Cookie\Repositories\CookieRepository;
+use App\Infrastructure\Settings\SettingsService;
 use App\Infrastructure\Tenancy\TenantContext;
 use CodeIgniter\Config\BaseService;
 use Psr\Log\LoggerInterface;
@@ -218,15 +212,13 @@ class Services extends BaseService
         $queryBus = static::getSharedInstance('queryBus');
         $eventDispatcher = static::getSharedInstance('eventDispatcher');
 
-        // Register all domain providers
-        ServiceProviderRegistry::registerAll(
-            $commandBus,
-            $queryBus,
-            $eventDispatcher,
+        // Register all domain providers. Repository entries are now
+        // auto-discovered from #[AutoBind]-tagged classes (Phase 3 Group B);
+        // the rest are non-repository services that still register manually
+        // — they will move to ports + adapters in Phase 5.
+        $repositories = array_merge(
+            ServiceProviderRegistry::discoverRepositories(),
             [
-                'cookieRepository' => self::cookieRepository(),
-                'cookieQueryRepository' => self::cookieQueryRepository(),
-                'userRepository' => self::userRepository(),
                 'eventDispatcher' => $eventDispatcher,
                 'logger' => self::logger(),
                 'loggingConfig' => config('Logging'),
@@ -235,12 +227,18 @@ class Services extends BaseService
                 'tokenBlacklistService' => self::tokenBlacklistService(),
                 'rateLimitService' => self::rateLimitService(),
                 'jwtService' => self::jwtService(),
-                'passwordHistoryRepository' => self::passwordHistoryRepository(),
                 'sessionManagementService' => self::sessionManagementService(),
                 'loginAttemptTracker' => self::loginAttemptTracker(),
                 'securityEventService' => self::securityEventService(),
                 'emailService' => self::emailService(),
             ]
+        );
+
+        ServiceProviderRegistry::registerAll(
+            $commandBus,
+            $queryBus,
+            $eventDispatcher,
+            $repositories
         );
 
         self::$providersRegistered = true;
@@ -253,44 +251,30 @@ class Services extends BaseService
     }
 
     /**
-     * Get the Cookie Repository instance.
+     * Resolve an auto-discovered repository by its lower-camelCase short name.
      *
-     * @param bool $getShared Whether to return the shared instance
-     * @return CookieRepository
-     */
-    public static function cookieRepository(bool $getShared = true): CookieRepository
-    {
-        if ($getShared) {
-            return static::getSharedInstance('cookieRepository');
-        }
-
-        return new CookieRepository(
-            self::logger(),
-            config('Logging'),
-            null,
-            null,
-            new EventOutboxWriter(),
-            self::tenantContext()
-        );
-    }
-
-    /**
-     * Read-side repository: returns CookieDTO from the canonical `cookies`
-     * table. Query handlers depend on this instead of {@see cookieRepository()}
-     * so the read path can be tuned independently of the write side.
+     * Phase 3 Group B: concrete repositories tagged with #[AutoBind] are
+     * instantiated by {@see ServiceProviderRegistry::discoverRepositories()}
+     * — the per-domain `cookieRepository()` / `userRepository()` factory
+     * methods that used to live in this file are gone. Callers that still
+     * want a typed reference to a repository (controllers, middleware,
+     * tests) go through this accessor.
      *
-     * Phase 2 of the stabilization refactor collapsed Cookie's read model
-     * into the canonical `cookies` table, so this repository now queries
-     * the same physical table as {@see cookieRepository()}; the CQRS
-     * code-level separation (distinct class returning DTOs) is preserved.
+     * @param string $name Lower-camelCase short name, e.g. 'cookieRepository'.
+     * @return object
+     * @throws \RuntimeException When the name is not registered.
      */
-    public static function cookieQueryRepository(bool $getShared = true): CookieQueryRepository
+    public static function repository(string $name): object
     {
-        if ($getShared) {
-            return static::getSharedInstance('cookieQueryRepository');
+        $repositories = ServiceProviderRegistry::discoverRepositories();
+        if (!isset($repositories[$name])) {
+            throw new \RuntimeException(sprintf(
+                'No #[AutoBind] repository registered as "%s". Available: %s',
+                $name,
+                implode(', ', array_keys($repositories))
+            ));
         }
-
-        return new CookieQueryRepository(null, self::tenantContext());
+        return $repositories[$name];
     }
 
     /**
@@ -310,25 +294,6 @@ class Services extends BaseService
         }
 
         return new TenantContext(\Config\Services::request());
-    }
-
-    /**
-     * Get the User Repository instance.
-     *
-     * @param bool $getShared Whether to return the shared instance
-     * @return UserRepository
-     */
-    public static function userRepository(bool $getShared = true): UserRepository
-    {
-        if ($getShared) {
-            return static::getSharedInstance('userRepository');
-        }
-
-        return new UserRepository(
-            new UserModel(),
-            self::logger(),
-            config('Logging')
-        );
     }
 
     /**
@@ -358,10 +323,13 @@ class Services extends BaseService
             return static::getSharedInstance('authenticationService');
         }
 
+        $userRepository = self::repository('userRepository');
+        assert($userRepository instanceof \App\Domain\User\Repositories\UserRepository);
+
         return new FirebaseJwtAdapter(
             self::jwtService(),
             self::tokenBlacklistService(),
-            self::userRepository()
+            $userRepository
         );
     }
 
@@ -450,23 +418,6 @@ class Services extends BaseService
         }
 
         return LoggingServiceProvider::createLogger('app');
-    }
-
-    /**
-     * Get the Password History Repository instance.
-     *
-     * @param bool $getShared Whether to return the shared instance
-     * @return PasswordHistoryRepository
-     */
-    public static function passwordHistoryRepository(bool $getShared = true): PasswordHistoryRepository
-    {
-        if ($getShared) {
-            return static::getSharedInstance('passwordHistoryRepository');
-        }
-
-        return new PasswordHistoryRepository(
-            \Config\Database::connect()
-        );
     }
 
     /**

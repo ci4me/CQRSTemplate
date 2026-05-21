@@ -475,8 +475,17 @@ final class ServiceProviderRegistry
         $type = $parameter->getType();
         $typeName = $type instanceof ReflectionNamedType ? $type->getName() : null;
 
-        $value = $typeName === null ? null : self::resolveKnownDependency($typeName, $reflection);
+        // Optional EventDispatcher params stay null at construction time.
+        // Resolving them here would recurse through Services::eventDispatcher()
+        // -> ensureProvidersRegistered() -> discoverRepositories() -> here.
+        // The original CookieRepository factory passed null for this exact
+        // reason; CommandHandlers wire the dispatcher in later from the
+        // shared instance.
+        if ($parameter->isOptional() && $typeName === 'App\\Infrastructure\\Bus\\EventDispatcher') {
+            return null;
+        }
 
+        $value = $typeName === null ? null : self::resolveKnownDependency($typeName, $reflection);
         if ($value !== null) {
             return $value;
         }

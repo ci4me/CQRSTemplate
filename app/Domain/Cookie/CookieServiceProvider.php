@@ -220,9 +220,11 @@ final class CookieServiceProvider implements DomainServiceProviderInterface
     /**
      * Get the list of repository service names needed by this provider.
      *
-     * These correspond to methods in Services.php:
-     * - 'cookieRepository' => Services::cookieRepository()
-     * - 'eventDispatcher' => Services::eventDispatcher()
+     * These are resolved by ServiceProviderRegistry::registerAll():
+     * - 'cookieRepository' / 'cookieQueryRepository': auto-discovered from
+     *   classes tagged with #[AutoBind] (Phase 3 Group B).
+     * - 'eventDispatcher' / 'logger' / 'loggingConfig': supplied by
+     *   Services::ensureProvidersRegistered().
      *
      * @return array<mixed>
      */
