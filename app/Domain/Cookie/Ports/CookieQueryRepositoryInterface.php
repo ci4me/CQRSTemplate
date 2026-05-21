@@ -24,7 +24,7 @@ use App\Domain\Cookie\DTOs\CookieDTO;
  * is still in place: the read repository is a distinct class that returns
  * DTOs and applies its own filters.
  */
-interface CookieReadModelRepositoryInterface
+interface CookieQueryRepositoryInterface
 {
     /**
      * findById.

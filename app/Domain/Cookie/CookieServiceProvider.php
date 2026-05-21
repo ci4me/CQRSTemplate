@@ -22,7 +22,7 @@ use App\Domain\Cookie\Events\CookieStockChanged\CookieStockChangedEvent;
 use App\Domain\Cookie\Events\CookieStockChanged\CookieStockChangedEventHandler;
 use App\Domain\Cookie\Events\CookieUpdated\CookieUpdatedEvent;
 use App\Domain\Cookie\Events\CookieUpdated\CookieUpdatedEventHandler;
-use App\Domain\Cookie\Ports\CookieReadModelRepositoryInterface;
+use App\Domain\Cookie\Ports\CookieQueryRepositoryInterface;
 use App\Domain\Cookie\Ports\CookieRepositoryInterface;
 use App\Domain\Cookie\Queries\GetAllCookies\GetAllCookiesHandler;
 use App\Domain\Cookie\Queries\GetAllCookies\GetAllCookiesQuery;
@@ -133,16 +133,17 @@ final class CookieServiceProvider implements DomainServiceProviderInterface
      */
     public function registerQueries(QueryBus $queryBus): void
     {
-        // Read side depends on the projection-backed repository so query
-        // handlers never reach into the write-side aggregate. The legacy
-        // `cookieRepository` key is still accepted for tests that haven't
-        // been migrated yet.
-        $repository = $this->getRepository('cookieReadModelRepository');
+        // Read side depends on a separate query repository (returning DTOs)
+        // so query handlers never reach into the write-side aggregate.
+        // Post Phase 2 of the stabilization refactor, the query repository
+        // queries the same `cookies` table as the write side, but the CQRS
+        // code-level separation (distinct class, distinct port) is preserved.
+        $repository = $this->getRepository('cookieQueryRepository');
         $logger = $this->getRepository('logger');
         $loggingConfig = $this->getRepository('loggingConfig');
 
         if (
-            !$repository instanceof CookieReadModelRepositoryInterface
+            !$repository instanceof CookieQueryRepositoryInterface
             || !$logger instanceof LoggerInterface
             || !$loggingConfig instanceof Logging
         ) {
@@ -229,7 +230,7 @@ final class CookieServiceProvider implements DomainServiceProviderInterface
     {
         return [
             'cookieRepository',
-            'cookieReadModelRepository',
+            'cookieQueryRepository',
             'eventDispatcher',
             'logger',
             'loggingConfig',

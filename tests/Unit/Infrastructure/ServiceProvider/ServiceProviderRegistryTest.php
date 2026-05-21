@@ -163,7 +163,7 @@ final class ServiceProviderRegistryTest extends UnitTestCase
                     return null;
                 }
             },
-            'cookieReadModelRepository' => new class implements \App\Domain\Cookie\Ports\CookieReadModelRepositoryInterface {
+            'cookieQueryRepository' => new class implements \App\Domain\Cookie\Ports\CookieQueryRepositoryInterface {
                 public function findById(int $cookieId): ?\App\Domain\Cookie\DTOs\CookieDTO
                 {
                     return null;

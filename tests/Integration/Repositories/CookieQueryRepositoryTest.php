@@ -7,7 +7,7 @@ namespace Tests\Integration\Repositories;
 use App\Domain\Cookie\Entities\Cookie;
 use App\Domain\Cookie\ValueObjects\CookieName;
 use App\Domain\Cookie\ValueObjects\CookiePrice;
-use App\Infrastructure\Persistence\Repositories\CookieReadModelRepository;
+use App\Infrastructure\Persistence\Repositories\CookieQueryRepository;
 use Tests\Support\IntegrationTestCase;
 
 /**
@@ -19,14 +19,14 @@ use Tests\Support\IntegrationTestCase;
  * it saves cookies through the write-side repository and then exercises the
  * read repo against the resulting rows.
  */
-final class CookieReadModelRepositoryTest extends IntegrationTestCase
+final class CookieQueryRepositoryTest extends IntegrationTestCase
 {
-    private CookieReadModelRepository $readRepo;
+    private CookieQueryRepository $readRepo;
 
     protected function setUp(): void
     {
         parent::setUp();
-        $this->readRepo = new CookieReadModelRepository();
+        $this->readRepo = new CookieQueryRepository();
     }
 
     public function test_find_by_id_returns_dto_for_saved_cookie(): void

@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Tests\Unit\Domain\Cookie\Queries;
 
 use App\Domain\Cookie\DTOs\CookieDTO;
-use App\Domain\Cookie\Ports\CookieReadModelRepositoryInterface;
+use App\Domain\Cookie\Ports\CookieQueryRepositoryInterface;
 use App\Domain\Cookie\Queries\GetCookieById\GetCookieByIdHandler;
 use App\Domain\Cookie\Queries\GetCookieById\GetCookieByIdQuery;
 use App\Infrastructure\Logging\LoggerFactory;
@@ -14,13 +14,13 @@ use Tests\Support\UnitTestCase;
 
 final class GetCookieByIdHandlerTest extends UnitTestCase
 {
-    private CookieReadModelRepositoryInterface $repository;
+    private CookieQueryRepositoryInterface $repository;
     private GetCookieByIdHandler $handler;
 
     protected function setUp(): void
     {
         parent::setUp();
-        $this->repository = $this->createMock(CookieReadModelRepositoryInterface::class);
+        $this->repository = $this->createMock(CookieQueryRepositoryInterface::class);
         $logger = LoggerFactory::create('test.cookie.queries');
         $loggingConfig = new Logging();
         $this->handler = new GetCookieByIdHandler($this->repository, $logger, $loggingConfig);

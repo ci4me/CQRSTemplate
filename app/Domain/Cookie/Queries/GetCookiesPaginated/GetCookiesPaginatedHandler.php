@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Cookie\Queries\GetCookiesPaginated;
 
 use App\Domain\Cookie\DTOs\CookieDTO;
-use App\Domain\Cookie\Ports\CookieReadModelRepositoryInterface;
+use App\Domain\Cookie\Ports\CookieQueryRepositoryInterface;
 use Config\Logging;
 use Psr\Log\LoggerInterface;
 
@@ -33,12 +33,12 @@ final readonly class GetCookiesPaginatedHandler
     /**
      * Create a new GetCookiesPaginatedHandler.
      *
-     * @param CookieReadModelRepositoryInterface $repository    For data retrieval
-     * @param LoggerInterface                    $logger        For query logging
-     * @param Logging                            $loggingConfig For logging configuration
+     * @param CookieQueryRepositoryInterface $repository    For data retrieval
+     * @param LoggerInterface                $logger        For query logging
+     * @param Logging                        $loggingConfig For logging configuration
      */
     public function __construct(
-        private CookieReadModelRepositoryInterface $repository,
+        private CookieQueryRepositoryInterface $repository,
         private LoggerInterface $logger,
         private Logging $loggingConfig
     ) {

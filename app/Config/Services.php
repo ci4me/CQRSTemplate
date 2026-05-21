@@ -37,7 +37,7 @@ use App\Infrastructure\Persistence\Models\UserModel;
 use App\Infrastructure\Persistence\Repositories\PasswordHistoryRepository;
 use App\Infrastructure\Persistence\Repositories\UserRepository;
 use App\Infrastructure\ServiceProvider\ServiceProviderRegistry;
-use App\Infrastructure\Persistence\Repositories\CookieReadModelRepository;
+use App\Infrastructure\Persistence\Repositories\CookieQueryRepository;
 use App\Infrastructure\Persistence\Repositories\CookieRepository;
 use App\Infrastructure\Tenancy\TenantContext;
 use CodeIgniter\Config\BaseService;
@@ -225,7 +225,7 @@ class Services extends BaseService
             $eventDispatcher,
             [
                 'cookieRepository' => self::cookieRepository(),
-                'cookieReadModelRepository' => self::cookieReadModelRepository(),
+                'cookieQueryRepository' => self::cookieQueryRepository(),
                 'userRepository' => self::userRepository(),
                 'eventDispatcher' => $eventDispatcher,
                 'logger' => self::logger(),
@@ -275,17 +275,22 @@ class Services extends BaseService
     }
 
     /**
-     * Read-side repository: returns CookieDTO from the `cookie_read_model`
-     * projection table. Query handlers depend on this instead of
-     * {@see cookieRepository()} so the read path can be tuned independently.
+     * Read-side repository: returns CookieDTO from the canonical `cookies`
+     * table. Query handlers depend on this instead of {@see cookieRepository()}
+     * so the read path can be tuned independently of the write side.
+     *
+     * Phase 2 of the stabilization refactor collapsed Cookie's read model
+     * into the canonical `cookies` table, so this repository now queries
+     * the same physical table as {@see cookieRepository()}; the CQRS
+     * code-level separation (distinct class returning DTOs) is preserved.
      */
-    public static function cookieReadModelRepository(bool $getShared = true): CookieReadModelRepository
+    public static function cookieQueryRepository(bool $getShared = true): CookieQueryRepository
     {
         if ($getShared) {
-            return static::getSharedInstance('cookieReadModelRepository');
+            return static::getSharedInstance('cookieQueryRepository');
         }
 
-        return new CookieReadModelRepository(null, self::tenantContext());
+        return new CookieQueryRepository(null, self::tenantContext());
     }
 
     /**

@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Tests\Support;
 
 use App\Domain\Cookie\Entities\Cookie;
-use App\Infrastructure\Logging\LoggerFactory;
 use App\Infrastructure\Persistence\Models\UserModel;
 use App\Infrastructure\Persistence\Repositories\CookieRepository;
 use CodeIgniter\Test\CIUnitTestCase;
@@ -72,10 +71,14 @@ abstract class FeatureTestCase extends CIUnitTestCase
             'role' => 'admin',
         ]);
 
-        // Create repository with dependencies
-        $logger = LoggerFactory::create('test.cookie.repository');
-        $loggingConfig = config('Logging');
-        $this->cookieRepository = new CookieRepository($logger, $loggingConfig);
+        // Use the Services-wired repository so writes carry the tenant
+        // stamp that Services-wired query repository filters on. Building
+        // a bare CookieRepository here used to be safe because the read
+        // side ran through a projection that stamped a default tenant_id
+        // regardless of the source row; Phase 2 collapsed that projection
+        // into the canonical `cookies` table, so the read and write paths
+        // now share the same physical row and must agree on tenant_id.
+        $this->cookieRepository = \Config\Services::cookieRepository();
 
         if (!$this->authenticateByDefault) {
             return;
