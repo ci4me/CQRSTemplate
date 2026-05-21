@@ -347,4 +347,121 @@
     <rule ref="SlevomatCodingStandard.Commenting.DocCommentSpacing">
         <exclude-pattern>tests/*</exclude-pattern>
     </rule>
+
+    <!--
+      ============================================================
+      Phase 4 - Size caps (AI-first hygiene)
+      ============================================================
+      CLAUDE.md mandates: methods <= 20 lines, classes <= 200 lines.
+      Cyclomatic complexity cap forces decomposition before code
+      becomes unreadable for both humans and AI agents.
+
+      Individual oversized files that are too entangled to split in
+      this phase carry their own `<exclude-pattern>` entries below,
+      each marked with a TODO so the size cap stays the default for
+      ALL future code.
+    -->
+    <!-- Method length cap: 20 lines max (excluding comments + whitespace).
+         New code MUST comply. Existing offenders are TODO-excluded below
+         so the cap acts as a forward-only gate; backfilling decomposition
+         on the baseline is tracked as a Phase 4.x follow-up. -->
+    <rule ref="SlevomatCodingStandard.Functions.FunctionLength">
+        <properties>
+            <property name="maxLinesLength" value="20"/>
+            <property name="includeComments" value="false"/>
+            <property name="includeWhitespace" value="false"/>
+        </properties>
+        <exclude-pattern>tests/*</exclude-pattern>
+        <exclude-pattern>app/Libraries/AbiSageIntacct/*</exclude-pattern>
+        <exclude-pattern>app/Infrastructure/Persistence/Models/*</exclude-pattern>
+        <exclude-pattern>app/Models/*</exclude-pattern>
+        <exclude-pattern>app/Database/*</exclude-pattern>
+        <!-- TODO Phase 4.x: split oversized methods. Each entry is an existing
+             file where one or more methods exceed 20 lines. The list was
+             captured as a baseline so the cap can land as a forward-only gate. -->
+        <exclude-pattern>app/Controllers/Api/AuthController.php</exclude-pattern>
+        <exclude-pattern>app/Controllers/Api/UserController.php</exclude-pattern>
+        <exclude-pattern>app/Controllers/Domain/Auth/AuthController.php</exclude-pattern>
+        <exclude-pattern>app/Controllers/Domain/Cookie/CookieController.php</exclude-pattern>
+        <exclude-pattern>app/Controllers/Domain/User/UserController.php</exclude-pattern>
+        <exclude-pattern>app/Domain/Cookie/Commands/CreateCookie/CreateCookieHandler.php</exclude-pattern>
+        <exclude-pattern>app/Domain/Cookie/Commands/DeleteCookie/DeleteCookieHandler.php</exclude-pattern>
+        <exclude-pattern>app/Domain/Cookie/Commands/RestoreCookie/RestoreCookieHandler.php</exclude-pattern>
+        <exclude-pattern>app/Domain/Cookie/Commands/UpdateCookie/UpdateCookieHandler.php</exclude-pattern>
+        <exclude-pattern>app/Domain/Cookie/CookieServiceProvider.php</exclude-pattern>
+        <exclude-pattern>app/Domain/Cookie/Repositories/CookieQueryRepository.php</exclude-pattern>
+        <exclude-pattern>app/Domain/Cookie/Repositories/CookieRepository.php</exclude-pattern>
+        <exclude-pattern>app/Domain/Shared/ValueObjects/Money.php</exclude-pattern>
+        <exclude-pattern>app/Domain/User/Commands/ChangeUserPassword/ChangeUserPasswordHandler.php</exclude-pattern>
+        <exclude-pattern>app/Domain/User/Commands/CreateUser/CreateUserHandler.php</exclude-pattern>
+        <exclude-pattern>app/Domain/User/Commands/DeleteUser/DeleteUserHandler.php</exclude-pattern>
+        <exclude-pattern>app/Domain/User/Commands/RegisterUser/RegisterUserHandler.php</exclude-pattern>
+        <exclude-pattern>app/Domain/User/Commands/UpdateUser/UpdateUserHandler.php</exclude-pattern>
+        <exclude-pattern>app/Domain/User/Queries/GetAllUsers/GetAllUsersHandler.php</exclude-pattern>
+        <exclude-pattern>app/Domain/User/Queries/SearchUsers/SearchUsersHandler.php</exclude-pattern>
+        <exclude-pattern>app/Domain/User/Repositories/PasswordHistoryRepository.php</exclude-pattern>
+        <exclude-pattern>app/Domain/User/Repositories/UserRepository.php</exclude-pattern>
+        <exclude-pattern>app/Domain/User/UserServiceProvider.php</exclude-pattern>
+        <exclude-pattern>app/Domain/User/ValueObjects/PasswordComplexity.php</exclude-pattern>
+        <exclude-pattern>app/Infrastructure/Auth/AuthServiceProvider.php</exclude-pattern>
+        <exclude-pattern>app/Infrastructure/Auth/Commands/LoginUser/LoginUserHandler.php</exclude-pattern>
+        <exclude-pattern>app/Infrastructure/Auth/Commands/RefreshToken/RefreshTokenHandler.php</exclude-pattern>
+        <exclude-pattern>app/Infrastructure/Auth/Commands/RequestPasswordReset/RequestPasswordResetHandler.php</exclude-pattern>
+        <exclude-pattern>app/Infrastructure/Auth/Commands/ResetPassword/ResetPasswordHandler.php</exclude-pattern>
+        <exclude-pattern>app/Infrastructure/Auth/Middleware/JwtAuthenticationMiddleware.php</exclude-pattern>
+        <exclude-pattern>app/Infrastructure/Auth/Middleware/PermissionMiddleware.php</exclude-pattern>
+        <exclude-pattern>app/Infrastructure/Auth/Middleware/RoleAuthorizationMiddleware.php</exclude-pattern>
+        <exclude-pattern>app/Infrastructure/Auth/Services/JwtService.php</exclude-pattern>
+        <exclude-pattern>app/Infrastructure/Auth/Services/SessionManagementService.php</exclude-pattern>
+        <exclude-pattern>app/Infrastructure/Bulk/BulkImportRunner.php</exclude-pattern>
+        <exclude-pattern>app/Infrastructure/Bus/EventDispatcher.php</exclude-pattern>
+        <exclude-pattern>app/Infrastructure/Bus/Middleware/AuditMiddleware.php</exclude-pattern>
+        <exclude-pattern>app/Infrastructure/Bus/Middleware/LoggingMiddleware.php</exclude-pattern>
+        <exclude-pattern>app/Infrastructure/Bus/Middleware/TransactionMiddleware.php</exclude-pattern>
+        <exclude-pattern>app/Infrastructure/Cache/Services/CacheHealthCheck.php</exclude-pattern>
+        <exclude-pattern>app/Infrastructure/Email/EmailService.php</exclude-pattern>
+        <exclude-pattern>app/Infrastructure/Http/Client/CurlHttpTransport.php</exclude-pattern>
+        <exclude-pattern>app/Infrastructure/Http/Client/OutboundHttpClient.php</exclude-pattern>
+        <exclude-pattern>app/Infrastructure/Http/Middleware/IdempotencyMiddleware.php</exclude-pattern>
+        <exclude-pattern>app/Infrastructure/I18n/LocaleResolver.php</exclude-pattern>
+        <exclude-pattern>app/Infrastructure/Jobs/JobQueue.php</exclude-pattern>
+        <exclude-pattern>app/Infrastructure/Jobs/JobWorker.php</exclude-pattern>
+        <exclude-pattern>app/Infrastructure/Logging/LoggerFactory.php</exclude-pattern>
+        <exclude-pattern>app/Infrastructure/Notifications/NotificationService.php</exclude-pattern>
+        <exclude-pattern>app/Infrastructure/Numbering/DocumentNumberingService.php</exclude-pattern>
+        <exclude-pattern>app/Infrastructure/Outbox/EventOutboxRelay.php</exclude-pattern>
+        <exclude-pattern>app/Infrastructure/ServiceProvider/ServiceProviderRegistry.php</exclude-pattern>
+        <exclude-pattern>app/Infrastructure/Storage/AttachmentService.php</exclude-pattern>
+    </rule>
+    <!-- Class length cap: 200 lines max (excluding comments + whitespace).
+         Cookie.php and CookiePrice.php are split in Phase 4 (steps 4.3-4.4);
+         the remaining 6 oversized classes are TODO-excluded for follow-up. -->
+    <rule ref="SlevomatCodingStandard.Classes.ClassLength">
+        <properties>
+            <property name="maxLinesLength" value="200"/>
+            <property name="includeComments" value="false"/>
+            <property name="includeWhitespace" value="false"/>
+        </properties>
+        <exclude-pattern>tests/*</exclude-pattern>
+        <exclude-pattern>app/Libraries/AbiSageIntacct/*</exclude-pattern>
+        <exclude-pattern>app/Infrastructure/Persistence/Models/*</exclude-pattern>
+        <exclude-pattern>app/Models/*</exclude-pattern>
+        <exclude-pattern>app/Database/*</exclude-pattern>
+        <!-- TODO Phase 4.x: split these oversized classes. Each is well over
+             200 logical lines and needs decomposition (extract collaborators
+             / sub-aggregates / read/write split). -->
+        <exclude-pattern>app/Controllers/Api/AuthController.php</exclude-pattern>
+        <exclude-pattern>app/Domain/Cookie/Repositories/CookieRepository.php</exclude-pattern>
+        <exclude-pattern>app/Domain/User/Repositories/UserRepository.php</exclude-pattern>
+        <exclude-pattern>app/Infrastructure/Auth/Middleware/JwtAuthenticationMiddleware.php</exclude-pattern>
+        <exclude-pattern>app/Infrastructure/Outbox/EventOutboxRelay.php</exclude-pattern>
+        <exclude-pattern>app/Infrastructure/ServiceProvider/ServiceProviderRegistry.php</exclude-pattern>
+    </rule>
+    <rule ref="Generic.Metrics.CyclomaticComplexity">
+        <properties>
+            <property name="complexity" value="10"/>
+            <property name="absoluteComplexity" value="15"/>
+        </properties>
+        <exclude-pattern>tests/*</exclude-pattern>
+    </rule>
 </ruleset>
