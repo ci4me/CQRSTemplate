@@ -125,6 +125,22 @@ final class ServiceProviderRegistry
     }
 
     /**
+     * Public accessor for the discovered provider list. Returns the same
+     * cached instances {@see registerAll()} hands its setup off to, which
+     * makes this method the right hook for code that wants to call into
+     * each provider for a separate concern (e.g. route mounting from
+     * app/Config/Routes.php — see {@see DomainServiceProviderInterface::registerRoutes}).
+     *
+     * @return array<int, DomainServiceProviderInterface>
+     */
+    public static function discovered(): array
+    {
+        /** @var array<int, DomainServiceProviderInterface> $providers */
+        $providers = self::discoverProviders();
+        return $providers;
+    }
+
+    /**
      * Discover all service providers with #[DomainServiceProvider] attribute.
      *
      * Scans Domain directory and finds classes marked with the attribute.

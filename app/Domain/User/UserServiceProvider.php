@@ -37,7 +37,7 @@ use App\Infrastructure\Bus\CommandBus;
 use App\Infrastructure\Bus\EventDispatcher;
 use App\Infrastructure\Bus\QueryBus;
 use App\Infrastructure\ServiceProvider\DomainServiceProviderInterface;
-use App\Infrastructure\ServiceProvider\RegisterRoutesNoop;
+use CodeIgniter\Router\RouteCollection;
 use Config\Logging;
 use Psr\Log\LoggerInterface;
 
@@ -50,8 +50,6 @@ use Psr\Log\LoggerInterface;
 #[DomainServiceProvider]
 final class UserServiceProvider implements DomainServiceProviderInterface
 {
-    use RegisterRoutesNoop;
-
     /**
      * @var array<string, object>
      */
@@ -184,6 +182,51 @@ final class UserServiceProvider implements DomainServiceProviderInterface
         $dispatcher->subscribe(
             PasswordChangedEvent::class,
             new PasswordChangedEventHandler($logger)
+        );
+    }
+
+    /**
+     * Register the User module's HTTP routes — both the admin web UI
+     * mounted at /admin/users and the JSON API mounted at /api/v1/users.
+     *
+     * Moved out of app/Config/Routes.php by Phase 3 Group C so adding a
+     * new user-management surface no longer requires editing routes.
+     *
+     * @param RouteCollection $routes
+     * @return void
+     */
+    public function registerRoutes(RouteCollection $routes): void
+    {
+        // Admin web UI.
+        // SECURITY: admin/users is sensitive — gate the entire group behind
+        // the session auth filter (web_auth) AND the role filter (role:admin)
+        // so a logged-in non-admin can't even reach the controller.
+        $routes->group('admin/users', ['namespace' => 'App\Controllers\Domain\User', 'filter' => 'role:admin'], static function ($routes): void {
+            $routes->get('', 'UserController::index');                              // List all users
+            $routes->get('create', 'UserController::create');                       // Show create form
+            $routes->post('', 'UserController::store');                             // Create user
+            $routes->get('(:num)', 'UserController::show/$1');                      // Show single user
+            $routes->get('(:num)/edit', 'UserController::edit/$1');                 // Show edit form
+            $routes->post('(:num)', 'UserController::update/$1');                   // Update user
+            $routes->post('(:num)/delete', 'UserController::delete/$1');            // Delete user (soft)
+            $routes->get('(:num)/reset-password', 'UserController::resetPassword/$1');     // Show password reset form
+            $routes->post('(:num)/reset-password', 'UserController::storePassword/$1');    // Reset password
+        });
+
+        // JSON API (admin only). Mutating endpoints opt into idempotency so
+        // retried POST/PUT/DELETE with the same Idempotency-Key replay the
+        // original response instead of duplicating side-effects.
+        $routes->group(
+            'api/v1/users',
+            ['namespace' => 'App\Controllers\Api', 'filter' => ['jwt', 'role:admin', 'idempotency']],
+            static function ($routes): void {
+                $routes->get('', 'UserController::index');                              // GET /api/v1/users
+                $routes->post('', 'UserController::create');                            // POST /api/v1/users
+                $routes->get('(:num)', 'UserController::show/$1');                      // GET /api/v1/users/1
+                $routes->put('(:num)', 'UserController::update/$1');                    // PUT /api/v1/users/1
+                $routes->delete('(:num)', 'UserController::delete/$1');                 // DELETE /api/v1/users/1
+                $routes->post('(:num)/reset-password', 'UserController::resetPassword/$1');  // POST /api/v1/users/1/reset-password
+            }
         );
     }
 

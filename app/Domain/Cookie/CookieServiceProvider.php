@@ -36,7 +36,7 @@ use App\Infrastructure\Bus\EventDispatcher;
 use App\Infrastructure\Bus\QueryBus;
 use App\Infrastructure\Logging\LoggerFactory;
 use App\Infrastructure\ServiceProvider\DomainServiceProviderInterface;
-use App\Infrastructure\ServiceProvider\RegisterRoutesNoop;
+use CodeIgniter\Router\RouteCollection;
 use Config\Logging;
 use Psr\Log\LoggerInterface;
 
@@ -68,8 +68,6 @@ use Psr\Log\LoggerInterface;
 #[DomainServiceProvider]
 final class CookieServiceProvider implements DomainServiceProviderInterface
 {
-    use RegisterRoutesNoop;
-
     /**
      * Injected repositories.
      *
@@ -218,6 +216,28 @@ final class CookieServiceProvider implements DomainServiceProviderInterface
             CookieRestoredEvent::class,
             new CookieRestoredEventHandler($logger)
         );
+    }
+
+    /**
+     * Register the Cookie domain's HTTP routes.
+     *
+     * Moved out of app/Config/Routes.php by Phase 3 Group C so that adding a
+     * new domain no longer requires editing the routes file.
+     *
+     * @param RouteCollection $routes
+     * @return void
+     */
+    public function registerRoutes(RouteCollection $routes): void
+    {
+        $routes->group('cookies', ['namespace' => 'App\Controllers\Domain\Cookie'], static function ($routes): void {
+            $routes->get('', 'CookieController::index');                    // List all cookies
+            $routes->get('create', 'CookieController::create');             // Show create form
+            $routes->post('', 'CookieController::store');                   // Store new cookie
+            $routes->get('(:num)', 'CookieController::show/$1');            // Show single cookie
+            $routes->get('(:num)/edit', 'CookieController::edit/$1');       // Show edit form
+            $routes->post('(:num)', 'CookieController::update/$1');         // Update cookie
+            $routes->post('(:num)/delete', 'CookieController::delete/$1');  // Delete cookie (soft)
+        });
     }
 
     /**

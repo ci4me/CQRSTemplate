@@ -24,6 +24,14 @@ parameters:
         -
             identifier: trait.unused
             path: app/Models/Cookie/Traits/
+        # RegisterRoutesNoop is a scaffolding helper for future
+        # DomainServiceProviders that don't expose HTTP routes. The
+        # existing 3 providers all override registerRoutes() with real
+        # implementations, so the trait is intentionally unused today
+        # but kept on hand for new domains.
+        -
+            identifier: trait.unused
+            path: app/Infrastructure/ServiceProvider/RegisterRoutesNoop.php
         -
             identifier: constant.notFound
             path: app/Config/

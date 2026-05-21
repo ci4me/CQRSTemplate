@@ -28,7 +28,7 @@ use App\Infrastructure\Bus\EventDispatcher;
 use App\Infrastructure\Bus\QueryBus;
 use App\Infrastructure\Email\EmailService;
 use App\Infrastructure\ServiceProvider\DomainServiceProviderInterface;
-use App\Infrastructure\ServiceProvider\RegisterRoutesNoop;
+use CodeIgniter\Router\RouteCollection;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -39,8 +39,6 @@ use Psr\Log\LoggerInterface;
 #[DomainServiceProvider]
 final class AuthServiceProvider implements DomainServiceProviderInterface
 {
-    use RegisterRoutesNoop;
-
     /**
      * @var array<string, object>
      */
@@ -136,6 +134,55 @@ final class AuthServiceProvider implements DomainServiceProviderInterface
     public function registerEvents(EventDispatcher $_dispatcher): void
     {
         // No events in auth module
+    }
+
+    /**
+     * Register the Auth module's HTTP routes — both the web (form-based)
+     * variant and the JSON API variant under api/v1/auth.
+     *
+     * Moved out of app/Config/Routes.php by Phase 3 Group C so adding a new
+     * authentication strategy no longer requires editing the routes file.
+     *
+     * @param RouteCollection $routes
+     * @return void
+     */
+    public function registerRoutes(RouteCollection $routes): void
+    {
+        // Web (traditional forms).
+        // SECURITY:
+        //  - Rate limiting on login/register to prevent brute force attacks
+        //  - 5 attempts per 5 minutes per IP address
+        $routes->group('auth', ['namespace' => 'App\Controllers\Domain\Auth'], static function ($routes): void {
+            $routes->get('register', 'AuthController::showRegister');
+            $routes->post('register', 'AuthController::register', ['filter' => 'ratelimit:5,300']);
+            $routes->get('login', 'AuthController::showLogin');
+            $routes->post('login', 'AuthController::login', ['filter' => 'ratelimit:5,300']);
+            $routes->post('logout', 'AuthController::logout');
+        });
+
+        // JSON API.
+        // SECURITY:
+        //  - Rate limiting on every public endpoint
+        //  - Protected endpoints gated by the `jwt` filter
+        $routes->group('api/v1/auth', ['namespace' => 'App\Controllers\Api'], static function ($routes): void {
+            // Public endpoints (with rate limiting)
+            $routes->post('register', 'AuthController::register', ['filter' => 'ratelimit:5,300']);
+            $routes->post('login', 'AuthController::login', ['filter' => 'ratelimit:5,300']);
+            $routes->post('refresh', 'AuthController::refresh', ['filter' => 'ratelimit:10,300']);
+            $routes->post('password/request-reset', 'AuthController::requestPasswordReset', ['filter' => 'ratelimit:3,300']);
+            $routes->post('password/reset', 'AuthController::resetPassword', ['filter' => 'ratelimit:5,300']);
+
+            // Protected endpoints (require JWT)
+            $routes->group('', ['filter' => 'jwt'], static function ($routes): void {
+                $routes->post('logout', 'AuthController::logout');
+                $routes->get('me', 'AuthController::me');
+
+                // Session management
+                $routes->get('sessions', 'AuthController::listSessions');
+                $routes->delete('sessions/all', 'AuthController::revokeAllSessions');
+                $routes->delete('sessions/(:num)', 'AuthController::revokeSession/$1');
+            });
+        });
     }
 
     /**
