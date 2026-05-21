@@ -66,16 +66,16 @@
         "docblocks:generate": "@php bin/docblocks-generate app/",
         "docblocks:audit": "@php bin/docblocks-audit",
         "check": [
-            "@phpstan",
+            "@docblocks:audit",
             "@phpcs",
-            "@test",
-            "@docblocks:audit"
+            "@phpstan",
+            "@test"
         ],
         "ci": [
-            "@phpstan",
+            "@docblocks:audit",
             "@phpcs",
-            "@test:clover",
-            "@docblocks:audit"
+            "@phpstan",
+            "@test:clover"
         ]
     },
     "scripts-descriptions": {
