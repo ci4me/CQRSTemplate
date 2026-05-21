@@ -26,6 +26,27 @@ use Psr\Log\LoggerInterface;
  *
  * Replay of events whose listener class no longer exists is logged but
  * marked failed so the row stops cycling.
+ *
+ * # Envelope versioning (SV-1)
+ *
+ * The relay understands two payload shapes on disk:
+ *
+ *  - **Envelope (v1+)** — written by the current
+ *    {@see EventOutboxWriter}. JSON object with `schema_version`,
+ *    `event_class`, `occurred_at`, `correlation_id`, and the inner event
+ *    body under `payload`.
+ *  - **Legacy (no schema_version key)** — rows written before SV-1
+ *    landed. The JSON is the event body directly. Kept readable forever
+ *    so deploying this code does not strand pending rows. See
+ *    {@see EventOutboxWriter}'s class docblock for the schema-evolution
+ *    playbook.
+ *
+ * Rows whose `schema_version` is recognised as a numeric value greater
+ * than {@see EventOutboxWriter::SCHEMA_VERSION} are NOT dispatched: they
+ * are marked with the terminal `unsupported_schema` status and logged.
+ * That's the dead-letter signal that this binary is older than its data
+ * (e.g. a relay rolled back behind a writer) — operator intervention is
+ * required to upgrade the binary before those rows can be replayed.
  */
 final class EventOutboxRelay
 {
@@ -123,12 +144,46 @@ final class EventOutboxRelay
         }
 
         try {
-            $event = $this->rehydrate($eventClass, (string) ($row['payload'] ?? '[]'));
+            $decoded = $this->decodeEnvelope((string) ($row['payload'] ?? '[]'));
+        } catch (\Throwable $e) {
+            $this->markFailed($id, sprintf('payload decode failed: %s', $e->getMessage()));
+            $this->logger->error('Outbox payload decode failed', [
+                'component' => 'EventOutboxRelay',
+                'event_class' => $eventClass,
+                'row_id' => $id,
+                'exception' => $e->getMessage(),
+            ]);
+            return 'failed';
+        }
+
+        // schema_version is null only for legacy rows written before SV-1.
+        // Anything numeric and greater than the writer's current version is
+        // a forward-incompat row this binary is too old to dispatch.
+        $schemaVersion = $decoded['schema_version'];
+        if ($schemaVersion !== null && $schemaVersion > EventOutboxWriter::SCHEMA_VERSION) {
+            $this->markUnsupportedSchema($id, $schemaVersion);
+            $this->logger->warning('Outbox row has unsupported schema_version', [
+                'component' => 'EventOutboxRelay',
+                'event_class' => $eventClass,
+                'row_id' => $id,
+                'row_schema_version' => $schemaVersion,
+                'supported_schema_version' => EventOutboxWriter::SCHEMA_VERSION,
+            ]);
+            return 'failed';
+        }
+
+        // Envelopes carry the canonical event_class; trust it over the
+        // outbox column so a rename can be remediated by rewriting the
+        // envelope without an UPDATE on `event_class`.
+        $effectiveClass = $decoded['event_class'] ?? $eventClass;
+
+        try {
+            $event = $this->rehydrate($effectiveClass, $decoded['body']);
         } catch (\Throwable $e) {
             $this->markFailed($id, sprintf('rehydrate failed: %s', $e->getMessage()));
             $this->logger->error('Outbox event rehydrate failed', [
                 'component' => 'EventOutboxRelay',
-                'event_class' => $eventClass,
+                'event_class' => $effectiveClass,
                 'row_id' => $id,
                 'exception' => $e->getMessage(),
             ]);
@@ -143,6 +198,74 @@ final class EventOutboxRelay
 
         $this->markDelivered($id);
         return 'delivered';
+    }
+
+    /**
+     * Parse the `payload` column into a normalised, version-aware shape.
+     *
+     * Returns the inner event body (`body`) regardless of whether the row
+     * was written under the v1 envelope or the pre-SV-1 legacy shape, plus
+     * the envelope metadata when present.
+     *
+     * @param string $json
+     * @return array{schema_version: int|null, event_class: string|null, body: array<string, mixed>}
+     * @throws \JsonException If the column is not valid JSON.
+     */
+    private function decodeEnvelope(string $json): array
+    {
+        $decoded = json_decode($json, true, 512, JSON_THROW_ON_ERROR);
+        if (!is_array($decoded)) {
+            throw new \RuntimeException(sprintf(
+                'Outbox payload must decode to an array, got %s',
+                get_debug_type($decoded)
+            ));
+        }
+
+        // Legacy shape (pre-SV-1): the column IS the event body. Detect by
+        // absence of the schema_version marker. We deliberately do NOT
+        // sniff for "payload" key alone, because an event could legally
+        // have a property literally called "payload".
+        if (!array_key_exists('schema_version', $decoded)) {
+            /** @var array<string, mixed> $legacyBody */
+            $legacyBody = $decoded;
+            return [
+                'schema_version' => null,
+                'event_class' => null,
+                'body' => $legacyBody,
+            ];
+        }
+
+        $version = $decoded['schema_version'];
+        if (!is_int($version)) {
+            throw new \RuntimeException(sprintf(
+                'Envelope schema_version must be an int, got %s',
+                get_debug_type($version)
+            ));
+        }
+
+        $eventClass = $decoded['event_class'] ?? null;
+        if ($eventClass !== null && !is_string($eventClass)) {
+            throw new \RuntimeException(sprintf(
+                'Envelope event_class must be a string, got %s',
+                get_debug_type($eventClass)
+            ));
+        }
+
+        $rawBody = $decoded['payload'] ?? [];
+        if (!is_array($rawBody)) {
+            throw new \RuntimeException(sprintf(
+                'Envelope payload must be an array, got %s',
+                get_debug_type($rawBody)
+            ));
+        }
+
+        /** @var array<string, mixed> $body */
+        $body = $rawBody;
+        return [
+            'schema_version' => $version,
+            'event_class' => $eventClass,
+            'body' => $body,
+        ];
     }
 
     /**
@@ -169,14 +292,17 @@ final class EventOutboxRelay
     }
 
     /**
-     * rehydrate.
+     * Rehydrate a domain event from its decoded body.
      *
-     * @param string $eventClass
-     * @param string $json
+     * @param string               $eventClass
+     * @param array<string, mixed> $payload    Inner event body
+     *                                         (already unwrapped from the
+     *                                         envelope by
+     *                                         {@see self::decodeEnvelope()}).
      * @return object
      * @throws \RuntimeException
      */
-    private function rehydrate(string $eventClass, string $json): object
+    private function rehydrate(string $eventClass, array $payload): object
     {
         if (!class_exists($eventClass)) {
             throw new \RuntimeException(sprintf('Event class %s no longer exists', $eventClass));
@@ -194,8 +320,6 @@ final class EventOutboxRelay
             ));
         }
 
-        /** @var array<string, mixed> $payload */
-        $payload = json_decode($json, true, 512, JSON_THROW_ON_ERROR);
         $constructor = $reflection->getConstructor();
         if ($constructor === null) {
             return $reflection->newInstance();
@@ -295,6 +419,29 @@ final class EventOutboxRelay
             ->update([
                 'status' => 'failed',
                 'last_error' => $reason,
+            ]);
+    }
+
+    /**
+     * Terminal mark for rows whose envelope schema_version this relay does
+     * not understand (writer is ahead of relay). Distinct from `failed` so
+     * operators can audit/replay them after upgrading the relay binary.
+     *
+     * @param int $id
+     * @param int $rowSchemaVersion
+     * @return void
+     */
+    private function markUnsupportedSchema(int $id, int $rowSchemaVersion): void
+    {
+        $this->connection()->table('event_outbox')
+            ->where('id', $id)
+            ->update([
+                'status' => 'unsupported_schema',
+                'last_error' => sprintf(
+                    'schema_version %d is not supported by this relay (max supported: %d)',
+                    $rowSchemaVersion,
+                    EventOutboxWriter::SCHEMA_VERSION
+                ),
             ]);
     }
 

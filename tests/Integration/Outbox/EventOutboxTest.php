@@ -27,9 +27,141 @@ final class EventOutboxTest extends IntegrationTestCase
         $this->assertSame(OutboxTestEvent::class, $row['event_class']);
         $this->assertSame('pending', $row['status']);
 
-        $payload = json_decode($row['payload'], true);
-        $this->assertSame(7, $payload['id']);
-        $this->assertSame('hello', $payload['note']);
+        // SV-1: payload column carries a versioned envelope. Event body lives
+        // under the inner `payload` key, not at the JSON root.
+        $envelope = json_decode($row['payload'], true);
+        $this->assertSame(EventOutboxWriter::SCHEMA_VERSION, $envelope['schema_version']);
+        $this->assertSame(OutboxTestEvent::class, $envelope['event_class']);
+        $this->assertSame(7, $envelope['payload']['id']);
+        $this->assertSame('hello', $envelope['payload']['note']);
+    }
+
+    public function test_writer_envelope_contains_schema_version_event_class_occurred_at_and_correlation_id(): void
+    {
+        \App\Infrastructure\Logging\CorrelationIdService::set('test-correlation-abc');
+
+        $writer = new EventOutboxWriter();
+        $writer->append(new OutboxTestEvent(42, 'envelope-check'), 'TestAggregate', 42);
+
+        $row = Database::connect()->table('event_outbox')->get()->getRowArray();
+        $envelope = json_decode($row['payload'], true);
+
+        $this->assertSame(1, $envelope['schema_version']);
+        $this->assertSame(OutboxTestEvent::class, $envelope['event_class']);
+        $this->assertSame('test-correlation-abc', $envelope['correlation_id']);
+        $this->assertArrayHasKey('occurred_at', $envelope);
+        // occurred_at must be ISO 8601 / ATOM so downstream consumers don't
+        // have to guess at the format.
+        $this->assertNotFalse(
+            \DateTimeImmutable::createFromFormat(\DateTimeInterface::ATOM, $envelope['occurred_at'])
+        );
+        // Inner payload is the event body, kept separate from the envelope's
+        // own metadata. This is the boundary that lets us evolve the
+        // envelope without rewriting events.
+        $this->assertSame(['id' => 42, 'note' => 'envelope-check'], $envelope['payload']);
+    }
+
+    public function test_relay_delivers_v1_envelope_round_trip(): void
+    {
+        // Writer emits the v1 envelope; relay must unwrap it and rehydrate
+        // the same event instance shape on the other side.
+        $writer = new EventOutboxWriter();
+        $writer->append(new OutboxTestEvent(99, 'roundtrip'), 'TestAggregate', 99);
+
+        $received = [];
+        $dispatcher = new EventDispatcher();
+        $dispatcher->subscribe(OutboxTestEvent::class, static function (OutboxTestEvent $e) use (&$received): void {
+            $received[] = ['id' => $e->id, 'note' => $e->note];
+        });
+
+        $relay = new EventOutboxRelay($dispatcher, new NullLogger());
+        $stats = $relay->drain();
+
+        $this->assertSame(1, $stats['delivered']);
+        $this->assertSame([['id' => 99, 'note' => 'roundtrip']], $received);
+    }
+
+    public function test_relay_processes_legacy_payload_without_envelope(): void
+    {
+        // Backward-compat regression guard: outbox rows written before SV-1
+        // landed have the event body at the JSON root, with no
+        // `schema_version` key. The relay must still rehydrate + dispatch
+        // them so deploying SV-1 does not strand pending rows.
+        $legacyBody = json_encode(['id' => 1, 'note' => 'legacy-row']);
+        Database::connect()->table('event_outbox')->insert([
+            'aggregate_type' => 'TestAggregate',
+            'aggregate_id' => '1',
+            'event_class' => OutboxTestEvent::class,
+            'payload' => $legacyBody,
+            'correlation_id' => 'legacy-correlation',
+            'status' => 'pending',
+            'attempts' => 0,
+            'last_error' => null,
+            'available_at' => date('Y-m-d H:i:s'),
+            'occurred_at' => date('Y-m-d H:i:s'),
+            'delivered_at' => null,
+        ]);
+
+        $received = [];
+        $dispatcher = new EventDispatcher();
+        $dispatcher->subscribe(OutboxTestEvent::class, static function (OutboxTestEvent $e) use (&$received): void {
+            $received[] = $e->note;
+        });
+
+        $relay = new EventOutboxRelay($dispatcher, new NullLogger());
+        $stats = $relay->drain();
+
+        $this->assertSame(1, $stats['delivered']);
+        $this->assertSame(['legacy-row'], $received);
+
+        $row = Database::connect()->table('event_outbox')->get()->getRowArray();
+        $this->assertSame('delivered', $row['status']);
+    }
+
+    public function test_relay_marks_unsupported_schema_and_does_not_dispatch(): void
+    {
+        // A row written by a NEWER writer (schema_version > current binary)
+        // must NOT be dispatched. The relay parks it under a terminal
+        // `unsupported_schema` status so operators can audit and replay it
+        // after upgrading the binary.
+        $futureEnvelope = json_encode([
+            'schema_version' => EventOutboxWriter::SCHEMA_VERSION + 1,
+            'event_class' => OutboxTestEvent::class,
+            'occurred_at' => (new \DateTimeImmutable())->format(\DateTimeInterface::ATOM),
+            'correlation_id' => 'future-row',
+            'payload' => ['id' => 1, 'note' => 'too-new'],
+        ]);
+        Database::connect()->table('event_outbox')->insert([
+            'aggregate_type' => 'TestAggregate',
+            'aggregate_id' => '1',
+            'event_class' => OutboxTestEvent::class,
+            'payload' => $futureEnvelope,
+            'correlation_id' => 'future-row',
+            'status' => 'pending',
+            'attempts' => 0,
+            'last_error' => null,
+            'available_at' => date('Y-m-d H:i:s'),
+            'occurred_at' => date('Y-m-d H:i:s'),
+            'delivered_at' => null,
+        ]);
+
+        $received = [];
+        $dispatcher = new EventDispatcher();
+        $dispatcher->subscribe(OutboxTestEvent::class, static function (OutboxTestEvent $e) use (&$received): void {
+            $received[] = $e->note;
+        });
+
+        $relay = new EventOutboxRelay($dispatcher, new NullLogger());
+        $stats = $relay->drain();
+
+        $this->assertSame(1, $stats['processed']);
+        $this->assertSame(0, $stats['delivered']);
+        $this->assertSame(1, $stats['failed']);
+        $this->assertSame([], $received, 'Unsupported-schema rows must not be dispatched');
+
+        $row = Database::connect()->table('event_outbox')->get()->getRowArray();
+        $this->assertSame('unsupported_schema', $row['status']);
+        $this->assertStringContainsString('schema_version', (string) $row['last_error']);
     }
 
     public function test_relay_delivers_pending_event_to_dispatcher(): void
