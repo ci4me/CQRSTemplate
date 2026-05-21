@@ -4,11 +4,9 @@ declare(strict_types=1);
 
 namespace App\Commands;
 
-use App\Domain\Cookie\Projections\CookieReadModelProjection;
 use App\Infrastructure\Projections\ProjectionInterface;
 use CodeIgniter\CLI\BaseCommand;
 use CodeIgniter\CLI\CLI;
-use Config\Services;
 
 /**
  * Rebuild a read-model projection from the canonical source (D15).
@@ -89,9 +87,14 @@ final class RebuildProjections extends BaseCommand
         // For now we wire projections by name to avoid coupling the
         // rebuild command to the dispatcher boot path. Each domain adds
         // its projection here when it lands.
-        if ($name === 'cookie') {
-            return new CookieReadModelProjection(Services::cookieRepository());
-        }
+        //
+        // Phase 2 of the stabilization refactor collapsed the Cookie read
+        // model into the canonical `cookies` table, so the "cookie" target
+        // is intentionally not wired up. The reference implementation is
+        // preserved at
+        // app/Domain/Cookie/Projections/CookieReadModelProjection.php.example.
+
+        unset($name);
 
         return null;
     }

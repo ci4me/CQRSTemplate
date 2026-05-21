@@ -184,17 +184,12 @@ class Services extends BaseService
 
         $registry = new ProjectionRegistry(self::eventDispatcher());
 
-        // Cookie pilot projection (D15). New domains register their own
-        // projections in their service provider — this one lives in
-        // Services because Cookie is the reference domain that demonstrates
-        // the wiring end-to-end.
-        $registry->register(
-            new \App\Domain\Cookie\Projections\CookieReadModelProjection(
-                self::cookieRepository(),
-                null,
-                self::tenantContext()
-            )
-        );
+        // Phase 2 of the stabilization refactor collapsed the Cookie read
+        // model into the canonical `cookies` table, so the pilot projection
+        // is no longer registered here. The reference implementation is
+        // preserved at app/Domain/Cookie/Projections/CookieReadModelProjection.php.example.
+        // New domains that genuinely need a denormalised read model register
+        // their projection from their own service provider.
 
         return $registry;
     }
