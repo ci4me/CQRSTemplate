@@ -6,28 +6,35 @@ namespace App\Infrastructure\Persistence\Repositories;
 
 use App\Domain\Cookie\DTOs\CookieDTO;
 use App\Domain\Cookie\Ports\CookieReadModelRepositoryInterface;
+use App\Domain\Cookie\ValueObjects\CookiePrice;
 use App\Infrastructure\Tenancy\TenantContext;
 use CodeIgniter\Database\BaseConnection;
 use Config\Database;
 
 /**
- * SQL-backed read of the `cookie_read_model` table.
+ * SQL-backed read of the canonical `cookies` table.
  *
  * Sister of {@see CookieRepository}, but for the read path. Query handlers
- * depend on the port; the projection ({@see \App\Domain\Cookie\Projections\CookieReadModelProjection})
- * keeps the table in sync with the write side.
+ * depend on this port; the implementation now reads straight from the
+ * canonical `cookies` table rather than a separate `cookie_read_model`
+ * projection — see plan "jazzy-drifting-mist" Phase 2.
  *
- * Why a separate read repository:
- *  - the `cookie_read_model` row already carries the formatted price and
- *    `available` flag, so we can hand the UI a ready-made DTO without
- *    re-parsing the source row's `price` decimal or computing isAvailable
- *    in PHP.
- *  - soft-deleted rows are filtered here in one place; the source repo
- *    has its own filter for the write path.
+ * Why keep a separate read repository:
+ *  - returns DTOs ({@see CookieDTO}), never domain entities — query handlers
+ *    can't accidentally mutate the aggregate, and the read path skips the
+ *    cost of reconstituting value objects.
+ *  - groups all read-side concerns (DTO mapping, formatted price, tenant
+ *    filtering, pagination) in one class that the write side does not
+ *    depend on.
+ *
+ * The pre-Phase-2 implementation read from a denormalised projection table
+ * with precomputed `price_formatted` / `name_search` columns; the
+ * reference projection is preserved at
+ * `app/Domain/Cookie/Projections/CookieReadModelProjection.php.example`.
  */
 final class CookieReadModelRepository implements CookieReadModelRepositoryInterface
 {
-    private const string TABLE = 'cookie_read_model';
+    private const string TABLE = 'cookies';
 
     /**
      * @param BaseConnection<object|resource|false, object|resource|false>|null $db
@@ -53,7 +60,7 @@ final class CookieReadModelRepository implements CookieReadModelRepositoryInterf
     {
         $builder = $this->connection()
             ->table(self::TABLE)
-            ->where('cookie_id', $cookieId)
+            ->where('id', $cookieId)
             ->where('deleted_at', null);
 
         $this->applyTenantFilter($builder);
@@ -76,7 +83,7 @@ final class CookieReadModelRepository implements CookieReadModelRepositoryInterf
         $builder = $this->connection()
             ->table(self::TABLE)
             ->where('deleted_at', null)
-            ->orderBy('cookie_id', 'ASC');
+            ->orderBy('id', 'ASC');
 
         if (!$includeInactive) {
             $builder->where('is_active', 1);
@@ -121,16 +128,18 @@ final class CookieReadModelRepository implements CookieReadModelRepositoryInterf
         $this->applyTenantFilter($builder);
 
         if ($searchTerm !== null && $searchTerm !== '') {
-            // The projection maintains `name_search` as a lower-cased copy
-            // so this stays an indexed match regardless of the input's case.
-            $builder->like('name_search', strtolower($searchTerm));
+            // The `cookies.name` column is pinned to utf8mb4_unicode_ci
+            // (see CreateCookiesTable migration), so LIKE is naturally
+            // case-insensitive without needing a separate `name_search`
+            // column.
+            $builder->like('name', $searchTerm);
         }
 
         $total = $builder->countAllResults(false);
 
         $offset = ($page - 1) * $perPage;
         $result = $builder
-            ->orderBy('cookie_id', 'ASC')
+            ->orderBy('id', 'ASC')
             ->limit($perPage, $offset)
             ->get();
 
@@ -154,22 +163,51 @@ final class CookieReadModelRepository implements CookieReadModelRepositoryInterf
     }
 
     /**
+     * Map a `cookies` row to the read-side DTO.
+     *
+     * The pre-Phase-2 projection table carried `price_decimal` /
+     * `price_formatted` precomputed; the canonical `cookies` table only
+     * stores the raw decimal `price`, so the formatted variant is
+     * derived in PHP via {@see CookiePrice::format()}. Malformed prices
+     * fall back to a safe default rather than throwing — read paths
+     * should not blow up on bad source data.
+     *
      * @param array<string, mixed> $row
      * @return CookieDTO
      */
     private function toDto(array $row): CookieDTO
     {
+        $price = (string) ($row['price'] ?? '0.00');
+        $formattedPrice = $this->formatPrice($price);
+
         return new CookieDTO(
-            id: (int) $row['cookie_id'],
+            id: (int) $row['id'],
             name: (string) $row['name'],
             description: isset($row['description']) && is_string($row['description']) ? $row['description'] : null,
-            price: (string) ($row['price_decimal'] ?? '0.00'),
-            formattedPrice: (string) ($row['price_formatted'] ?? ''),
+            price: $price,
+            formattedPrice: $formattedPrice,
             stock: (int) ($row['stock'] ?? 0),
             isActive: (bool) ($row['is_active'] ?? 0),
             createdAt: isset($row['created_at']) && is_string($row['created_at']) ? $row['created_at'] : null,
             updatedAt: isset($row['updated_at']) && is_string($row['updated_at']) ? $row['updated_at'] : null,
         );
+    }
+
+    /**
+     * Best-effort formatting of a stored decimal price.
+     *
+     * @param string $decimalPrice
+     * @return string
+     */
+    private function formatPrice(string $decimalPrice): string
+    {
+        try {
+            return CookiePrice::fromString($decimalPrice)->format();
+        } catch (\Throwable) {
+            // Defensive: read paths should not crash on malformed source
+            // rows. Returning the raw decimal keeps the UI usable.
+            return $decimalPrice;
+        }
     }
 
     /**

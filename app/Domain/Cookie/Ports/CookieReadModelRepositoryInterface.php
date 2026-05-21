@@ -7,12 +7,10 @@ namespace App\Domain\Cookie\Ports;
 use App\Domain\Cookie\DTOs\CookieDTO;
 
 /**
- * Read-side port for Cookie queries (D15).
+ * Read-side port for Cookie queries.
  *
- * Query handlers depend on this interface so they read from the
- * denormalised `cookie_read_model` table that {@see \App\Domain\Cookie\Projections\CookieReadModelProjection}
- * keeps in sync with the write side. The interface is intentionally
- * narrower than {@see CookieRepositoryInterface}:
+ * Query handlers depend on this interface so the read path stays narrower
+ * than the write side ({@see CookieRepositoryInterface}):
  *
  *  - returns DTOs ({@see CookieDTO}), never domain entities — the read
  *    path cannot accidentally mutate the aggregate, and queries don't
@@ -20,9 +18,11 @@ use App\Domain\Cookie\DTOs\CookieDTO;
  *  - exposes only the operations a query needs (by id, list, paginated
  *    search). No save / delete / restore.
  *
- * The cookie_read_model row carries the fields the UI cares about
- * (denormalised price, name_search, computed `available` flag), so the
- * port methods can stay simple.
+ * Phase 2 of the stabilization refactor collapsed Cookie's read model
+ * into the canonical `cookies` table, so implementations now query the
+ * same physical table as the write side. The CQRS code-level separation
+ * is still in place: the read repository is a distinct class that returns
+ * DTOs and applies its own filters.
  */
 interface CookieReadModelRepositoryInterface
 {
