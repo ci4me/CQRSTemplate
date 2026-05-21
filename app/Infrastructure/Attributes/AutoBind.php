@@ -17,7 +17,7 @@ use Attribute;
  *
  *   - {@see \CodeIgniter\Database\BaseConnection}        (via Config\Database::connect())
  *   - {@see \Psr\Log\LoggerInterface}                    (via LoggerFactory)
- *   - {@see \Config\Logging}                             (via config('Logging'))
+ *   - {@see \Config\Logging}                             (via new \Config\Logging())
  *   - {@see \App\Infrastructure\Tenancy\TenantContext}   (via Services::tenantContext())
  *   - {@see \App\Infrastructure\Outbox\EventOutboxWriter}
  *   - {@see \App\Infrastructure\Persistence\Models\UserModel}
