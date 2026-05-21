@@ -2,6 +2,43 @@
 
 declare(strict_types=1);
 
+/*
+ * ============================================================================
+ * REFERENCE-ONLY: This file is NOT active code (extension is .example, not .php)
+ * ============================================================================
+ *
+ * Phase 2 of the stabilization refactor (plan "jazzy-drifting-mist") collapsed
+ * the Cookie read model into the canonical `cookies` table. The CQRS code-
+ * level separation is still in place (CookieQueryRepository is distinct from
+ * CookieRepository), but both sides now query the same physical table —
+ * appropriate for a single-aggregate template that does not need a
+ * denormalised projection.
+ *
+ * This file is preserved so the template still demonstrates how a true
+ * denormalised projection is structured: event subscription, idempotent
+ * apply(), in-place rebuild, and live-safe shadow-table rebuild.
+ *
+ * --- How to re-enable as a working projection -------------------------------
+ *
+ * 1. Rename this file back: `CookieReadModelProjection.php.example` ->
+ *    `CookieReadModelProjection.php`.
+ * 2. Reverse the drop migration so the projection table exists again:
+ *    `php spark migrate:rollback` for the DropCookieReadModelTable migration,
+ *    OR add a fresh `CreateCookieReadModelTable` migration if you have already
+ *    moved past it.
+ * 3. Re-register the projection in `CookieServiceProvider::registerEvents()`
+ *    and in any projection registry (`Config\Services::projectionRegistry()`
+ *    or `app/Infrastructure/Projections/ProjectionRegistry.php`).
+ * 4. Restore a `CookieReadModelRepository` (or point `CookieQueryRepository`
+ *    back at the `cookie_read_model` table) so reads come off the projection.
+ * 5. Run `php spark projections:rebuild cookie` to backfill rows.
+ *
+ * For a new domain that genuinely needs a denormalised projection (different
+ * indexes, derived fields, write/read DB split), copy this file as a starting
+ * point and adapt the table name, events, and `rowFor()` shape.
+ * ============================================================================
+ */
+
 namespace App\Domain\Cookie\Projections;
 
 use App\Domain\Cookie\Entities\Cookie;
