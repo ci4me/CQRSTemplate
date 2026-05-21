@@ -212,8 +212,10 @@ deptrac:
       - App\Domain\Cookie\ValueObjects\CookiePrice
     App\Models\Cookie\Traits\RepositoryLogging:
       - App\Domain\Cookie\ErrorCodes
+    # Helpers are infrastructure glue; these violations are permanent and intentional.
     can():
       - App\Domain\Shared\ValueObjects\Permission
+    # Helpers are infrastructure glue; these violations are permanent and intentional.
     current_actor():
       - App\Domain\Shared\ValueObjects\Actor
       - App\Infrastructure\Auth\Services\ActorResolver
