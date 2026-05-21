@@ -152,11 +152,6 @@ deptrac:
       - App\Infrastructure\Logging\LoggerFactory
       - App\Infrastructure\ServiceProvider\DomainServiceProviderInterface
       - Config\Logging
-    App\Domain\Cookie\Projections\CookieReadModelProjection:
-      - App\Infrastructure\Projections\ProjectionInterface
-      - App\Infrastructure\Tenancy\TenantContext
-      - CodeIgniter\Database\BaseConnection
-      - Config\Database
     App\Domain\Cookie\Queries\GetAllCookies\GetAllCookiesHandler:
       - Config\Logging
     App\Domain\Cookie\Queries\GetCookieById\GetCookieByIdHandler:
