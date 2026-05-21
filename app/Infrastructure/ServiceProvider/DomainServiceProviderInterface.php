@@ -7,6 +7,7 @@ namespace App\Infrastructure\ServiceProvider;
 use App\Infrastructure\Bus\CommandBus;
 use App\Infrastructure\Bus\EventDispatcher;
 use App\Infrastructure\Bus\QueryBus;
+use CodeIgniter\Router\RouteCollection;
 
 /**
  * Interface for Domain Service Providers.
@@ -100,4 +101,19 @@ interface DomainServiceProviderInterface
      * @return void
      */
     public function setRepositories(array $repositories): void;
+
+    /**
+     * Register the HTTP routes owned by this domain.
+     *
+     * Called from app/Config/Routes.php after the framework-shell routes
+     * are declared. Implementations should attach domain-scoped groups
+     * (e.g. /cookies/*) to the supplied collection.
+     *
+     * Providers without HTTP routes can `use RegisterRoutesNoop;` to inherit
+     * a default no-op implementation.
+     *
+     * @param RouteCollection $routes The application's route collection.
+     * @return void
+     */
+    public function registerRoutes(RouteCollection $routes): void;
 }

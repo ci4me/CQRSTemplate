@@ -37,6 +37,7 @@ use App\Infrastructure\Bus\CommandBus;
 use App\Infrastructure\Bus\EventDispatcher;
 use App\Infrastructure\Bus\QueryBus;
 use App\Infrastructure\ServiceProvider\DomainServiceProviderInterface;
+use App\Infrastructure\ServiceProvider\RegisterRoutesNoop;
 use Config\Logging;
 use Psr\Log\LoggerInterface;
 
@@ -49,6 +50,8 @@ use Psr\Log\LoggerInterface;
 #[DomainServiceProvider]
 final class UserServiceProvider implements DomainServiceProviderInterface
 {
+    use RegisterRoutesNoop;
+
     /**
      * @var array<string, object>
      */
