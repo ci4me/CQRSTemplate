@@ -6,7 +6,6 @@ namespace App\Domain\User\ValueObjects;
 
 use App\Domain\Shared\Exceptions\ValidationException;
 use App\Domain\User\ErrorCodes;
-use App\Infrastructure\Logging\DomainLogger;
 
 /**
  * Value Object representing password complexity validation.
@@ -57,10 +56,6 @@ final readonly class PasswordComplexity
         $trimmed = trim($password);
 
         if ($trimmed === '') {
-            DomainLogger::logValidation('User', 'PasswordComplexity', [
-                'validation_rule' => 'required',
-                'error_code' => ErrorCodes::USER_VALIDATION_PASSWORD,
-            ]);
             throw ValidationException::required('password', ErrorCodes::USER_VALIDATION_PASSWORD);
         }
 
@@ -68,54 +63,26 @@ final readonly class PasswordComplexity
 
         if ($length < self::MIN_LENGTH) {
             $errors[] = sprintf('Must be at least %d characters', self::MIN_LENGTH);
-            DomainLogger::logValidation('User', 'PasswordComplexity', [
-                'validation_rule' => 'min_length',
-                'min_length' => self::MIN_LENGTH,
-                'actual_length' => $length,
-                'error_code' => ErrorCodes::USER_VALIDATION_PASSWORD,
-            ]);
         }
 
         if ($length > self::MAX_LENGTH) {
             $errors[] = sprintf('Must not exceed %d characters', self::MAX_LENGTH);
-            DomainLogger::logValidation('User', 'PasswordComplexity', [
-                'validation_rule' => 'max_length',
-                'max_length' => self::MAX_LENGTH,
-                'actual_length' => $length,
-                'error_code' => ErrorCodes::USER_VALIDATION_PASSWORD,
-            ]);
         }
 
         if (preg_match(self::UPPERCASE_PATTERN, $trimmed) !== 1) {
             $errors[] = 'Must contain at least one uppercase letter (A-Z)';
-            DomainLogger::logValidation('User', 'PasswordComplexity', [
-                'validation_rule' => 'uppercase_required',
-                'error_code' => ErrorCodes::USER_VALIDATION_PASSWORD,
-            ]);
         }
 
         if (preg_match(self::LOWERCASE_PATTERN, $trimmed) !== 1) {
             $errors[] = 'Must contain at least one lowercase letter (a-z)';
-            DomainLogger::logValidation('User', 'PasswordComplexity', [
-                'validation_rule' => 'lowercase_required',
-                'error_code' => ErrorCodes::USER_VALIDATION_PASSWORD,
-            ]);
         }
 
         if (preg_match(self::DIGIT_PATTERN, $trimmed) !== 1) {
             $errors[] = 'Must contain at least one digit (0-9)';
-            DomainLogger::logValidation('User', 'PasswordComplexity', [
-                'validation_rule' => 'digit_required',
-                'error_code' => ErrorCodes::USER_VALIDATION_PASSWORD,
-            ]);
         }
 
         if (preg_match(self::SPECIAL_CHAR_PATTERN, $trimmed) !== 1) {
             $errors[] = 'Must contain at least one special character (!@#$%^&*()_+-=[]{}|;:,.<>?)';
-            DomainLogger::logValidation('User', 'PasswordComplexity', [
-                'validation_rule' => 'special_char_required',
-                'error_code' => ErrorCodes::USER_VALIDATION_PASSWORD,
-            ]);
         }
 
         if (count($errors) > 0) {

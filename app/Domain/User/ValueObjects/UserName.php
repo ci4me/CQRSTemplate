@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Domain\User\ValueObjects;
 
 use App\Domain\User\ErrorCodes;
-use App\Infrastructure\Logging\DomainLogger;
 
 /**
  * User Name Value Object.
@@ -58,12 +57,6 @@ final readonly class UserName
         $trimmed = trim($name);
 
         if ($trimmed === '') {
-            DomainLogger::logValidation('User', 'UserName', [
-                'attempted_value' => $name,
-                'validation_rule' => 'required',
-                'error_code' => ErrorCodes::USER_VALIDATION_NAME,
-            ]);
-
             throw new \InvalidArgumentException(
                 'User name is required',
                 ErrorCodes::USER_VALIDATION_NAME
@@ -71,14 +64,6 @@ final readonly class UserName
         }
 
         if (mb_strlen($trimmed) < self::MIN_LENGTH) {
-            DomainLogger::logValidation('User', 'UserName', [
-                'attempted_value' => $trimmed,
-                'attempted_length' => mb_strlen($trimmed),
-                'validation_rule' => 'min_length',
-                'min_length' => self::MIN_LENGTH,
-                'error_code' => ErrorCodes::USER_VALIDATION_NAME,
-            ]);
-
             throw new \InvalidArgumentException(
                 sprintf('User name must be at least %d characters', self::MIN_LENGTH),
                 ErrorCodes::USER_VALIDATION_NAME
@@ -86,14 +71,6 @@ final readonly class UserName
         }
 
         if (mb_strlen($trimmed) > self::MAX_LENGTH) {
-            DomainLogger::logValidation('User', 'UserName', [
-                'attempted_value' => substr($trimmed, 0, 50) . '...',
-                'attempted_length' => mb_strlen($trimmed),
-                'validation_rule' => 'max_length',
-                'max_length' => self::MAX_LENGTH,
-                'error_code' => ErrorCodes::USER_VALIDATION_NAME,
-            ]);
-
             throw new \InvalidArgumentException(
                 sprintf('User name must not exceed %d characters', self::MAX_LENGTH),
                 ErrorCodes::USER_VALIDATION_NAME

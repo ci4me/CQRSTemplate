@@ -6,7 +6,6 @@ namespace App\Domain\User\ValueObjects;
 
 use App\Domain\Shared\Exceptions\ValidationException;
 use App\Domain\User\ErrorCodes;
-use App\Infrastructure\Logging\DomainLogger;
 
 /**
  * Value Object representing an access token for authentication.
@@ -34,11 +33,6 @@ final readonly class AccessToken
         $normalized = trim($token);
 
         if ($normalized === '') {
-            DomainLogger::logValidation('User', 'AccessToken', [
-                'attempted_value' => $token,
-                'validation_rule' => 'required',
-                'error_code' => ErrorCodes::USER_VALIDATION_TOKEN,
-            ]);
             throw ValidationException::required('token', ErrorCodes::USER_VALIDATION_TOKEN);
         }
     }

@@ -186,12 +186,6 @@ deptrac:
       - App\Infrastructure\ServiceProvider\DomainServiceProviderInterface
       - Config\Logging
       - Config\Services
-    App\Domain\User\ValueObjects\AccessToken:
-      - App\Infrastructure\Logging\DomainLogger
-    App\Domain\User\ValueObjects\PasswordComplexity:
-      - App\Infrastructure\Logging\DomainLogger
-    App\Domain\User\ValueObjects\UserName:
-      - App\Infrastructure\Logging\DomainLogger
     # Helpers are infrastructure glue; these violations are permanent and intentional.
     can():
       - App\Domain\Shared\ValueObjects\Permission
