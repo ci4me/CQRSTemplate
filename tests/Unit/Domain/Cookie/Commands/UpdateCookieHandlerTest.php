@@ -141,6 +141,34 @@ final class UpdateCookieHandlerTest extends UnitTestCase
         $this->handler->handle($command);
     }
 
+    public function test_rethrows_unknown_throwable_from_repository(): void
+    {
+        // Non-Validation, non-Domain exception => determineErrorCode falls
+        // through to COOKIE_REPOSITORY_SAVE_FAILED (final return on line 164).
+        $command = new UpdateCookieCommand(
+            id: 1,
+            name: 'Same Name',
+            description: 'desc',
+            price: '2.99',
+            stock: 10,
+            isActive: true,
+            updatedBy: Actor::system('test'),
+        );
+
+        $existing = CookieFactory::createPersistedCookie([
+            'id' => 1,
+            'name' => 'Same Name',
+        ]);
+        $this->repository->method('findById')->willReturn($existing);
+        $this->repository->method('save')
+            ->willThrowException(new \RuntimeException('database offline'));
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('database offline');
+
+        $this->handler->handle($command);
+    }
+
     public function test_expected_version_matches_proceeds_normally(): void
     {
         $command = new UpdateCookieCommand(

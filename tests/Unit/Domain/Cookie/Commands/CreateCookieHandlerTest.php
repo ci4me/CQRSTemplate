@@ -10,6 +10,7 @@ use App\Domain\Cookie\Commands\CreateCookie\CreateCookieHandler;
 use App\Domain\Cookie\Events\CookieCreated\CookieCreatedEvent;
 use App\Domain\Cookie\Ports\CookieRepositoryInterface;
 use App\Domain\Shared\Exceptions\DomainException;
+use App\Domain\Shared\Exceptions\ValidationException;
 use App\Domain\Shared\Events\EventDispatcherInterface;
 use App\Infrastructure\Logging\LoggerFactory;
 use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
@@ -221,5 +222,91 @@ final class CreateCookieHandlerTest extends UnitTestCase
         $result = $this->handler->handle($command);
 
         $this->assertEquals(1, $result);
+    }
+
+    public function test_rethrows_validation_exception_from_value_object(): void
+    {
+        // Empty name => ValidationException with COOKIE_VALIDATION_NAME code.
+        // Exercises the ValidationException branch of determineErrorCode.
+        $command = new CreateCookieCommand(
+            name: '',
+            description: null,
+            price: '2.99',
+            stock: 10,
+            createdBy: Actor::system('test'),
+            isActive: true,
+        );
+
+        $this->expectException(ValidationException::class);
+        $this->handler->handle($command);
+    }
+
+    public function test_rethrows_unknown_throwable_from_repository(): void
+    {
+        // Non-Validation, non-Domain exception => falls through to
+        // COOKIE_REPOSITORY_SAVE_FAILED (final return on line 164).
+        $command = new CreateCookieCommand(
+            name: 'Test Cookie',
+            description: null,
+            price: '2.99',
+            stock: 10,
+            createdBy: Actor::system('test'),
+            isActive: true,
+        );
+
+        $this->repository->method('existsByName')->willReturn(false);
+        $this->repository->method('save')
+            ->willThrowException(new \RuntimeException('database is down'));
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('database is down');
+        $this->handler->handle($command);
+    }
+
+    /**
+     * Exercises the str_contains() match arms in determineErrorCode by
+     * having the repository raise a generic DomainException (errorCode=0)
+     * whose message contains the discriminator keyword.
+     *
+     * @param string $message Message containing the discriminator keyword
+     * @param int    $unused  Unused — present so PHPUnit's data provider is
+     *                        explicit about which arm is being targeted
+     */
+    #[\PHPUnit\Framework\Attributes\DataProvider('domainExceptionMessageProvider')]
+    public function test_determine_error_code_match_arms_for_zero_coded_domain_exceptions(
+        string $message,
+        int $unused
+    ): void {
+        $command = new CreateCookieCommand(
+            name: 'Test Cookie',
+            description: null,
+            price: '2.99',
+            stock: 10,
+            createdBy: Actor::system('test'),
+            isActive: true,
+        );
+
+        $this->repository->method('existsByName')->willReturn(false);
+        $this->repository->method('save')
+            ->willThrowException(new DomainException($message, 0));
+
+        $this->expectException(DomainException::class);
+        $this->expectExceptionMessage($message);
+        $this->handler->handle($command);
+    }
+
+    /**
+     * @return array<string, array{string, int}>
+     */
+    public static function domainExceptionMessageProvider(): array
+    {
+        // Each message hits a different match-arm in determineErrorCode.
+        return [
+            'name must be unique arm' => ['Cookie name must be unique here', 0],
+            'stock arm' => ['stock fell below zero', 0],
+            'name arm' => ['the name is suspicious', 0],
+            'price arm' => ['price could not be persisted', 0],
+            'default arm' => ['repository connection lost', 0],
+        ];
     }
 }
