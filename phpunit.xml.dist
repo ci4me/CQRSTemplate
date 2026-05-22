@@ -41,7 +41,12 @@
         </include>
         <exclude>
             <directory suffix=".php">./app/Views</directory>
-            <file>./app/Config/Routes.php</file>
+            <directory suffix=".php">./app/Config</directory>
+            <directory suffix=".php">./app/Database/Migrations</directory>
+            <directory suffix=".php">./app/Database/Seeds</directory>
+            <file>./app/Controllers/HealthController.php</file>
+            <file>./app/Controllers/Home.php</file>
+            <file>./app/Infrastructure/Logging/LoggingServiceProvider.php</file>
         </exclude>
     </source>
     <php>
