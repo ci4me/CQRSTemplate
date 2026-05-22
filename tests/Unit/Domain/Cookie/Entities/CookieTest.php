@@ -592,6 +592,70 @@ final class CookieTest extends UnitTestCase
         $this->assertSame(1, $cookie->getVersion());
     }
 
+    public function test_bump_version_is_monotonic_under_repeated_calls(): void
+    {
+        // Mirrors the production lifecycle: insert bumps from 0 to 1,
+        // every subsequent UPDATE bumps from N to N+1 lock-step with the
+        // DB column. Closes audit slice 12 missing-5 (Cookie::bumpVersion
+        // had no direct unit coverage of multi-step behaviour).
+        $cookie = Cookie::create(
+            name: CookieName::fromString('Multi-bump'),
+            description: null,
+            price: CookiePrice::fromString('1.00'),
+            stock: 1,
+            isActive: true
+        );
+        $this->assertSame(0, $cookie->getVersion());
+
+        $cookie->bumpVersion(AggregateHydrator::key());
+        $cookie->bumpVersion(AggregateHydrator::key());
+        $cookie->bumpVersion(AggregateHydrator::key());
+
+        $this->assertSame(3, $cookie->getVersion());
+    }
+
+    public function test_get_version_returns_reconstituted_version(): void
+    {
+        // Pin getVersion()'s contract for hydrated entities: it must
+        // return the value the repository handed in, NOT zero (the
+        // factory default). Closes audit slice 12 missing-5 (Cookie::getVersion
+        // was only read indirectly through UpdateCookieHandlerTest).
+        $cookie = Cookie::reconstitute(
+            id: 99,
+            name: CookieName::fromString('Hydrated'),
+            description: null,
+            price: CookiePrice::fromString('1.00'),
+            stock: 1,
+            isActive: true,
+            createdAt: '2025-10-21 10:00:00',
+            updatedAt: '2025-10-21 10:00:00',
+            deletedAt: null,
+            version: 7
+        );
+
+        $this->assertSame(7, $cookie->getVersion());
+
+        $cookie->bumpVersion(AggregateHydrator::key());
+
+        $this->assertSame(8, $cookie->getVersion(), 'bumpVersion on hydrated entity bumps from N -> N+1');
+    }
+
+    public function test_get_version_starts_at_zero_for_freshly_created_cookie(): void
+    {
+        // Counterpart to the reconstitute test: a freshly-created (not
+        // yet persisted) cookie reports version 0, signalling to the
+        // repository that the first save should INSERT, not UPDATE.
+        $cookie = Cookie::create(
+            name: CookieName::fromString('Brand new'),
+            description: null,
+            price: CookiePrice::fromString('1.00'),
+            stock: 1,
+            isActive: true
+        );
+
+        $this->assertSame(0, $cookie->getVersion());
+    }
+
     public function test_reconstitute_rejects_version_zero(): void
     {
         $this->expectException(\InvalidArgumentException::class);
