@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Infrastructure\Bus;
 
+use App\Domain\Shared\Bus\CommandHandlerInterface;
 use App\Domain\Shared\Exceptions\DomainException;
 use App\Infrastructure\Bus\CommandBus;
 use App\Infrastructure\Bus\CommandMiddlewareInterface;
@@ -27,9 +28,10 @@ final class CommandBusTest extends UnitTestCase
     public function test_registered_handler_routes_via_dispatch(): void
     {
         $bus = new CommandBus();
-        $handler = new class {
-            public function handle(SampleCommand $command): string
+        $handler = new class implements CommandHandlerInterface {
+            public function handle(object $command): string
             {
+                /** @phpstan-ignore-next-line dynamic property — SampleCommand is the bus-narrowed type. */
                 return 'handled-' . $command->payload;
             }
         };
@@ -51,13 +53,18 @@ final class CommandBusTest extends UnitTestCase
         $bus->register(SampleCommand::class, $this->stubHandler());
     }
 
-    public function test_handler_without_handle_method_is_rejected_at_register(): void
+    public function test_handler_without_interface_is_rejected_at_register(): void
     {
         $bus = new CommandBus();
 
-        $this->expectException(\RuntimeException::class);
-        $this->expectExceptionMessage('must have a handle() method');
+        // Bus::register() typehints CommandHandlerInterface, so passing a
+        // bare stdClass triggers a PHP TypeError BEFORE the bus's own
+        // sanity check runs — that's the structural guarantee E05 introduces
+        // (closes 03/F5: typos in handler files fail at boot, not first
+        // dispatch). The TypeError happens during argument resolution.
+        $this->expectException(\TypeError::class);
 
+        /** @phpstan-ignore-next-line argument.type — testing the runtime guard. */
         $bus->register(SampleCommand::class, new \stdClass());
     }
 
@@ -108,10 +115,11 @@ final class CommandBusTest extends UnitTestCase
     public function test_empty_middleware_pipeline_calls_handler_directly(): void
     {
         $bus = new CommandBus();
-        $bus->register(SampleCommand::class, new class {
-            public function handle(SampleCommand $c): string
+        $bus->register(SampleCommand::class, new class implements CommandHandlerInterface {
+            public function handle(object $command): string
             {
-                return 'direct:' . $c->payload;
+                /** @phpstan-ignore-next-line dynamic property. */
+                return 'direct:' . $command->payload;
             }
         });
 
@@ -121,9 +129,9 @@ final class CommandBusTest extends UnitTestCase
         $this->assertSame('direct:y', $bus->dispatch(new SampleCommand('y')));
     }
 
-    private function stubHandler(): object
+    private function stubHandler(): CommandHandlerInterface
     {
-        return new class {
+        return new class implements CommandHandlerInterface {
             public function handle(object $command): mixed
             {
                 return null;

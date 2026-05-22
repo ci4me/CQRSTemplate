@@ -7,6 +7,7 @@ namespace App\Domain\Cookie\Commands\DeleteCookie;
 use App\Domain\Cookie\ErrorCodes;
 use App\Domain\Cookie\Events\CookieDeleted\CookieDeletedEvent;
 use App\Domain\Cookie\Ports\CookieRepositoryInterface;
+use App\Domain\Shared\Bus\CommandHandlerInterface;
 use App\Domain\Shared\Events\AbstractDomainEvent;
 use App\Domain\Shared\Events\CookieChangeSet;
 use App\Domain\Shared\Events\EventDispatcherInterface;
@@ -26,8 +27,9 @@ use Psr\Log\LoggerInterface;
  * - Deletion is SOFT (sets deleted_at timestamp)
  *
  * @package App\Domain\Cookie\Commands\DeleteCookie
+ * @implements CommandHandlerInterface<DeleteCookieCommand, void>
  */
-final readonly class DeleteCookieHandler
+final readonly class DeleteCookieHandler implements CommandHandlerInterface
 {
     /**
      * Create a new DeleteCookieHandler.
@@ -49,7 +51,7 @@ final readonly class DeleteCookieHandler
      * @param DeleteCookieCommand $command The delete command
      * @throws DomainException If cookie not found
      */
-    public function handle(DeleteCookieCommand $command): void
+    public function handle(object $command): void
     {
         $startTime = hrtime(true);
 

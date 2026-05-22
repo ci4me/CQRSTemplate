@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Bus;
 
+use App\Domain\Shared\Bus\QueryHandlerInterface;
 use App\Domain\Shared\Exceptions\DomainException;
 use RuntimeException;
 
@@ -42,29 +43,29 @@ final class QueryBus
     /**
      * Map of query class names to their handler instances.
      *
-     * @var array<string, object> Format: [QueryClassName => HandlerInstance]
+     * @var array<string, QueryHandlerInterface<object, mixed>> Format: [QueryClassName => HandlerInstance]
      */
     private array $handlers = [];
 
     /**
      * Register a query handler.
      *
-     * @param string $queryClass Fully qualified query class name
-     * @param object $handler    The handler instance with handle() method
+     * The handler must implement {@see QueryHandlerInterface}. Any
+     * attempt to register a non-implementing handler fails at
+     * register-time with a PHP TypeError (closes 04/F3).
+     *
+     * @template TQuery of object
+     * @template TResult
+     * @param class-string                           $queryClass Fully qualified query class name.
+     * @param QueryHandlerInterface<TQuery, TResult> $handler    The handler instance.
      * @return void
-     * @throws RuntimeException If handler is already registered for this query
+     * @throws RuntimeException If handler is already registered for this query.
      */
-    public function register(string $queryClass, object $handler): void
+    public function register(string $queryClass, QueryHandlerInterface $handler): void
     {
         if (isset($this->handlers[$queryClass])) {
             throw new RuntimeException(
                 sprintf('Handler for query "%s" is already registered', $queryClass)
-            );
-        }
-
-        if (!method_exists($handler, 'handle')) {
-            throw new RuntimeException(
-                sprintf('Handler for query "%s" must have a handle() method', $queryClass)
             );
         }
 
@@ -93,7 +94,6 @@ final class QueryBus
 
         $handler = $this->handlers[$queryClass];
 
-        /** @phpstan-ignore method.notFound (handle() verified at registration time) */
         return $handler->handle($query);
     }
 

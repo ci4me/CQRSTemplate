@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Infrastructure\Bus;
 
+use App\Domain\Shared\Bus\QueryHandlerInterface;
 use App\Domain\Shared\Exceptions\DomainException;
 use App\Infrastructure\Bus\QueryBus;
 use Tests\Support\UnitTestCase;
@@ -22,7 +23,7 @@ final class QueryBusTest extends UnitTestCase
     public function test_registered_handler_routes_via_ask(): void
     {
         $bus = new QueryBus();
-        $handler = new class {
+        $handler = new class implements QueryHandlerInterface {
             public function handle(object $query): string
             {
                 /** @phpstan-ignore-next-line dynamic property */
@@ -47,13 +48,17 @@ final class QueryBusTest extends UnitTestCase
         $bus->register(SampleQuery::class, $this->stubHandler());
     }
 
-    public function test_handler_without_handle_method_is_rejected_at_register(): void
+    public function test_handler_without_interface_is_rejected_at_register(): void
     {
         $bus = new QueryBus();
 
-        $this->expectException(\RuntimeException::class);
-        $this->expectExceptionMessage('must have a handle() method');
+        // Bus::register() typehints QueryHandlerInterface; passing a bare
+        // stdClass triggers a PHP TypeError at argument resolution time
+        // — the structural register-time guarantee E05 introduces
+        // (closes 04/F3).
+        $this->expectException(\TypeError::class);
 
+        /** @phpstan-ignore-next-line argument.type — testing the runtime guard. */
         $bus->register(SampleQuery::class, new \stdClass());
     }
 
@@ -76,9 +81,9 @@ final class QueryBusTest extends UnitTestCase
         $this->assertTrue($bus->hasHandler(SampleQuery::class));
     }
 
-    private function stubHandler(): object
+    private function stubHandler(): QueryHandlerInterface
     {
-        return new class {
+        return new class implements QueryHandlerInterface {
             public function handle(object $query): mixed
             {
                 return null;

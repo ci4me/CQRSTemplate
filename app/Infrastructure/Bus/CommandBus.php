@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Bus;
 
+use App\Domain\Shared\Bus\CommandHandlerInterface;
 use App\Domain\Shared\Exceptions\DomainException;
 use RuntimeException;
 
@@ -31,7 +32,17 @@ final class CommandBus
     /**
      * Map of command class names to their handler instances.
      *
-     * @var array<string, object> Format: [CommandClassName => HandlerInstance]
+     * Handlers are constrained at registration time to implement
+     * {@see CommandHandlerInterface}; the array stores the validated
+     * instances so dispatch() can invoke them directly without re-checking.
+     *
+     * The generic parameters are intentionally erased here — the bus is
+     * heterogeneous (different commands carry different concrete
+     * handlers), and a single typed envelope can't capture that. The
+     * register-time interface enforcement is what matters; PHPStan
+     * narrows on the handler side via @implements.
+     *
+     * @var array<string, CommandHandlerInterface<object, mixed>>
      */
     private array $handlers = [];
 
@@ -67,22 +78,25 @@ final class CommandBus
     /**
      * Register a command handler.
      *
-     * @param string $commandClass
-     * @param object $handler
+     * The handler must implement {@see CommandHandlerInterface}. Any
+     * attempt to register a handler that does not implement the
+     * interface fails at register-time with a PHP TypeError, NOT at
+     * the first dispatch call site — accidental typos in handler
+     * files surface at boot rather than on the first user request
+     * (closes 03/F5, 04/F3, 03/F16).
+     *
+     * @template TCommand of object
+     * @template TResult
+     * @param class-string                               $commandClass FQCN of the command DTO.
+     * @param CommandHandlerInterface<TCommand, TResult> $handler      The handler instance.
      * @return void
-     * @throws RuntimeException
+     * @throws RuntimeException If a handler is already registered for $commandClass.
      */
-    public function register(string $commandClass, object $handler): void
+    public function register(string $commandClass, CommandHandlerInterface $handler): void
     {
         if (isset($this->handlers[$commandClass])) {
             throw new RuntimeException(
                 sprintf('Handler for command "%s" is already registered', $commandClass)
-            );
-        }
-
-        if (!method_exists($handler, 'handle')) {
-            throw new RuntimeException(
-                sprintf('Handler for command "%s" must have a handle() method', $commandClass)
             );
         }
 
@@ -108,13 +122,9 @@ final class CommandBus
 
         $handler = $this->handlers[$commandClass];
 
-        if (!method_exists($handler, 'handle')) {
-            throw new DomainException(
-                sprintf('Handler for command "%s" does not have a handle() method', $commandClass)
-            );
-        }
-
         // Build the pipeline: outermost middleware -> ... -> handler invocation.
+        // No method_exists() check here: register() already enforces the
+        // CommandHandlerInterface contract, so the call is guaranteed safe.
         $core = static fn(object $c): mixed => $handler->handle($c);
 
         $pipeline = array_reduce(
