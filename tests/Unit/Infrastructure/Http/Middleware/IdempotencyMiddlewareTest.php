@@ -124,6 +124,63 @@ final class IdempotencyMiddlewareTest extends CIUnitTestCase
         $this->assertStringContainsString('conflict', strtolower((string) $result->getBody()));
     }
 
+    public function test_anonymous_actor_is_rejected_with_401(): void
+    {
+        // Drop the synthetic user the helper attaches so the ActorResolver
+        // falls back to actor_id = 0 (system / anonymous).
+        $mw = new IdempotencyMiddleware();
+        $request = $this->makeRequest('POST', '/api/v1/users', 'anon-key-123456');
+        unset($request->user);
+
+        $result = $mw->before($request);
+
+        $this->assertInstanceOf(Response::class, $result);
+        $this->assertSame(401, $result->getStatusCode());
+    }
+
+    public function test_after_filter_passes_response_through_for_get_requests(): void
+    {
+        $mw = new IdempotencyMiddleware();
+        $request = $this->makeRequest('GET', '/api/v1/users', 'safe-method-key-1');
+        $response = (new Response(new App()))->setStatusCode(200);
+
+        $result = $mw->after($request, $response);
+
+        $this->assertSame($response, $result);
+    }
+
+    public function test_after_filter_skips_cache_for_request_without_key(): void
+    {
+        $mw = new IdempotencyMiddleware();
+        $request = $this->makeRequest('POST', '/api/v1/users', '');
+        $response = (new Response(new App()))->setStatusCode(201);
+
+        $result = $mw->after($request, $response);
+
+        $this->assertSame($response, $result);
+        $rows = Database::connect()->table('idempotency_keys')->get()->getResultArray();
+        $this->assertSame([], $rows);
+    }
+
+    public function test_after_filter_skips_cache_when_row_already_exists(): void
+    {
+        // Replay path: first POST writes the row, a second POST with the same
+        // key short-circuits the after-store via lookup() !== null.
+        $mw = new IdempotencyMiddleware();
+        $first = $this->makeRequest('POST', '/api/v1/users', 'dup-key-123456');
+        $mw->before($first);
+        $mw->after($first, (new Response(new App()))->setStatusCode(201));
+
+        $rowsBefore = Database::connect()->table('idempotency_keys')->countAllResults();
+
+        $second = $this->makeRequest('POST', '/api/v1/users', 'dup-key-123456');
+        $mw->before($second);
+        $mw->after($second, (new Response(new App()))->setStatusCode(201));
+
+        $rowsAfter = Database::connect()->table('idempotency_keys')->countAllResults();
+        $this->assertSame($rowsBefore, $rowsAfter, 'after() must not insert a duplicate row');
+    }
+
     /**
      * @param array<string, mixed>|null $jsonBody
      */
