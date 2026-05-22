@@ -13,6 +13,7 @@ use App\Domain\User\ValueObjects\UserRole;
 use App\Domain\User\ValueObjects\UserStatus;
 use App\Infrastructure\Logging\LoggerFactory;
 use App\Infrastructure\Persistence\Models\UserModel;
+use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 use Tests\Support\IntegrationTestCase;
 
 /**
@@ -24,6 +25,7 @@ use Tests\Support\IntegrationTestCase;
  * Extends {@see IntegrationTestCase} for migration/refresh wiring; the
  * inherited `cookieRepository` is unused here (it's a sibling repository).
  */
+#[AllowMockObjectsWithoutExpectations]
 final class UserRepositoryTest extends IntegrationTestCase
 {
     private UserRepository $repository;
@@ -246,6 +248,176 @@ final class UserRepositoryTest extends IntegrationTestCase
         $this->assertSame(1, $this->repository->countByStatus('inactive'));
     }
 
+    public function test_find_paginated_includes_inactive_when_flag_set(): void
+    {
+        $keepId = $this->repository->save($this->makeUser('alive@example.com', 'Alive'));
+        $dropId = $this->repository->save($this->makeUser('dead@example.com', 'Dead'));
+        $this->repository->delete($dropId);
+
+        $result = $this->repository->findPaginated(1, 10, includeInactive: true);
+
+        $ids = array_map(static fn ($u) => $u->getId(), $result['data']);
+        $this->assertContains($keepId, $ids);
+        $this->assertContains($dropId, $ids);
+        $this->assertSame(2, $result['total']);
+    }
+
+    public function test_find_paginated_filters_by_status(): void
+    {
+        $this->repository->save($this->makeUser('active@example.com', 'Active', UserRole::Customer));
+        $this->repository->save($this->makeUser(
+            'inactive@example.com',
+            'Inactive',
+            UserRole::Customer,
+            UserStatus::Inactive
+        ));
+
+        $inactive = $this->repository->findPaginated(1, 10, false, '', null, 'inactive');
+
+        $this->assertSame(1, $inactive['total']);
+        $this->assertSame(UserStatus::Inactive, $inactive['data'][0]->getStatus());
+    }
+
+    // ------------------------------------------------------------------
+    // error-path catches (model-backed mocks)
+    // ------------------------------------------------------------------
+
+    public function test_save_rethrows_when_insert_returns_false(): void
+    {
+        $model = $this->createMock(UserModel::class);
+        $model->method('insert')->willReturn(false);
+
+        $repo = $this->makeRepoWithModel($model);
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('Failed to save user');
+
+        $repo->save($this->makeUser('insert-false@example.com', 'Insert False'));
+    }
+
+    public function test_save_logs_and_rethrows_model_exception(): void
+    {
+        $model = $this->createMock(UserModel::class);
+        $model->method('insert')->willThrowException(new \RuntimeException('insert exploded'));
+
+        $repo = $this->makeRepoWithModel($model);
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('insert exploded');
+
+        $repo->save($this->makeUser('boom@example.com', 'Boom'));
+    }
+
+    public function test_find_by_id_returns_null_on_model_exception(): void
+    {
+        $model = $this->createMock(UserModel::class);
+        $model->method('find')->willThrowException(new \RuntimeException('storage down'));
+
+        $repo = $this->makeRepoWithModel($model);
+
+        $this->assertNull($repo->findById(123));
+    }
+
+    public function test_find_by_email_returns_null_on_model_exception(): void
+    {
+        $model = $this->getMockBuilder(UserModel::class)
+            ->onlyMethods(['first'])
+            ->getMock();
+        $model->method('first')->willThrowException(new \RuntimeException('first failed'));
+
+        $repo = $this->makeRepoWithModel($model);
+
+        $this->assertNull($repo->findByEmail(Email::fromString('miss@example.com')));
+    }
+
+    public function test_update_logs_and_rethrows_model_exception(): void
+    {
+        $model = $this->createMock(UserModel::class);
+        $model->method('update')->willThrowException(new \RuntimeException('update failed'));
+
+        $repo = $this->makeRepoWithModel($model);
+        $user = $this->makePersistedUser(42, 'upd@example.com', 'Upd');
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('update failed');
+
+        $repo->update($user);
+    }
+
+    public function test_delete_returns_false_when_model_throws(): void
+    {
+        $model = $this->createMock(UserModel::class);
+        $model->method('delete')->willThrowException(new \RuntimeException('delete failed'));
+
+        $repo = $this->makeRepoWithModel($model);
+
+        $this->assertFalse($repo->delete(99));
+    }
+
+    public function test_find_paginated_rethrows_when_builder_throws(): void
+    {
+        $model = $this->createMock(UserModel::class);
+        $model->method('builder')->willThrowException(new \RuntimeException('paginate broken'));
+
+        $repo = $this->makeRepoWithModel($model);
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('paginate broken');
+
+        $repo->findPaginated(1, 10);
+    }
+
+    public function test_count_total_returns_zero_on_exception(): void
+    {
+        $model = $this->getMockBuilder(UserModel::class)
+            ->onlyMethods(['countAllResults'])
+            ->getMock();
+        $model->method('countAllResults')->willThrowException(new \RuntimeException('count exploded'));
+
+        $repo = $this->makeRepoWithModel($model);
+
+        $this->assertSame(0, $repo->countTotal());
+    }
+
+    public function test_count_by_role_returns_zero_on_exception(): void
+    {
+        $model = $this->getMockBuilder(UserModel::class)
+            ->onlyMethods(['countAllResults'])
+            ->getMock();
+        $model->method('countAllResults')->willThrowException(new \RuntimeException('role count exploded'));
+
+        $repo = $this->makeRepoWithModel($model);
+
+        $this->assertSame(0, $repo->countByRole('admin'));
+    }
+
+    public function test_count_by_status_returns_zero_on_exception(): void
+    {
+        $model = $this->getMockBuilder(UserModel::class)
+            ->onlyMethods(['countAllResults'])
+            ->getMock();
+        $model->method('countAllResults')->willThrowException(new \RuntimeException('status count exploded'));
+
+        $repo = $this->makeRepoWithModel($model);
+
+        $this->assertSame(0, $repo->countByStatus('active'));
+    }
+
+    public function test_slow_query_warning_branch_is_exercised(): void
+    {
+        // Threshold of -1 ms guarantees logQuery() treats every call as slow,
+        // exercising the warning emit path inside logQuery().
+        $logger = LoggerFactory::create('test.user.repository.slow');
+        $cfg = config('Logging');
+        $cfg->slowQueryThresholdMs = -1;
+
+        $repo = new UserRepository(new UserModel(), $logger, $cfg);
+        $id = $repo->save($this->makeUser('slow@example.com', 'Slow Query'));
+
+        $this->assertNotNull($repo->findById($id));
+        $this->assertNotNull($repo->findByEmail(Email::fromString('slow@example.com')));
+    }
+
     // ------------------------------------------------------------------
     // helpers
     // ------------------------------------------------------------------
@@ -276,5 +448,30 @@ final class UserRepositoryTest extends IntegrationTestCase
         }
 
         return $user;
+    }
+
+    private function makeRepoWithModel(UserModel $model): UserRepository
+    {
+        $logger = LoggerFactory::create('test.user.repository.error');
+        $cfg = config('Logging');
+
+        return new UserRepository($model, $logger, $cfg);
+    }
+
+    private function makePersistedUser(int $id, string $email, string $name): User
+    {
+        return User::reconstitute(
+            id: $id,
+            name: UserName::fromString($name),
+            email: Email::fromString($email),
+            hashedPassword: HashedPassword::fromHash(password_hash('Some-Strong-Password-1!', PASSWORD_BCRYPT)),
+            role: UserRole::Customer,
+            status: UserStatus::Active,
+            failedLoginAttempts: 0,
+            lockedUntil: null,
+            createdAt: new \DateTimeImmutable('-1 hour'),
+            updatedAt: null,
+            deletedAt: null,
+        );
     }
 }
