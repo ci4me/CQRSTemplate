@@ -8,6 +8,8 @@ use App\Domain\Cookie\DTOs\CookieDTO;
 use App\Domain\Cookie\Ports\CookieQueryRepositoryInterface;
 use App\Domain\Cookie\Queries\GetCookieById\GetCookieByIdHandler;
 use App\Domain\Cookie\Queries\GetCookieById\GetCookieByIdQuery;
+use App\Domain\Shared\Bus\LogSampler;
+use App\Domain\Shared\Bus\SystemClock;
 use App\Domain\Shared\Ports\LogConfigPort;
 use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 use Psr\Log\LoggerInterface;
@@ -19,6 +21,7 @@ final class GetCookieByIdHandlerTest extends UnitTestCase
     private CookieQueryRepositoryInterface $repository;
     private LoggerInterface $logger;
     private LogConfigPort $loggingConfig;
+    private float $samplingRate = 0.0;
 
     protected function setUp(): void
     {
@@ -105,12 +108,16 @@ final class GetCookieByIdHandlerTest extends UnitTestCase
 
     public function test_slow_query_short_circuits_irrespective_of_level(): void
     {
+        // Slow queries promote to `warning` (closes 04/F7) regardless of
+        // the configured logging level — operators losing slow-query
+        // alerts is a real prod regression risk and the new base owns
+        // that escalation.
         $this->stubConfig(level: 'errors', slowMs: 0);
         $this->repository->method('findById')->willReturn($this->makeDto(1, 'X'));
 
         $this->logger->expects($this->once())
-            ->method('info')
-            ->with('Query executed', $this->callback(function (array $ctx): bool {
+            ->method('warning')
+            ->with('Slow query executed', $this->callback(function (array $ctx): bool {
                 return ($ctx['slow_query'] ?? false) === true && $ctx['result'] === 'found';
             }));
 
@@ -149,7 +156,13 @@ final class GetCookieByIdHandlerTest extends UnitTestCase
 
     private function makeHandler(): GetCookieByIdHandler
     {
-        return new GetCookieByIdHandler($this->repository, $this->logger, $this->loggingConfig);
+        return new GetCookieByIdHandler(
+            $this->repository,
+            $this->logger,
+            new SystemClock(),
+            new LogSampler($this->samplingRate),
+            $this->loggingConfig
+        );
     }
 
     private function stubConfig(
@@ -160,6 +173,25 @@ final class GetCookieByIdHandlerTest extends UnitTestCase
         $this->loggingConfig->method('queryLoggingLevel')->willReturn($level);
         $this->loggingConfig->method('slowQueryThresholdMs')->willReturn($slowMs);
         $this->loggingConfig->method('samplingRate')->willReturn($samplingRate);
+        // The post-E08 handler accepts the LogSampler at construction
+        // (not per-call), so the test captures the rate here for
+        // makeHandler() to build a sampler with the same probability.
+        $this->samplingRate = $samplingRate;
+    }
+
+    public function test_do_handle_is_under_the_twenty_line_ceiling(): void
+    {
+        $method = (new \ReflectionClass(GetCookieByIdHandler::class))->getMethod('doHandle');
+        $end = $method->getEndLine();
+        $start = $method->getStartLine();
+        $this->assertNotFalse($end);
+        $this->assertNotFalse($start);
+        $lines = ($end - $start) - 1;
+        $this->assertLessThanOrEqual(
+            20,
+            $lines,
+            sprintf('GetCookieByIdHandler::doHandle() is %d lines; CLAUDE.md caps it at 20.', $lines)
+        );
     }
 
     private function makeDto(int $id, string $name): CookieDTO

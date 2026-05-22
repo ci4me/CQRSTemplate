@@ -6,10 +6,12 @@ namespace Tests\Unit\Domain\Cookie\Commands;
 
 use App\Domain\Cookie\Commands\RestoreCookie\RestoreCookieCommand;
 use App\Domain\Cookie\Commands\RestoreCookie\RestoreCookieHandler;
+use App\Domain\Cookie\ErrorCodes;
 use App\Domain\Cookie\Events\CookieRestored\CookieRestoredEvent;
 use App\Domain\Cookie\Ports\CookieRepositoryInterface;
 use App\Domain\Cookie\ValueObjects\CookieName;
 use App\Domain\Cookie\ValueObjects\CookiePrice;
+use App\Domain\Shared\Bus\SystemClock;
 use App\Domain\Shared\Exceptions\DomainException;
 use App\Domain\Shared\ValueObjects\Actor;
 use App\Infrastructure\Bus\EventDispatcher;
@@ -31,7 +33,12 @@ final class RestoreCookieHandlerTest extends UnitTestCase
         $this->repository = $this->createMock(CookieRepositoryInterface::class);
         $this->eventDispatcher = $this->createMock(EventDispatcher::class);
         $logger = LoggerFactory::create('test.cookie.commands');
-        $this->handler = new RestoreCookieHandler($this->repository, $this->eventDispatcher, $logger);
+        $this->handler = new RestoreCookieHandler(
+            $this->repository,
+            $this->eventDispatcher,
+            $logger,
+            new SystemClock()
+        );
     }
 
     public function test_restores_a_soft_deleted_cookie(): void
@@ -44,7 +51,7 @@ final class RestoreCookieHandlerTest extends UnitTestCase
             ->method('dispatch')
             ->with($this->isInstanceOf(CookieRestoredEvent::class));
 
-        $this->handler->handle(new RestoreCookieCommand(cookieId: 7, restoredBy: Actor::user(99)));
+        $this->handler->handle(new RestoreCookieCommand(id: 7, restoredBy: Actor::user(99)));
     }
 
     public function test_throws_when_cookie_does_not_exist(): void
@@ -54,11 +61,14 @@ final class RestoreCookieHandlerTest extends UnitTestCase
 
         $this->expectException(DomainException::class);
 
-        $this->handler->handle(new RestoreCookieCommand(cookieId: 999, restoredBy: Actor::user(1)));
+        $this->handler->handle(new RestoreCookieCommand(id: 999, restoredBy: Actor::user(1)));
     }
 
     public function test_throws_when_cookie_is_not_actually_deleted(): void
     {
+        // The entity gates this precondition: Cookie::restore() throws
+        // DomainException with COOKIE_STATE_NOT_DELETED when the row is
+        // already active. Closes 03/F10 (was COOKIE_NOT_FOUND pre-E08).
         $live = $this->makeLiveCookie(id: 7);
         $this->repository->method('findByIdWithTrashed')->willReturn($live);
         $this->repository->expects($this->never())->method('restore');
@@ -66,19 +76,44 @@ final class RestoreCookieHandlerTest extends UnitTestCase
         $this->expectException(DomainException::class);
         $this->expectExceptionMessage('not deleted');
 
-        $this->handler->handle(new RestoreCookieCommand(cookieId: 7, restoredBy: Actor::user(1)));
+        $this->handler->handle(new RestoreCookieCommand(id: 7, restoredBy: Actor::user(1)));
     }
 
-    public function test_throws_when_repository_restore_fails(): void
+    /**
+     * E08 closes 03/F2: failed restore now throws {@see DomainException}
+     * with the dedicated {@see ErrorCodes::COOKIE_RESTORE_FAILED} code
+     * instead of `\RuntimeException`. API mappers and observability
+     * consumers can react with a consistent shape across the four
+     * Cookie command handlers.
+     */
+    public function test_throws_domain_exception_when_repository_restore_fails(): void
     {
         $deleted = $this->makeDeletedCookie(id: 7);
         $this->repository->method('findByIdWithTrashed')->willReturn($deleted);
         $this->repository->method('restore')->willReturn(false);
         $this->eventDispatcher->expects($this->never())->method('dispatch');
 
-        $this->expectException(\RuntimeException::class);
+        try {
+            $this->handler->handle(new RestoreCookieCommand(id: 7, restoredBy: Actor::user(1)));
+            $this->fail('Expected DomainException, none thrown');
+        } catch (DomainException $e) {
+            $this->assertSame(ErrorCodes::COOKIE_RESTORE_FAILED, $e->getErrorCode());
+        }
+    }
 
-        $this->handler->handle(new RestoreCookieCommand(cookieId: 7, restoredBy: Actor::user(1)));
+    public function test_do_handle_is_under_the_twenty_line_ceiling(): void
+    {
+        $method = (new \ReflectionClass(RestoreCookieHandler::class))->getMethod('doHandle');
+        $end = $method->getEndLine();
+        $start = $method->getStartLine();
+        $this->assertNotFalse($end);
+        $this->assertNotFalse($start);
+        $lines = ($end - $start) - 1;
+        $this->assertLessThanOrEqual(
+            20,
+            $lines,
+            sprintf('RestoreCookieHandler::doHandle() is %d lines; CLAUDE.md caps it at 20.', $lines)
+        );
     }
 
     private function makeDeletedCookie(int $id): Cookie

@@ -18,6 +18,9 @@ use App\Infrastructure\Auth\Services\RateLimitService;
 use App\Infrastructure\Auth\Services\SecurityEventService;
 use App\Infrastructure\Auth\Services\SessionManagementService;
 use App\Infrastructure\Auth\Services\DatabaseTokenBlacklistService;
+use App\Domain\Shared\Bus\ClockInterface;
+use App\Domain\Shared\Bus\LogSampler;
+use App\Domain\Shared\Bus\SystemClock;
 use App\Infrastructure\Bus\CommandBus;
 use App\Infrastructure\Bus\EventDispatcher;
 use App\Infrastructure\Bus\Middleware\AuditMiddleware;
@@ -216,12 +219,20 @@ class Services extends BaseService
         // auto-discovered from #[AutoBind]-tagged classes (Phase 3 Group B);
         // the rest are non-repository services that still register manually
         // — they will move to ports + adapters in Phase 5.
+        $loggingConfig = new \App\Infrastructure\Logging\CodeIgniterLogConfig(config('Logging'));
+
         $repositories = array_merge(
             ServiceProviderRegistry::discoverRepositories(),
             [
                 'eventDispatcher' => $eventDispatcher,
                 'logger' => self::logger(),
-                'loggingConfig' => new \App\Infrastructure\Logging\CodeIgniterLogConfig(config('Logging')),
+                'loggingConfig' => $loggingConfig,
+                'clock' => self::clock(),
+                // Shared LogSampler built once from the LogConfigPort's
+                // configured rate (closes 04/F12). All query handlers that
+                // extend AbstractQueryHandler receive THIS sampler so the
+                // sampling distribution is identical across handlers.
+                'logSampler' => new LogSampler($loggingConfig->samplingRate()),
                 'passwordHasher' => self::passwordHasher(),
                 'authenticationService' => self::authenticationService(),
                 'tokenBlacklistService' => self::tokenBlacklistService(),
@@ -395,6 +406,30 @@ class Services extends BaseService
         }
 
         return new EmailService(self::logger());
+    }
+
+    /**
+     * Monotonic clock used by the CQRS handler bases for timing.
+     *
+     * The default {@see SystemClock} delegates to `hrtime(true)` so the
+     * duration measurements survive wall-clock jumps (NTP, DST). Tests
+     * substitute a fake clock returning a controlled sequence to assert
+     * deterministic `duration_ms` values.
+     *
+     * E08 wired this into {@see AbstractCommandHandler}/{@see AbstractQueryHandler}
+     * so every domain handler reads time from a single seam — closes
+     * 03/F11, 14/F21.
+     *
+     * @param bool $getShared Whether to return the shared instance.
+     * @return ClockInterface
+     */
+    public static function clock(bool $getShared = true): ClockInterface
+    {
+        if ($getShared) {
+            return static::getSharedInstance('clock');
+        }
+
+        return new SystemClock();
     }
 
     /**

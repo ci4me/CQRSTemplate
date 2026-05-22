@@ -25,15 +25,17 @@ final class CookieServiceProviderTest extends UnitTestCase
     {
         $provider = new CookieServiceProvider();
         // 'cookieRepository' is set to a stdClass — fails the instanceof.
+        // E08 added 'clock' to the required repository set.
         $provider->setRepositories([
             'cookieRepository' => new \stdClass(),
             'eventDispatcher' => new \stdClass(),
             'logger' => new \stdClass(),
             'loggingConfig' => new \stdClass(),
+            'clock' => new \stdClass(),
         ]);
 
         $this->expectException(\RuntimeException::class);
-        $this->expectExceptionMessage('Invalid repository, event dispatcher or logger type');
+        $this->expectExceptionMessage('Invalid repository, event dispatcher, logger or clock type');
 
         $provider->registerCommands(new CommandBus());
     }
@@ -41,14 +43,17 @@ final class CookieServiceProviderTest extends UnitTestCase
     public function test_register_queries_rejects_wrong_repository_type(): void
     {
         $provider = new CookieServiceProvider();
+        // E08 added 'clock' + 'logSampler' to the required query repository set.
         $provider->setRepositories([
             'cookieQueryRepository' => new \stdClass(),
             'logger' => new \stdClass(),
             'loggingConfig' => new \stdClass(),
+            'clock' => new \stdClass(),
+            'logSampler' => new \stdClass(),
         ]);
 
         $this->expectException(\RuntimeException::class);
-        $this->expectExceptionMessage('Invalid repository, logger or logging config type');
+        $this->expectExceptionMessage('Invalid repository, logger, logging config, clock or sampler type');
 
         $provider->registerQueries(new QueryBus());
     }
@@ -64,6 +69,8 @@ final class CookieServiceProviderTest extends UnitTestCase
         $this->assertContains('eventDispatcher', $deps);
         $this->assertContains('logger', $deps);
         $this->assertContains('loggingConfig', $deps);
+        $this->assertContains('clock', $deps);
+        $this->assertContains('logSampler', $deps);
     }
 
     public function test_register_events_does_not_throw_with_default_dispatcher(): void

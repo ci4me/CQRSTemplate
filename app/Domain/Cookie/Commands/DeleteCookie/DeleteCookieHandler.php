@@ -4,119 +4,89 @@ declare(strict_types=1);
 
 namespace App\Domain\Cookie\Commands\DeleteCookie;
 
+use App\Domain\Cookie\Entities\Cookie;
 use App\Domain\Cookie\ErrorCodes;
-use App\Domain\Cookie\Events\CookieDeleted\CookieDeletedEvent;
 use App\Domain\Cookie\Ports\CookieRepositoryInterface;
+use App\Domain\Shared\Bus\AbstractCommandHandler;
+use App\Domain\Shared\Bus\ClockInterface;
+use App\Domain\Shared\Bus\CommandHandlerInterface;
 use App\Domain\Shared\Events\EventDispatcherInterface;
 use App\Domain\Shared\Exceptions\DomainException;
 use Psr\Log\LoggerInterface;
 
 /**
- * Handler for DeleteCookieCommand.
+ * Handler for {@see DeleteCookieCommand}.
  *
- * Responsibilities:
- * 1. Verify cookie exists
- * 2. Perform soft delete via repository
- * 3. Dispatch domain event
- *
- * Business Rules:
- * - Cookie must exist to be deleted
- * - Deletion is SOFT (sets deleted_at timestamp)
+ * Post-E07/E08:
+ *   1. Verify the cookie exists.
+ *   2. Ask the entity to soft-delete itself (entity raises CookieDeletedEvent).
+ *   3. Persist the new state.
+ *   4. Parent's {@see postCommit()} drains the bag — single dispatch site
+ *      (closes 03/F1).
  *
  * @package App\Domain\Cookie\Commands\DeleteCookie
+ * @implements CommandHandlerInterface<DeleteCookieCommand, void>
  */
-final readonly class DeleteCookieHandler
+final class DeleteCookieHandler extends AbstractCommandHandler implements CommandHandlerInterface
 {
     /**
-     * Create a new DeleteCookieHandler.
-     *
-     * @param CookieRepositoryInterface $repository      For persistence operations
-     * @param EventDispatcherInterface  $eventDispatcher For dispatching domain events
-     * @param LoggerInterface           $logger          For logging command execution (channel: cookie.command.delete)
+     * Slot used to pass the mutated entity from doHandle() to postCommit().
+     */
+    private ?Cookie $pendingAggregate = null;
+
+    /**
+     * @param CookieRepositoryInterface $repository      Persistence port.
+     * @param EventDispatcherInterface  $eventDispatcher Drained in postCommit().
+     * @param LoggerInterface           $logger          PSR-3 logger (channel: cookie.command.delete).
+     * @param ClockInterface            $clock           Monotonic time source.
      */
     public function __construct(
-        private CookieRepositoryInterface $repository,
-        private EventDispatcherInterface $eventDispatcher,
-        private LoggerInterface $logger
+        private readonly CookieRepositoryInterface $repository,
+        private readonly EventDispatcherInterface $eventDispatcher,
+        LoggerInterface $logger,
+        ClockInterface $clock
     ) {
+        parent::__construct($logger, $clock);
     }
 
     /**
-     * Handle the DeleteCookieCommand.
-     *
-     * @param DeleteCookieCommand $command The delete command
-     * @throws DomainException If cookie not found
+     * @param DeleteCookieCommand $command The delete command DTO.
+     * @throws DomainException When the cookie is not found.
      */
-    public function handle(DeleteCookieCommand $command): void
+    protected function doHandle(object $command): void
     {
-        $startTime = hrtime(true);
-
-        $this->logger->info('Deleting cookie', [
-            'domain' => 'Cookie',
-            'command' => 'DeleteCookieCommand',
-            'cookieId' => $command->id,
-        ]);
-
-        try {
-            // Load existing cookie to get its name for the event
-            $cookie = $this->repository->findById($command->id);
-
-            if ($cookie === null) {
-                throw DomainException::notFound('Cookie', $command->id, ErrorCodes::COOKIE_NOT_FOUND);
-            }
-
-            $cookieName = $cookie->getName()->getValue();
-
-            // B13: snapshot the cookie before persistence flips deleted_at,
-            // so the event payload preserves the final state for audit.
-            $snapshot = [
-                'id' => $cookie->getId(),
-                'name' => $cookieName,
-                'description' => $cookie->getDescription(),
-                'price' => $cookie->getPrice()->toDecimalString(),
-                'stock' => $cookie->getStock(),
-                'is_active' => $cookie->getIsActive(),
-            ];
-
-            $this->logger->info('Cookie found, performing soft delete', [
-                'domain' => 'Cookie',
-                'command' => 'DeleteCookieCommand',
-                'cookieId' => $command->id,
-                'cookieName' => $cookieName,
-            ]);
-
-            // Perform soft delete; stamps deleted_by audit column.
-            $this->repository->delete($command->id, $command->deletedBy);
-
-            // Dispatch domain event
-            $this->eventDispatcher->dispatch(new CookieDeletedEvent(
-                cookieId: $command->id,
-                cookieName: $cookieName,
-                snapshot: $snapshot
-            ));
-
-            $durationMs = (hrtime(true) - $startTime) / 1_000_000;
-
-            $this->logger->info('Cookie deleted successfully', [
-                'domain' => 'Cookie',
-                'command' => 'DeleteCookieCommand',
-                'cookieId' => $command->id,
-                'soft_delete_confirmed' => true,
-                'duration_ms' => round($durationMs, 2),
-            ]);
-        } catch (\Throwable $e) {
-            $this->logger->error('Failed to delete cookie', [
-                'domain' => 'Cookie',
-                'command' => 'DeleteCookieCommand',
-                'error_code' => $e instanceof DomainException && $e->getErrorCode() !== 0
-                    ? $e->getErrorCode()
-                    : ErrorCodes::COOKIE_REPOSITORY_DELETE_FAILED,
-                'exception' => $e->getMessage(),
-                'exceptionClass' => $e::class,
-                'cookieId' => $command->id,
-            ]);
-
-            throw $e;
+        $cookie = $this->repository->findById($command->id);
+        if ($cookie === null) {
+            throw DomainException::notFound('Cookie', $command->id, ErrorCodes::COOKIE_NOT_FOUND);
         }
+        $actorId = $command->deletedBy->isSystem() ? null : $command->deletedBy->id;
+        $cookie->softDelete($actorId);
+        $this->repository->delete($command->id, $command->deletedBy);
+        $this->pendingAggregate = $cookie;
+    }
+
+    protected function postCommit(object $command, mixed $result): void
+    {
+        unset($command, $result);
+        if ($this->pendingAggregate === null) {
+            return;
+        }
+        $this->dispatchPulledEvents($this->pendingAggregate->pullEvents(), $this->eventDispatcher);
+        $this->pendingAggregate = null;
+    }
+
+    protected function getDomain(): string
+    {
+        return 'Cookie';
+    }
+
+    protected function commandClass(): string
+    {
+        return DeleteCookieCommand::class;
+    }
+
+    protected function defaultErrorCode(): int
+    {
+        return ErrorCodes::COOKIE_REPOSITORY_DELETE_FAILED;
     }
 }

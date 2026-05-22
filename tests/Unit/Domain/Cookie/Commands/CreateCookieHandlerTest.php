@@ -9,6 +9,7 @@ use App\Domain\Shared\ValueObjects\Actor;
 use App\Domain\Cookie\Commands\CreateCookie\CreateCookieHandler;
 use App\Domain\Cookie\Events\CookieCreated\CookieCreatedEvent;
 use App\Domain\Cookie\Ports\CookieRepositoryInterface;
+use App\Domain\Shared\Bus\SystemClock;
 use App\Domain\Shared\Exceptions\DomainException;
 use App\Domain\Shared\Exceptions\ValidationException;
 use App\Domain\Shared\Events\EventDispatcherInterface;
@@ -33,7 +34,12 @@ final class CreateCookieHandlerTest extends UnitTestCase
         $this->repository = $this->createMock(CookieRepositoryInterface::class);
         $this->eventDispatcher = $this->createMock(EventDispatcherInterface::class);
         $logger = LoggerFactory::create('test.cookie.commands');
-        $this->handler = new CreateCookieHandler($this->repository, $this->eventDispatcher, $logger);
+        $this->handler = new CreateCookieHandler(
+            $this->repository,
+            $this->eventDispatcher,
+            $logger,
+            new SystemClock()
+        );
     }
 
     public function test_creates_cookie_successfully(): void
@@ -264,49 +270,24 @@ final class CreateCookieHandlerTest extends UnitTestCase
     }
 
     /**
-     * Exercises the str_contains() match arms in determineErrorCode by
-     * having the repository raise a generic DomainException (errorCode=0)
-     * whose message contains the discriminator keyword.
-     *
-     * @param string $message Message containing the discriminator keyword
-     * @param int    $unused  Unused — present so PHPUnit's data provider is
-     *                        explicit about which arm is being targeted
+     * E08 — the {@see AbstractCommandHandler} template owns the timing,
+     * logging, and error-code resolution. Subclasses contribute via the
+     * `doHandle()` hook, which CLAUDE.md caps at 20 lines (closes 03/F3 +
+     * 14/F1). This regression test fails if a future contributor lets
+     * doHandle() grow past the ceiling.
      */
-    #[\PHPUnit\Framework\Attributes\DataProvider('domainExceptionMessageProvider')]
-    public function test_determine_error_code_match_arms_for_zero_coded_domain_exceptions(
-        string $message,
-        int $unused
-    ): void {
-        $command = new CreateCookieCommand(
-            name: 'Test Cookie',
-            description: null,
-            price: '2.99',
-            stock: 10,
-            createdBy: Actor::system('test'),
-            isActive: true,
-        );
-
-        $this->repository->method('existsByName')->willReturn(false);
-        $this->repository->method('save')
-            ->willThrowException(new DomainException($message, 0));
-
-        $this->expectException(DomainException::class);
-        $this->expectExceptionMessage($message);
-        $this->handler->handle($command);
-    }
-
-    /**
-     * @return array<string, array{string, int}>
-     */
-    public static function domainExceptionMessageProvider(): array
+    public function test_do_handle_is_under_the_twenty_line_ceiling(): void
     {
-        // Each message hits a different match-arm in determineErrorCode.
-        return [
-            'name must be unique arm' => ['Cookie name must be unique here', 0],
-            'stock arm' => ['stock fell below zero', 0],
-            'name arm' => ['the name is suspicious', 0],
-            'price arm' => ['price could not be persisted', 0],
-            'default arm' => ['repository connection lost', 0],
-        ];
+        $method = (new \ReflectionClass(CreateCookieHandler::class))->getMethod('doHandle');
+        $end = $method->getEndLine();
+        $start = $method->getStartLine();
+        $this->assertNotFalse($end);
+        $this->assertNotFalse($start);
+        $lines = ($end - $start) - 1;
+        $this->assertLessThanOrEqual(
+            20,
+            $lines,
+            sprintf('CreateCookieHandler::doHandle() is %d lines; CLAUDE.md caps it at 20.', $lines)
+        );
     }
 }

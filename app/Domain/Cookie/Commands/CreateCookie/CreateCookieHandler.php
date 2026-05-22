@@ -10,157 +10,126 @@ use App\Domain\Cookie\Events\CookieCreated\CookieCreatedEvent;
 use App\Domain\Cookie\Ports\CookieRepositoryInterface;
 use App\Domain\Cookie\ValueObjects\CookieName;
 use App\Domain\Cookie\ValueObjects\CookiePrice;
+use App\Domain\Shared\Bus\AbstractCommandHandler;
+use App\Domain\Shared\Bus\ClockInterface;
+use App\Domain\Shared\Bus\CommandHandlerInterface;
+use App\Domain\Shared\Events\AbstractDomainEvent;
 use App\Domain\Shared\Events\EventDispatcherInterface;
 use App\Domain\Shared\Exceptions\DomainException;
-use App\Domain\Shared\Exceptions\ValidationException;
 use Psr\Log\LoggerInterface;
 
 /**
- * Handler for CreateCookieCommand.
+ * Handler for {@see CreateCookieCommand}.
  *
- * Responsibilities:
- * 1. Validate command data using domain rules
- * 2. Check business rules (e.g., name uniqueness)
- * 3. Create Cookie domain entity
- * 4. Persist via repository
- * 5. Dispatch domain event
+ * Post-E08, the handler extends {@see AbstractCommandHandler}, which owns
+ * the timing + logging + error-code-resolution boilerplate. The handler
+ * body in {@see doHandle()} is the business logic ONLY — validate VOs,
+ * uniqueness check, create entity, persist, dispatch event, return id.
  *
- * Business Rules Enforced:
- * - Cookie name must be unique (case-insensitive)
- * - Cookie name must be 3-100 characters
- * - Price must be greater than zero
- * - Stock cannot be negative
- *
- * Why Handler Pattern:
- * - Separates request (Command) from execution (Handler)
- * - Single responsibility (only handles cookie creation)
- * - Easy to test in isolation
- * - Can be decorated with cross-cutting concerns (logging, transactions)
+ * The create flow dispatches its `CookieCreatedEvent` envelope manually
+ * rather than via the entity's event bag because the id is unknown at
+ * `Cookie::create()` time and only emerges after `$repository->save()`.
+ * Update/Delete/Restore can use the entity bag (the id is in scope by
+ * then) and drain via {@see postCommit()}.
  *
  * @package App\Domain\Cookie\Commands\CreateCookie
+ * @implements CommandHandlerInterface<CreateCookieCommand, int>
  */
-final readonly class CreateCookieHandler
+final class CreateCookieHandler extends AbstractCommandHandler implements CommandHandlerInterface
 {
     /**
-     * Create a new CreateCookieHandler.
-     *
-     * @param CookieRepositoryInterface $repository      For persistence operations
-     * @param EventDispatcherInterface  $eventDispatcher For dispatching domain events
-     * @param LoggerInterface           $logger          For logging command execution (channel: cookie.command.create)
+     * @param CookieRepositoryInterface $repository      Persistence port.
+     * @param EventDispatcherInterface  $eventDispatcher Dispatcher for the `CookieCreatedEvent`.
+     * @param LoggerInterface           $logger          PSR-3 logger (channel: cookie.command.create).
+     * @param ClockInterface            $clock           Monotonic time source for duration measurement.
      */
     public function __construct(
-        private CookieRepositoryInterface $repository,
-        private EventDispatcherInterface $eventDispatcher,
-        private LoggerInterface $logger
+        private readonly CookieRepositoryInterface $repository,
+        private readonly EventDispatcherInterface $eventDispatcher,
+        LoggerInterface $logger,
+        ClockInterface $clock
     ) {
+        parent::__construct($logger, $clock);
     }
 
     /**
-     * Handle the CreateCookieCommand.
-     *
-     * @param CreateCookieCommand $command The creation command
-     * @return int The ID of the newly created cookie
-     * @throws DomainException If business rules are violated
+     * @param CreateCookieCommand $command The create command DTO.
+     * @return int Newly persisted cookie id.
+     * @throws DomainException When the name collides with an existing row.
      */
-    public function handle(CreateCookieCommand $command): int
+    protected function doHandle(object $command): int
     {
-        $startTime = microtime(true);
+        $name = CookieName::fromString($command->name);
+        $price = CookiePrice::fromString($command->price);
+        $this->assertNameAvailable($name);
+        $cookie = Cookie::create(
+            name: $name,
+            description: $command->description,
+            price: $price,
+            stock: $command->stock,
+            isActive: $command->isActive,
+        );
+        $cookieId = $this->repository->save($cookie, $command->createdBy);
+        $this->eventDispatcher->dispatch(
+            $this->buildCookieCreatedEvent($command, $cookieId, $name, $price)
+        );
 
-        $this->logger->info('Creating cookie', [
-            'domain' => 'Cookie',
-            'command' => 'CreateCookieCommand',
-            'name' => $command->name,
-            'price' => $command->price,
-            'stock' => $command->stock,
-            'isActive' => $command->isActive,
-        ]);
-
-        try {
-            // Create Value Objects (this validates format/constraints)
-            $name = CookieName::fromString($command->name);
-            $price = CookiePrice::fromString($command->price);
-
-            // Check business rule: name must be unique
-            if ($this->repository->existsByName($name->getValue())) {
-                throw DomainException::businessRuleViolation(
-                    'Cookie name must be unique',
-                    sprintf('A cookie with name "%s" already exists', $name->getValue()),
-                    ErrorCodes::COOKIE_BUSINESS_RULE_NAME_DUPLICATE
-                );
-            }
-
-            // Create the domain entity
-            $cookie = Cookie::create(
-                name: $name,
-                description: $command->description,
-                price: $price,
-                stock: $command->stock,
-                isActive: $command->isActive
-            );
-
-            // Persist to database; stamp created_by/updated_by audit columns.
-            $cookieId = $this->repository->save($cookie, $command->createdBy);
-
-            // Dispatch domain event
-            $this->eventDispatcher->dispatch(new CookieCreatedEvent(
-                cookieId: $cookieId,
-                cookieName: $name->getValue(),
-                cookiePrice: $price->toDecimalString(),
-                initialStock: $command->stock
-            ));
-
-            $durationMs = (microtime(true) - $startTime) * 1000;
-
-            $this->logger->info('Cookie created successfully', [
-                'domain' => 'Cookie',
-                'command' => 'CreateCookieCommand',
-                'cookieId' => $cookieId,
-                'duration_ms' => round($durationMs, 2),
-            ]);
-
-            return $cookieId;
-        } catch (\Throwable $e) {
-            $durationMs = (microtime(true) - $startTime) * 1000;
-
-            $errorCode = $this->determineErrorCode($e);
-
-            $this->logger->error('Failed to create cookie', [
-                'domain' => 'Cookie',
-                'command' => 'CreateCookieCommand',
-                'exception' => $e->getMessage(),
-                'exceptionClass' => $e::class,
-                'name' => $command->name,
-                'error_code' => $errorCode,
-                'duration_ms' => round($durationMs, 2),
-            ]);
-
-            throw $e;
-        }
+        return $cookieId;
     }
 
     /**
-     * Determine appropriate error code based on exception type and context.
+     * @throws DomainException When another row already owns this name.
      */
-    private function determineErrorCode(\Throwable $e): int
+    private function assertNameAvailable(CookieName $name): void
     {
-        if ($e instanceof ValidationException && $e->getErrorCode() !== 0) {
-            return $e->getErrorCode();
+        if (!$this->repository->existsByName($name->getValue())) {
+            return;
         }
+        throw DomainException::businessRuleViolation(
+            'Cookie name must be unique',
+            sprintf('A cookie with name "%s" already exists', $name->getValue()),
+            ErrorCodes::COOKIE_BUSINESS_RULE_NAME_DUPLICATE
+        );
+    }
 
-        if ($e instanceof DomainException) {
-            if ($e->getErrorCode() !== 0) {
-                return $e->getErrorCode();
-            }
+    /**
+     * Build the `CookieCreatedEvent` envelope. Extracted from doHandle()
+     * so the latter stays under the 20-line ceiling.
+     */
+    private function buildCookieCreatedEvent(
+        CreateCookieCommand $command,
+        int $cookieId,
+        CookieName $name,
+        CookiePrice $price
+    ): CookieCreatedEvent {
+        return new CookieCreatedEvent(
+            eventId: AbstractDomainEvent::newId(),
+            occurredAt: new \DateTimeImmutable('now', new \DateTimeZone('UTC')),
+            actorId: $command->createdBy->isSystem() ? null : $command->createdBy->id,
+            cookieId: $cookieId,
+            cookieName: $name->getValue(),
+            cookiePrice: $price->toDecimalString(),
+            initialStock: $command->stock,
+        );
+    }
 
-            return match (true) {
-                str_contains($e->getMessage(), 'name must be unique') => ErrorCodes::COOKIE_BUSINESS_RULE_NAME_DUPLICATE,
-                str_contains($e->getMessage(), 'stock') => ErrorCodes::COOKIE_BUSINESS_RULE_STOCK_NEGATIVE,
-                str_contains($e->getMessage(), 'name') => ErrorCodes::COOKIE_VALIDATION_NAME,
-                str_contains($e->getMessage(), 'price') => ErrorCodes::COOKIE_VALIDATION_PRICE,
-                default => ErrorCodes::COOKIE_REPOSITORY_SAVE_FAILED,
-            };
-        }
+    protected function getDomain(): string
+    {
+        return 'Cookie';
+    }
 
+    protected function commandClass(): string
+    {
+        return CreateCookieCommand::class;
+    }
+
+    /**
+     * The create handler's "save failed" / generic write-error code. Used
+     * by the parent's failure logger when the exception carries no
+     * domain-specific code of its own.
+     */
+    protected function defaultErrorCode(): int
+    {
         return ErrorCodes::COOKIE_REPOSITORY_SAVE_FAILED;
     }
 }

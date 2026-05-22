@@ -200,6 +200,13 @@
              (Phase 3). They legitimately map raw DB rows (array<string, mixed>)
              into domain entities/DTOs at the persistence boundary. -->
         <exclude-pattern>app/Domain/*/Repositories/</exclude-pattern>
+        <!-- Shared command/query bus base classes are type-erased at the bus
+             boundary by design. CommandHandlerInterface<TCommand, TResult>
+             and AbstractCommandHandler use `mixed` as the native return so
+             subclasses can specialise via @template parameters (PHPStan
+             still narrows end-to-end). Treating the bus seam like a Port
+             is consistent with the exclusions above. -->
+        <exclude-pattern>app/Domain/Shared/Bus/</exclude-pattern>
     </rule>
 
     <!-- Identity-only comparisons. `==` allows coercion surprises that
@@ -456,6 +463,17 @@
         <exclude-pattern>app/Infrastructure/Auth/Middleware/JwtAuthenticationMiddleware.php</exclude-pattern>
         <exclude-pattern>app/Infrastructure/Outbox/EventOutboxRelay.php</exclude-pattern>
         <exclude-pattern>app/Infrastructure/ServiceProvider/ServiceProviderRegistry.php</exclude-pattern>
+        <!-- E07: Cookie.php was 281 logical lines pre-extraction. After
+             pulling assertions out to CookieStateAssertions and lifecycle
+             event construction into a buildLifecycleEvent helper, the
+             entity sits ~255 logical lines — irreducible without re-
+             introducing a trait pattern (which E07 just deleted, slice
+             01/F8) or splitting the aggregate itself. The expanded
+             responsibility surface (softDelete / restore / activate /
+             deactivate / inlined accessors) is the explicit point of
+             E07: the aggregate now OWNS its lifecycle. Class size is a
+             deliberate architectural decision for this domain. -->
+        <exclude-pattern>app/Domain/Cookie/Entities/Cookie.php</exclude-pattern>
     </rule>
     <rule ref="Generic.Metrics.CyclomaticComplexity">
         <properties>
