@@ -39,7 +39,8 @@
         "psr-4": {
             "Tests\\Support\\": "tests/Support",
             "Tests\\": "tests/",
-            "Tools\\PHPStan\\": "tools/PHPStan/"
+            "Tools\\PHPStan\\": "tools/PHPStan/",
+            "Tests\\Unit\\Phpstan\\Rules\\Fixtures\\": "tests/Unit/Phpstan/Rules/Fixtures/app/Domain/FixtureDomain/"
         }
     },
     "config": {
