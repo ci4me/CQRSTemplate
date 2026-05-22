@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Auth\Commands\RequestPasswordReset;
 
+use App\Domain\Shared\Bus\CommandHandlerInterface;
 use App\Domain\User\Repositories\UserRepository;
 use App\Domain\User\ValueObjects\Email;
 use App\Infrastructure\Auth\ValueObjects\PasswordResetToken;
@@ -23,8 +24,9 @@ use Psr\Log\LoggerInterface;
  * - Email sending implemented (CR-6.1)
  *
  * @package App\Infrastructure\Auth\Commands\RequestPasswordReset
+ * @implements CommandHandlerInterface<RequestPasswordResetCommand, void>
  */
-final readonly class RequestPasswordResetHandler
+final readonly class RequestPasswordResetHandler implements CommandHandlerInterface
 {
     /** @var LoggerInterface */
     private LoggerInterface $logger;
@@ -48,7 +50,7 @@ final readonly class RequestPasswordResetHandler
      * @param RequestPasswordResetCommand $command
      * @return void
      */
-    public function handle(RequestPasswordResetCommand $command): void
+    public function handle(object $command): void
     {
         $this->logger->info('Password reset requested', [
             'domain' => 'Auth',

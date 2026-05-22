@@ -19,6 +19,13 @@ parameters:
         - tests/session
         - tests/database
         - tests/unit
+        # E05.5 — intentionally-broken fixtures consumed by the
+        # custom-rule RuleTestCase tests (each fixture file violates
+        # one of the three CQRS rules on purpose). They live under
+        # tests/Unit/Phpstan/Rules/Fixtures/app/Domain/... so the
+        # file-path predicate matches; excluded from the main pass
+        # because we don't want them scanned outside the rule tests.
+        - tests/Unit/Phpstan/Rules/Fixtures
     reportUnmatchedIgnoredErrors: false
     ignoreErrors:
         -
@@ -158,3 +165,6 @@ includes:
     - vendor/phpstan/phpstan-strict-rules/rules.neon
     - vendor/phpstan/phpstan-phpunit/extension.neon
     - vendor/phpstan/phpstan-phpunit/rules.neon
+    # E05.5 — custom rules enforcing the CQRS handler contract statically.
+    # See phpstan-rules.neon for the registered Rule services.
+    - phpstan-rules.neon

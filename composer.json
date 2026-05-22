@@ -12,7 +12,8 @@
         "php": "^8.3",
         "codeigniter4/framework": "^4.0",
         "firebase/php-jwt": "^7.0",
-        "monolog/monolog": "^3.9"
+        "monolog/monolog": "^3.9",
+        "ramsey/uuid": "^4.7"
     },
     "require-dev": {
         "fakerphp/faker": "^1.23",
@@ -37,7 +38,9 @@
     "autoload-dev": {
         "psr-4": {
             "Tests\\Support\\": "tests/Support",
-            "Tests\\": "tests/"
+            "Tests\\": "tests/",
+            "Tools\\PHPStan\\": "tools/PHPStan/",
+            "Tests\\Unit\\Phpstan\\Rules\\Fixtures\\": "tests/Unit/Phpstan/Rules/Fixtures/app/Domain/FixtureDomain/"
         }
     },
     "config": {
