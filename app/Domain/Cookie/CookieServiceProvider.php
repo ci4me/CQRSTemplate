@@ -34,6 +34,8 @@ use App\Domain\Cookie\Queries\GetCookieById\GetCookieByIdHandler;
 use App\Domain\Cookie\Queries\GetCookieById\GetCookieByIdQuery;
 use App\Domain\Cookie\Queries\GetCookiesPaginated\GetCookiesPaginatedHandler;
 use App\Domain\Cookie\Queries\GetCookiesPaginated\GetCookiesPaginatedQuery;
+use App\Domain\Shared\Bus\ClockInterface;
+use App\Domain\Shared\Bus\LogSampler;
 use App\Domain\Shared\Ports\LogConfigPort;
 use App\Infrastructure\Attributes\DomainServiceProvider;
 use App\Infrastructure\Bus\CommandBus;
@@ -98,37 +100,41 @@ final class CookieServiceProvider implements DomainServiceProviderInterface
         $repository = $this->getRepository('cookieRepository');
         $eventDispatcher = $this->getRepository('eventDispatcher');
         $logger = $this->getRepository('logger');
+        $clock = $this->getRepository('clock');
 
         if (
             !$repository instanceof CookieRepositoryInterface
             || !$eventDispatcher instanceof EventDispatcher
             || !$logger instanceof LoggerInterface
+            || !$clock instanceof ClockInterface
         ) {
-            throw new \RuntimeException('Invalid repository, event dispatcher or logger type injected');
+            throw new \RuntimeException(
+                'Invalid repository, event dispatcher, logger or clock type injected'
+            );
         }
 
         // Register CreateCookie command
         $commandBus->register(
             CreateCookieCommand::class,
-            new CreateCookieHandler($repository, $eventDispatcher, $logger)
+            new CreateCookieHandler($repository, $eventDispatcher, $logger, $clock)
         );
 
         // Register UpdateCookie command
         $commandBus->register(
             UpdateCookieCommand::class,
-            new UpdateCookieHandler($repository, $eventDispatcher, $logger)
+            new UpdateCookieHandler($repository, $eventDispatcher, $logger, $clock)
         );
 
         // Register DeleteCookie command
         $commandBus->register(
             DeleteCookieCommand::class,
-            new DeleteCookieHandler($repository, $eventDispatcher, $logger)
+            new DeleteCookieHandler($repository, $eventDispatcher, $logger, $clock)
         );
 
         // Register RestoreCookie command
         $commandBus->register(
             RestoreCookieCommand::class,
-            new RestoreCookieHandler($repository, $eventDispatcher, $logger)
+            new RestoreCookieHandler($repository, $eventDispatcher, $logger, $clock)
         );
     }
 
@@ -154,31 +160,37 @@ final class CookieServiceProvider implements DomainServiceProviderInterface
         $repository = $this->getRepository('cookieQueryRepository');
         $logger = $this->getRepository('logger');
         $loggingConfig = $this->getRepository('loggingConfig');
+        $clock = $this->getRepository('clock');
+        $sampler = $this->getRepository('logSampler');
 
         if (
             !$repository instanceof CookieQueryRepositoryInterface
             || !$logger instanceof LoggerInterface
             || !$loggingConfig instanceof LogConfigPort
+            || !$clock instanceof ClockInterface
+            || !$sampler instanceof LogSampler
         ) {
-            throw new \RuntimeException('Invalid repository, logger or logging config type injected');
+            throw new \RuntimeException(
+                'Invalid repository, logger, logging config, clock or sampler type injected'
+            );
         }
 
         // Register GetCookieById query
         $queryBus->register(
             GetCookieByIdQuery::class,
-            new GetCookieByIdHandler($repository, $logger, $loggingConfig)
+            new GetCookieByIdHandler($repository, $logger, $clock, $sampler, $loggingConfig)
         );
 
         // Register GetAllCookies query
         $queryBus->register(
             GetAllCookiesQuery::class,
-            new GetAllCookiesHandler($repository, $logger, $loggingConfig)
+            new GetAllCookiesHandler($repository, $logger, $clock, $sampler, $loggingConfig)
         );
 
         // Register GetCookiesPaginated query
         $queryBus->register(
             GetCookiesPaginatedQuery::class,
-            new GetCookiesPaginatedHandler($repository, $logger, $loggingConfig)
+            new GetCookiesPaginatedHandler($repository, $logger, $clock, $sampler, $loggingConfig)
         );
     }
 
@@ -281,6 +293,8 @@ final class CookieServiceProvider implements DomainServiceProviderInterface
             'eventDispatcher',
             'logger',
             'loggingConfig',
+            'clock',
+            'logSampler',
         ];
     }
 

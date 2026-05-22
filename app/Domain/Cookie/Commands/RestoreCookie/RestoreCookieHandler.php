@@ -4,80 +4,105 @@ declare(strict_types=1);
 
 namespace App\Domain\Cookie\Commands\RestoreCookie;
 
+use App\Domain\Cookie\Entities\Cookie;
 use App\Domain\Cookie\ErrorCodes;
 use App\Domain\Cookie\Ports\CookieRepositoryInterface;
+use App\Domain\Shared\Bus\AbstractCommandHandler;
+use App\Domain\Shared\Bus\ClockInterface;
 use App\Domain\Shared\Bus\CommandHandlerInterface;
 use App\Domain\Shared\Events\EventDispatcherInterface;
 use App\Domain\Shared\Exceptions\DomainException;
 use Psr\Log\LoggerInterface;
 
 /**
- * RestoreCookieHandler.
+ * Handler for {@see RestoreCookieCommand}.
  *
- * Post-E07, the entity owns the restore transition (clears deletedAt +
- * raises CookieRestoredEvent). The handler loads the soft-deleted row,
- * asks the entity to restore, calls the repository to persist the new
- * state, and drains the event bag the entity populated. E08 will
- * unify the handler base + rename `$cookieId` to `$id` for parity with
- * the other commands.
+ * E08 brings this handler to PARITY with DeleteCookieHandler (closes 03/F2):
+ *  - Renamed command field `$cookieId` → `$id`.
+ *  - Throws {@see DomainException} (not `\RuntimeException`) on restore
+ *    failure, with the dedicated {@see ErrorCodes::COOKIE_RESTORE_FAILED}
+ *    code so observability + API mappers can react consistently.
+ *  - camelCase log keys (`cookieId`, `restoredBy`) matching the other
+ *    three handlers — closes 03/F12.
+ *  - Extends {@see AbstractCommandHandler} so the timing + log shape +
+ *    error-code resolution flow through the shared template.
+ *  - Single event-bag drain via parent's {@see postCommit()} — closes 03/F1.
+ *
+ * The entity guards the "already active" precondition via
+ * `Cookie::restore()` (throws DomainException with COOKIE_STATE_NOT_DELETED),
+ * which is why the handler does NOT redundantly check `isDeleted()` —
+ * the entity is the single source of truth for that invariant (closes 03/F10).
  *
  * @implements CommandHandlerInterface<RestoreCookieCommand, void>
  */
-final readonly class RestoreCookieHandler implements CommandHandlerInterface
+final class RestoreCookieHandler extends AbstractCommandHandler implements CommandHandlerInterface
 {
     /**
-     * @param CookieRepositoryInterface $repository      For find + persist.
-     * @param EventDispatcherInterface  $eventDispatcher For draining the entity's event bag.
+     * Slot used to pass the mutated entity from doHandle() to postCommit().
+     */
+    private ?Cookie $pendingAggregate = null;
+
+    /**
+     * @param CookieRepositoryInterface $repository      Persistence port.
+     * @param EventDispatcherInterface  $eventDispatcher Drained in postCommit().
      * @param LoggerInterface           $logger          PSR-3 logger (channel: cookie.command.restore).
+     * @param ClockInterface            $clock           Monotonic time source.
      */
     public function __construct(
-        private CookieRepositoryInterface $repository,
-        private EventDispatcherInterface $eventDispatcher,
-        private LoggerInterface $logger
+        private readonly CookieRepositoryInterface $repository,
+        private readonly EventDispatcherInterface $eventDispatcher,
+        LoggerInterface $logger,
+        ClockInterface $clock
     ) {
+        parent::__construct($logger, $clock);
     }
 
     /**
-     * @throws DomainException     When the cookie is missing or is not actually deleted.
-     * @throws \RuntimeException   When the SQL restore fails.
+     * @param RestoreCookieCommand $command The restore command DTO.
+     * @throws DomainException When the cookie is missing, is not deleted,
+     *                         or the SQL UPDATE returns false.
      */
-    public function handle(object $command): void
+    protected function doHandle(object $command): void
     {
-
-        $cookie = $this->repository->findByIdWithTrashed($command->cookieId);
+        $cookie = $this->repository->findByIdWithTrashed($command->id);
         if ($cookie === null) {
-            throw DomainException::notFound('Cookie', (string) $command->cookieId, ErrorCodes::COOKIE_NOT_FOUND);
+            throw DomainException::notFound('Cookie', $command->id, ErrorCodes::COOKIE_NOT_FOUND);
         }
-
-        // E07: entity gate replaces the handler's previous isDeleted()
-        // re-check. Cookie::restore() throws DomainException with the
-        // dedicated COOKIE_STATE_NOT_DELETED code when there's nothing
-        // to restore — keeping the precondition single-sourced on the
-        // aggregate.
         $actorId = $command->restoredBy->isSystem() ? null : $command->restoredBy->id;
         $cookie->restore($actorId);
-
-        $restored = $this->repository->restore($command->cookieId, $command->restoredBy);
-        if (! $restored) {
-            $this->logger->error('Cookie restore failed', [
-                'domain' => 'Cookie',
-                'command' => 'RestoreCookieCommand',
-                'cookie_id' => $command->cookieId,
-            ]);
-            throw new \RuntimeException(
-                sprintf('Failed to restore cookie #%d', $command->cookieId)
+        $restored = $this->repository->restore($command->id, $command->restoredBy);
+        if (!$restored) {
+            throw DomainException::businessRuleViolation(
+                'Cookie restore must persist',
+                sprintf('Failed to restore cookie #%d', $command->id),
+                ErrorCodes::COOKIE_RESTORE_FAILED
             );
         }
+        $this->pendingAggregate = $cookie;
+    }
 
-        $this->logger->info('Cookie restored', [
-            'domain' => 'Cookie',
-            'command' => 'RestoreCookieCommand',
-            'cookie_id' => $command->cookieId,
-            'restored_by' => $command->restoredBy->id,
-        ]);
-
-        foreach ($cookie->pullEvents() as $event) {
-            $this->eventDispatcher->dispatch($event);
+    protected function postCommit(object $command, mixed $result): void
+    {
+        unset($command, $result);
+        if ($this->pendingAggregate === null) {
+            return;
         }
+        $this->dispatchPulledEvents($this->pendingAggregate->pullEvents(), $this->eventDispatcher);
+        $this->pendingAggregate = null;
+    }
+
+    protected function getDomain(): string
+    {
+        return 'Cookie';
+    }
+
+    protected function commandClass(): string
+    {
+        return RestoreCookieCommand::class;
+    }
+
+    protected function defaultErrorCode(): int
+    {
+        return ErrorCodes::COOKIE_RESTORE_FAILED;
     }
 }

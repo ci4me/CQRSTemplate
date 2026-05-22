@@ -9,6 +9,7 @@ use App\Domain\Shared\ValueObjects\Actor;
 use App\Domain\Cookie\Commands\DeleteCookie\DeleteCookieHandler;
 use App\Domain\Cookie\Events\CookieDeleted\CookieDeletedEvent;
 use App\Domain\Cookie\Ports\CookieRepositoryInterface;
+use App\Domain\Shared\Bus\SystemClock;
 use App\Domain\Shared\Exceptions\DomainException;
 use App\Domain\Shared\Events\EventDispatcherInterface;
 use App\Infrastructure\Logging\LoggerFactory;
@@ -29,7 +30,12 @@ final class DeleteCookieHandlerTest extends UnitTestCase
         $this->repository = $this->createMock(CookieRepositoryInterface::class);
         $this->eventDispatcher = $this->createMock(EventDispatcherInterface::class);
         $logger = LoggerFactory::create('test.cookie.commands');
-        $this->handler = new DeleteCookieHandler($this->repository, $this->eventDispatcher, $logger);
+        $this->handler = new DeleteCookieHandler(
+            $this->repository,
+            $this->eventDispatcher,
+            $logger,
+            new SystemClock()
+        );
     }
 
     public function test_deletes_cookie_successfully(): void
@@ -67,5 +73,20 @@ final class DeleteCookieHandlerTest extends UnitTestCase
         $this->expectExceptionMessage('not found');
 
         $this->handler->handle($command);
+    }
+
+    public function test_do_handle_is_under_the_twenty_line_ceiling(): void
+    {
+        $method = (new \ReflectionClass(DeleteCookieHandler::class))->getMethod('doHandle');
+        $end = $method->getEndLine();
+        $start = $method->getStartLine();
+        $this->assertNotFalse($end);
+        $this->assertNotFalse($start);
+        $lines = ($end - $start) - 1;
+        $this->assertLessThanOrEqual(
+            20,
+            $lines,
+            sprintf('DeleteCookieHandler::doHandle() is %d lines; CLAUDE.md caps it at 20.', $lines)
+        );
     }
 }

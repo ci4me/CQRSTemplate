@@ -174,6 +174,8 @@ final class ServiceProviderRegistryTest extends UnitTestCase
         $repositories['eventDispatcher'] = $dispatcher;
         $repositories['logger'] = new \Psr\Log\NullLogger();
         $repositories['loggingConfig'] = new \App\Infrastructure\Logging\CodeIgniterLogConfig(new \Config\Logging());
+        $repositories['clock'] = new \App\Domain\Shared\Bus\SystemClock();
+        $repositories['logSampler'] = new \App\Domain\Shared\Bus\LogSampler(0.0);
 
         try {
             ServiceProviderRegistry::registerAll($commandBus, $queryBus, $dispatcher, $repositories);
@@ -253,6 +255,11 @@ final class ServiceProviderRegistryTest extends UnitTestCase
             'eventDispatcher' => new EventDispatcher(),
             'logger' => new \Psr\Log\NullLogger(),
             'loggingConfig' => new \App\Infrastructure\Logging\CodeIgniterLogConfig(new \Config\Logging()),
+            // E08 — the Cookie provider passes these to AbstractCommandHandler /
+            // AbstractQueryHandler. SystemClock + a fixed-zero sampler is
+            // deterministic enough for unit-test wiring assertions.
+            'clock' => new \App\Domain\Shared\Bus\SystemClock(),
+            'logSampler' => new \App\Domain\Shared\Bus\LogSampler(0.0),
         ];
     }
 }
