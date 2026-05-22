@@ -8,11 +8,18 @@ use App\Domain\Cookie\Events\CookieCreated\CookieCreatedEvent;
 use App\Domain\Cookie\Events\CookieCreated\CookieCreatedEventHandler;
 use App\Domain\Cookie\Events\CookieDeleted\CookieDeletedEvent;
 use App\Domain\Cookie\Events\CookieDeleted\CookieDeletedEventHandler;
+use App\Domain\Cookie\Events\CookieRestored\CookieRestoredEvent;
+use App\Domain\Cookie\Events\CookieRestored\CookieRestoredEventHandler;
+use App\Domain\Cookie\Events\CookieStockChanged\CookieStockChangedEvent;
+use App\Domain\Cookie\Events\CookieStockChanged\CookieStockChangedEventHandler;
 use App\Domain\Cookie\Events\CookieUpdated\CookieUpdatedEvent;
 use App\Domain\Cookie\Events\CookieUpdated\CookieUpdatedEventHandler;
 use App\Infrastructure\Logging\LoggerFactory;
+use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
+use Psr\Log\LoggerInterface;
 use Tests\Support\UnitTestCase;
 
+#[AllowMockObjectsWithoutExpectations]
 final class CookieEventHandlersTest extends UnitTestCase
 {
     // ==========================================
@@ -184,6 +191,86 @@ final class CookieEventHandlersTest extends UnitTestCase
         );
 
         $handler($event);
+
+        $this->assertTrue(true);
+    }
+
+    // ==========================================
+    // CookieRestoredEventHandler Tests
+    // ==========================================
+
+    public function test_cookie_restored_handler_logs_with_audit_context(): void
+    {
+        $logger = $this->createMock(LoggerInterface::class);
+        $logger->expects($this->once())
+            ->method('info')
+            ->with('Cookie restored', $this->callback(function (array $ctx): bool {
+                return $ctx['domain'] === 'Cookie'
+                    && $ctx['event'] === 'CookieRestoredEvent'
+                    && $ctx['cookie_id'] === 7
+                    && $ctx['restored_by'] === 42
+                    && $ctx['restored_at'] === '2026-05-22 10:00:00';
+            }));
+
+        (new CookieRestoredEventHandler($logger))(new CookieRestoredEvent(
+            cookieId: 7,
+            restoredBy: 42,
+            restoredAt: '2026-05-22 10:00:00'
+        ));
+    }
+
+    public function test_cookie_restored_handler_does_not_throw_with_real_logger(): void
+    {
+        $logger = LoggerFactory::create('test.cookie.events');
+        $handler = new CookieRestoredEventHandler($logger);
+
+        $handler(new CookieRestoredEvent(
+            cookieId: 1,
+            restoredBy: 1,
+            restoredAt: '2026-01-01 00:00:00'
+        ));
+
+        $this->assertTrue(true);
+    }
+
+    // ==========================================
+    // CookieStockChangedEventHandler Tests
+    // ==========================================
+
+    public function test_cookie_stock_changed_handler_logs_movement_context(): void
+    {
+        $logger = $this->createMock(LoggerInterface::class);
+        $logger->expects($this->once())
+            ->method('info')
+            ->with('Cookie stock changed', $this->callback(function (array $ctx): bool {
+                return $ctx['domain'] === 'Cookie'
+                    && $ctx['event'] === 'CookieStockChangedEvent'
+                    && $ctx['cookie_id'] === 5
+                    && $ctx['previous_stock'] === 100
+                    && $ctx['new_stock'] === 99
+                    && $ctx['reason'] === 'sale';
+            }));
+
+        (new CookieStockChangedEventHandler($logger))(new CookieStockChangedEvent(
+            cookieId: 5,
+            previousStock: 100,
+            newStock: 99,
+            reason: 'sale'
+        ));
+    }
+
+    public function test_cookie_stock_changed_handler_allows_null_cookie_id(): void
+    {
+        // cookieId is nullable on the event for pre-persistence stock changes.
+        $logger = LoggerFactory::create('test.cookie.events');
+        $handler = new CookieStockChangedEventHandler($logger);
+
+        $handler(new CookieStockChangedEvent(
+            cookieId: null,
+            previousStock: 0,
+            newStock: 50,
+            reason: 'initial_load'
+        ));
 
         $this->assertTrue(true);
     }
