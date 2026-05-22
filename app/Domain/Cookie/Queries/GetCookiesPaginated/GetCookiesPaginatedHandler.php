@@ -6,7 +6,7 @@ namespace App\Domain\Cookie\Queries\GetCookiesPaginated;
 
 use App\Domain\Cookie\DTOs\CookieDTO;
 use App\Domain\Cookie\Ports\CookieQueryRepositoryInterface;
-use Config\Logging;
+use App\Domain\Shared\Ports\LogConfigPort;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -35,12 +35,12 @@ final readonly class GetCookiesPaginatedHandler
      *
      * @param CookieQueryRepositoryInterface $repository    For data retrieval
      * @param LoggerInterface                $logger        For query logging
-     * @param Logging                        $loggingConfig For logging configuration
+     * @param LogConfigPort                  $loggingConfig For logging configuration
      */
     public function __construct(
         private CookieQueryRepositoryInterface $repository,
         private LoggerInterface $logger,
-        private Logging $loggingConfig
+        private LogConfigPort $loggingConfig
     ) {
     }
 
@@ -78,7 +78,7 @@ final readonly class GetCookiesPaginatedHandler
      */
     private function logQueryExecution(GetCookiesPaginatedQuery $query, array $result, float $durationMs): void
     {
-        $isSlowQuery = $durationMs > $this->loggingConfig->slowQueryThresholdMs;
+        $isSlowQuery = $durationMs > $this->loggingConfig->slowQueryThresholdMs();
         $isSearchQuery = $query->searchTerm !== null && $query->searchTerm !== '';
 
         if ($isSlowQuery || $isSearchQuery) {
@@ -86,7 +86,7 @@ final readonly class GetCookiesPaginatedHandler
             return;
         }
 
-        $shouldLog = match ($this->loggingConfig->queryLoggingLevel) {
+        $shouldLog = match ($this->loggingConfig->queryLoggingLevel()) {
             'all' => true,
             'errors' => false,
             'slow' => false,
@@ -143,6 +143,6 @@ final readonly class GetCookiesPaginatedHandler
      */
     private function shouldSample(): bool
     {
-        return mt_rand() / mt_getrandmax() < $this->loggingConfig->samplingRate;
+        return mt_rand() / mt_getrandmax() < $this->loggingConfig->samplingRate();
     }
 }

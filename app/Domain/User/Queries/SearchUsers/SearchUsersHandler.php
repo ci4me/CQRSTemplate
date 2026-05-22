@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace App\Domain\User\Queries\SearchUsers;
 
+use App\Domain\Shared\Ports\LogConfigPort;
 use App\Domain\User\DTOs\UserDTO;
 use App\Domain\User\Ports\UserRepositoryInterface;
-use Config\Logging;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -37,7 +37,7 @@ final readonly class SearchUsersHandler
     public function __construct(
         private UserRepositoryInterface $repository,
         private LoggerInterface $logger,
-        private Logging $loggingConfig
+        private LogConfigPort $loggingConfig
     ) {
     }
 
@@ -71,7 +71,7 @@ final readonly class SearchUsersHandler
 
             $duration = (microtime(true) - $startTime) * 1000;
 
-            if ($duration > $this->loggingConfig->slowQueryThresholdMs) {
+            if ($duration > $this->loggingConfig->slowQueryThresholdMs()) {
                 $this->logger->warning('Slow search query detected', [
                     'domain' => 'User',
                     'query' => 'SearchUsersQuery',

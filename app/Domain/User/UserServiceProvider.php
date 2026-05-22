@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\User;
 
+use App\Domain\Shared\Ports\LogConfigPort;
 use App\Domain\User\Commands\ChangeUserPassword\ChangeUserPasswordCommand;
 use App\Domain\User\Commands\ChangeUserPassword\ChangeUserPasswordHandler;
 use App\Domain\User\Commands\CreateUser\CreateUserCommand;
@@ -38,7 +39,6 @@ use App\Infrastructure\Bus\EventDispatcher;
 use App\Infrastructure\Bus\QueryBus;
 use App\Infrastructure\ServiceProvider\DomainServiceProviderInterface;
 use CodeIgniter\Router\RouteCollection;
-use Config\Logging;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -118,7 +118,7 @@ final class UserServiceProvider implements DomainServiceProviderInterface
         $repository = $this->getRepository('userRepository');
         $logger = $this->getRepository('logger');
         $loggingConfig = $this->getRepository('loggingConfig');
-        assert($loggingConfig instanceof Logging);
+        assert($loggingConfig instanceof LogConfigPort);
 
         if (!$repository instanceof UserRepository || !$logger instanceof LoggerInterface) {
             throw new \RuntimeException('Invalid repository or logger injected');

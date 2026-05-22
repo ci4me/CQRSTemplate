@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace App\Domain\User\Queries\GetUserById;
 
+use App\Domain\Shared\Ports\LogConfigPort;
 use App\Domain\User\DTOs\UserDTO;
 use App\Domain\User\Entities\User;
 use App\Domain\User\Ports\UserRepositoryInterface;
-use Config\Logging;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -21,7 +21,7 @@ final readonly class GetUserByIdHandler
     public function __construct(
         private UserRepositoryInterface $repository,
         private LoggerInterface $logger,
-        private Logging $loggingConfig
+        private LogConfigPort $loggingConfig
     ) {
     }
 
@@ -44,18 +44,18 @@ final readonly class GetUserByIdHandler
      */
     private function logQueryExecution(int $id, ?User $result, float $durationMs): void
     {
-        $isSlowQuery = $durationMs > $this->loggingConfig->slowQueryThresholdMs;
+        $isSlowQuery = $durationMs > $this->loggingConfig->slowQueryThresholdMs();
 
         if ($isSlowQuery) {
             $this->logQuery($id, $result, $durationMs, true);
             return;
         }
 
-        $shouldLog = match ($this->loggingConfig->queryLoggingLevel) {
+        $shouldLog = match ($this->loggingConfig->queryLoggingLevel()) {
             'all' => true,
             'errors' => $result === null,
             'slow' => false,
-            'sampling' => mt_rand() / mt_getrandmax() < $this->loggingConfig->samplingRate,
+            'sampling' => mt_rand() / mt_getrandmax() < $this->loggingConfig->samplingRate(),
             default => false,
         };
 

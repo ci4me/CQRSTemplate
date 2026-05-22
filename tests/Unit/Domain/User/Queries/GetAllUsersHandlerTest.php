@@ -6,8 +6,9 @@ namespace Tests\Unit\Domain\User\Queries;
 
 use App\Domain\User\Queries\GetAllUsers\GetAllUsersHandler;
 use App\Domain\User\Queries\GetAllUsers\GetAllUsersQuery;
-use App\Infrastructure\Logging\LoggerFactory;
 use App\Domain\User\Repositories\UserRepository;
+use App\Infrastructure\Logging\CodeIgniterLogConfig;
+use App\Infrastructure\Logging\LoggerFactory;
 use Config\Logging;
 use Tests\Support\Factories\UserFactory;
 use Tests\Support\UnitTestCase;
@@ -29,7 +30,7 @@ final class GetAllUsersHandlerTest extends UnitTestCase
         parent::setUp();
         $this->repository = $this->createMock(UserRepository::class);
         $logger = LoggerFactory::create('test.user.queries');
-        $loggingConfig = new Logging();
+        $loggingConfig = new CodeIgniterLogConfig(new Logging());
         $this->handler = new GetAllUsersHandler($this->repository, $logger, $loggingConfig);
     }
 

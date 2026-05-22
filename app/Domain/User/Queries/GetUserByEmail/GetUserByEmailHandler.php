@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace App\Domain\User\Queries\GetUserByEmail;
 
+use App\Domain\Shared\Ports\LogConfigPort;
 use App\Domain\User\DTOs\UserDTO;
 use App\Domain\User\Entities\User;
 use App\Domain\User\Ports\UserRepositoryInterface;
 use App\Domain\User\ValueObjects\Email;
-use Config\Logging;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -22,7 +22,7 @@ final readonly class GetUserByEmailHandler
     public function __construct(
         private UserRepositoryInterface $repository,
         private LoggerInterface $logger,
-        private Logging $loggingConfig
+        private LogConfigPort $loggingConfig
     ) {
     }
 
@@ -47,18 +47,18 @@ final readonly class GetUserByEmailHandler
      */
     private function logQueryExecution(string $email, ?User $result, float $durationMs): void
     {
-        $isSlowQuery = $durationMs > $this->loggingConfig->slowQueryThresholdMs;
+        $isSlowQuery = $durationMs > $this->loggingConfig->slowQueryThresholdMs();
 
         if ($isSlowQuery) {
             $this->logQuery($email, $result, $durationMs, true);
             return;
         }
 
-        $shouldLog = match ($this->loggingConfig->queryLoggingLevel) {
+        $shouldLog = match ($this->loggingConfig->queryLoggingLevel()) {
             'all' => true,
             'errors' => $result === null,
             'slow' => false,
-            'sampling' => mt_rand() / mt_getrandmax() < $this->loggingConfig->samplingRate,
+            'sampling' => mt_rand() / mt_getrandmax() < $this->loggingConfig->samplingRate(),
             default => false,
         };
 

@@ -179,7 +179,7 @@ final class ServiceProviderRegistryTest extends UnitTestCase
             },
             'eventDispatcher' => new EventDispatcher(),
             'logger' => new \Psr\Log\NullLogger(),
-            'loggingConfig' => new \Config\Logging(),
+            'loggingConfig' => new \App\Infrastructure\Logging\CodeIgniterLogConfig(new \Config\Logging()),
         ];
     }
 }

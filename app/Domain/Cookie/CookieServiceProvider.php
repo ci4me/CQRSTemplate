@@ -30,6 +30,7 @@ use App\Domain\Cookie\Queries\GetCookieById\GetCookieByIdHandler;
 use App\Domain\Cookie\Queries\GetCookieById\GetCookieByIdQuery;
 use App\Domain\Cookie\Queries\GetCookiesPaginated\GetCookiesPaginatedHandler;
 use App\Domain\Cookie\Queries\GetCookiesPaginated\GetCookiesPaginatedQuery;
+use App\Domain\Shared\Ports\LogConfigPort;
 use App\Infrastructure\Attributes\DomainServiceProvider;
 use App\Infrastructure\Bus\CommandBus;
 use App\Infrastructure\Bus\EventDispatcher;
@@ -37,7 +38,6 @@ use App\Infrastructure\Bus\QueryBus;
 use App\Infrastructure\Logging\LoggerFactory;
 use App\Infrastructure\ServiceProvider\DomainServiceProviderInterface;
 use CodeIgniter\Router\RouteCollection;
-use Config\Logging;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -144,7 +144,7 @@ final class CookieServiceProvider implements DomainServiceProviderInterface
         if (
             !$repository instanceof CookieQueryRepositoryInterface
             || !$logger instanceof LoggerInterface
-            || !$loggingConfig instanceof Logging
+            || !$loggingConfig instanceof LogConfigPort
         ) {
             throw new \RuntimeException('Invalid repository, logger or logging config type injected');
         }

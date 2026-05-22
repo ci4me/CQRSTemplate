@@ -6,8 +6,9 @@ namespace Tests\Unit\Domain\User\Queries;
 
 use App\Domain\User\Queries\SearchUsers\SearchUsersHandler;
 use App\Domain\User\Queries\SearchUsers\SearchUsersQuery;
-use App\Infrastructure\Logging\LoggerFactory;
 use App\Domain\User\Ports\UserRepositoryInterface;
+use App\Infrastructure\Logging\CodeIgniterLogConfig;
+use App\Infrastructure\Logging\LoggerFactory;
 use Config\Logging;
 use Tests\Support\Factories\UserFactory;
 use Tests\Support\UnitTestCase;
@@ -29,7 +30,7 @@ final class SearchUsersHandlerTest extends UnitTestCase
         parent::setUp();
         $this->repository = $this->createMock(UserRepositoryInterface::class);
         $logger = LoggerFactory::create('test.user.queries');
-        $loggingConfig = new Logging();
+        $loggingConfig = new CodeIgniterLogConfig(new Logging());
         $this->handler = new SearchUsersHandler($this->repository, $logger, $loggingConfig);
     }
 

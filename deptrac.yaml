@@ -159,26 +159,11 @@ deptrac:
       - App\Infrastructure\Logging\LoggerFactory
       - App\Infrastructure\ServiceProvider\DomainServiceProviderInterface
       - CodeIgniter\Router\RouteCollection
-      - Config\Logging
-    App\Domain\Cookie\Queries\GetAllCookies\GetAllCookiesHandler:
-      - Config\Logging
-    App\Domain\Cookie\Queries\GetCookieById\GetCookieByIdHandler:
-      - Config\Logging
-    App\Domain\Cookie\Queries\GetCookiesPaginated\GetCookiesPaginatedHandler:
-      - Config\Logging
     App\Domain\User\Commands\ChangeUserPassword\ChangeUserPasswordHandler:
       - App\Infrastructure\Auth\Services\SessionManagementService
       - App\Domain\User\Repositories\PasswordHistoryRepository
     App\Domain\User\Commands\UpdateUser\UpdateUserHandler:
       - App\Infrastructure\Auth\Services\PermissionService
-    App\Domain\User\Queries\GetAllUsers\GetAllUsersHandler:
-      - Config\Logging
-    App\Domain\User\Queries\GetUserByEmail\GetUserByEmailHandler:
-      - Config\Logging
-    App\Domain\User\Queries\GetUserById\GetUserByIdHandler:
-      - Config\Logging
-    App\Domain\User\Queries\SearchUsers\SearchUsersHandler:
-      - Config\Logging
     App\Domain\User\UserServiceProvider:
       - App\Infrastructure\Attributes\DomainServiceProvider
       - App\Infrastructure\Bus\CommandBus
@@ -188,7 +173,6 @@ deptrac:
       - App\Domain\User\Repositories\UserRepository
       - App\Infrastructure\ServiceProvider\DomainServiceProviderInterface
       - CodeIgniter\Router\RouteCollection
-      - Config\Logging
       - Config\Services
     # Helpers are infrastructure glue; these violations are permanent and intentional.
     can():

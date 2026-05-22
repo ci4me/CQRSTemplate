@@ -8,6 +8,7 @@ use App\Domain\Cookie\DTOs\CookieDTO;
 use App\Domain\Cookie\Ports\CookieQueryRepositoryInterface;
 use App\Domain\Cookie\Queries\GetCookiesPaginated\GetCookiesPaginatedHandler;
 use App\Domain\Cookie\Queries\GetCookiesPaginated\GetCookiesPaginatedQuery;
+use App\Infrastructure\Logging\CodeIgniterLogConfig;
 use App\Infrastructure\Logging\LoggerFactory;
 use Config\Logging;
 use Tests\Support\UnitTestCase;
@@ -22,7 +23,7 @@ final class GetCookiesPaginatedHandlerTest extends UnitTestCase
         parent::setUp();
         $this->repository = $this->createMock(CookieQueryRepositoryInterface::class);
         $logger = LoggerFactory::create('test.cookie.queries');
-        $loggingConfig = new Logging();
+        $loggingConfig = new CodeIgniterLogConfig(new Logging());
         $this->handler = new GetCookiesPaginatedHandler($this->repository, $logger, $loggingConfig);
     }
 

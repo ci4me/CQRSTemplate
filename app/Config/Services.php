@@ -221,7 +221,7 @@ class Services extends BaseService
             [
                 'eventDispatcher' => $eventDispatcher,
                 'logger' => self::logger(),
-                'loggingConfig' => config('Logging'),
+                'loggingConfig' => new \App\Infrastructure\Logging\CodeIgniterLogConfig(config('Logging')),
                 'passwordHasher' => self::passwordHasher(),
                 'authenticationService' => self::authenticationService(),
                 'tokenBlacklistService' => self::tokenBlacklistService(),

@@ -6,7 +6,7 @@ namespace App\Domain\Cookie\Queries\GetAllCookies;
 
 use App\Domain\Cookie\DTOs\CookieDTO;
 use App\Domain\Cookie\Ports\CookieQueryRepositoryInterface;
-use Config\Logging;
+use App\Domain\Shared\Ports\LogConfigPort;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -34,12 +34,12 @@ final readonly class GetAllCookiesHandler
      *
      * @param CookieQueryRepositoryInterface $repository    For data retrieval
      * @param LoggerInterface                $logger        For query logging
-     * @param Logging                        $loggingConfig For logging configuration
+     * @param LogConfigPort                  $loggingConfig For logging configuration
      */
     public function __construct(
         private CookieQueryRepositoryInterface $repository,
         private LoggerInterface $logger,
-        private Logging $loggingConfig
+        private LogConfigPort $loggingConfig
     ) {
     }
 
@@ -71,7 +71,7 @@ final readonly class GetAllCookiesHandler
      */
     private function logQueryExecution(bool $includeInactive, int $resultCount, float $durationMs): void
     {
-        $isSlowQuery = $durationMs > $this->loggingConfig->slowQueryThresholdMs;
+        $isSlowQuery = $durationMs > $this->loggingConfig->slowQueryThresholdMs();
 
         if ($isSlowQuery) {
             $this->logQuery($includeInactive, $resultCount, $durationMs, true);
@@ -92,7 +92,7 @@ final readonly class GetAllCookiesHandler
      */
     private function shouldLogByLevel(): bool
     {
-        return match ($this->loggingConfig->queryLoggingLevel) {
+        return match ($this->loggingConfig->queryLoggingLevel()) {
             'all' => true,
             'errors' => false,
             'slow' => false,
@@ -133,6 +133,6 @@ final readonly class GetAllCookiesHandler
      */
     private function shouldSample(): bool
     {
-        return mt_rand() / mt_getrandmax() < $this->loggingConfig->samplingRate;
+        return mt_rand() / mt_getrandmax() < $this->loggingConfig->samplingRate();
     }
 }

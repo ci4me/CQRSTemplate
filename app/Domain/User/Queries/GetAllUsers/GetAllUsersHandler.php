@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace App\Domain\User\Queries\GetAllUsers;
 
+use App\Domain\Shared\Ports\LogConfigPort;
 use App\Domain\User\DTOs\UserDTO;
 use App\Domain\User\Ports\UserRepositoryInterface;
-use Config\Logging;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -31,7 +31,7 @@ final readonly class GetAllUsersHandler
     public function __construct(
         private UserRepositoryInterface $repository,
         private LoggerInterface $logger,
-        private Logging $loggingConfig
+        private LogConfigPort $loggingConfig
     ) {
     }
 
@@ -62,7 +62,7 @@ final readonly class GetAllUsersHandler
 
             $duration = (microtime(true) - $startTime) * 1000;
 
-            if ($duration > $this->loggingConfig->slowQueryThresholdMs) {
+            if ($duration > $this->loggingConfig->slowQueryThresholdMs()) {
                 $this->logger->warning('Slow query detected', [
                     'domain' => 'User',
                     'query' => 'GetAllUsersQuery',
