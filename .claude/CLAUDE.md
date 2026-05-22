@@ -11,8 +11,30 @@ before running its first command. Detail lives in `.claude/skills/*` and
 - **Architecture:** CQRS (commands + queries via separate buses) + DDD
   (aggregates / value objects) + Hexagonal ports & adapters.
 - **Reference domain:** `app/Domain/Cookie/` — copy its structure for new
-  domains. Every pattern (handlers, value objects, repository, projections,
-  tests, logging) is fully exemplified there.
+  domains. Handlers, value objects, repository (write + read sides),
+  events, lifecycle methods, optimistic locking, and tests are
+  exemplified there. The projection scaffold ships as a `.example` file
+  (single-aggregate template does not need it active — see
+  `.claude/documentation/PROJECTIONS.md`).
+- **Shared bases:** Cross-cutting building blocks every domain consumes
+  live under `app/Domain/Shared/`:
+  - `Aggregate/AggregateRootInterface.php` + `Aggregate/AggregateHydrator.php`
+    (E06) — typed contract every aggregate satisfies, with a key class
+    that gates persistence-only mutators.
+  - `Bus/AbstractCommandHandler.php`, `Bus/AbstractQueryHandler.php`,
+    `Bus/CommandHandlerInterface.php`, `Bus/QueryHandlerInterface.php`,
+    `Bus/ClockInterface.php`, `Bus/SystemClock.php`, `Bus/LogSampler.php`
+    (E05) — template-method handler bases + typed bus contracts.
+  - `Events/AbstractDomainEvent.php` (E04) — every event extends this
+    base, carrying the 5-field envelope (`eventId`, `occurredAt`,
+    `actorId`, `aggregateType`, `aggregateId`).
+- **Snapshot scope:** The architecture docs (`cqrs-architecture` skill,
+  `domain-scaffolding` skill, `COMPLETE_FILE_INVENTORY.md`,
+  `PROJECTIONS.md`) reflect Cookie's shape after PRs #29-#39 (Phase 0 +
+  Phase 1 + partial Phase 2). E09 (multi-currency), E10 (DTO
+  consolidation), E11 (repo hygiene), E12 (outbox hardening), E13
+  (provider DI), and E14 (view collapse) are **not** yet reflected and
+  will trigger a follow-up doc refresh.
 
 ## Boot-time hard rules
 
@@ -161,6 +183,9 @@ relevant specialists (e.g., new property → `ddd-specialist` +
 - Reviewing changes: `/code-review` slash command.
 - Logging: skill `logging-architecture` +
   `.claude/documentation/LOGGING_BEST_PRACTICES.md`.
+- Projections / read models: `.claude/documentation/PROJECTIONS.md` plus
+  the `CookieReadModelProjection.php.example` reference in the Cookie
+  domain.
 - Git workflow: `.claude/documentation/GIT_WORKFLOW.md` + the
   `git-specialist` agent.
 

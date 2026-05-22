@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\User\Queries\GetAllUsers;
 
+use App\Domain\Shared\Bus\QueryHandlerInterface;
 use App\Domain\Shared\Ports\LogConfigPort;
 use App\Domain\User\DTOs\UserDTO;
 use App\Domain\User\Ports\UserRepositoryInterface;
@@ -22,8 +23,9 @@ use Psr\Log\LoggerInterface;
  * - Performance logging for slow queries
  *
  * @package App\Domain\User\Queries\GetAllUsers
+ * @implements QueryHandlerInterface<GetAllUsersQuery, array{data: array<UserDTO>, total: int, page: int, perPage: int, lastPage: int}>
  */
-final readonly class GetAllUsersHandler
+final readonly class GetAllUsersHandler implements QueryHandlerInterface
 {
     /**
      * __construct.
@@ -36,9 +38,10 @@ final readonly class GetAllUsersHandler
     }
 
     /**
+     * @param GetAllUsersQuery $query
      * @return array{data: array<UserDTO>, total: int, page: int, perPage: int, lastPage: int}
      */
-    public function handle(GetAllUsersQuery $query): array
+    public function handle(object $query): array
     {
 
         $startTime = microtime(true);

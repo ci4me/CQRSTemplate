@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\User\Commands\CreateUser;
 
+use App\Domain\Shared\Bus\CommandHandlerInterface;
 use App\Domain\Shared\Events\EventDispatcherInterface;
 use App\Domain\Shared\Exceptions\DomainException;
 use App\Domain\User\Entities\User;
@@ -24,8 +25,9 @@ use Psr\Log\LoggerInterface;
  * admin, customer, or other role accounts.
  *
  * @package App\Domain\User\Commands\CreateUser
+ * @implements CommandHandlerInterface<CreateUserCommand, int>
  */
-final readonly class CreateUserHandler
+final readonly class CreateUserHandler implements CommandHandlerInterface
 {
     /**
      * __construct.
@@ -39,8 +41,10 @@ final readonly class CreateUserHandler
 
     /**
      * handle.
+     *
+     * @param CreateUserCommand $command
      */
-    public function handle(CreateUserCommand $command): int
+    public function handle(object $command): int
     {
         $startTime = microtime(true);
 

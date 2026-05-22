@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\User\Commands\UpdateUser;
 
+use App\Domain\Shared\Bus\CommandHandlerInterface;
 use App\Domain\Shared\Events\EventDispatcherInterface;
 use App\Domain\Shared\Exceptions\DomainException;
 use App\Domain\User\ErrorCodes;
@@ -34,8 +35,9 @@ use Psr\Log\LoggerInterface;
  * - All operations are logged with correlation ID
  *
  * @package App\Domain\User\Commands\UpdateUser
+ * @implements CommandHandlerInterface<UpdateUserCommand, void>
  */
-final readonly class UpdateUserHandler
+final readonly class UpdateUserHandler implements CommandHandlerInterface
 {
     /**
      * __construct.
@@ -51,9 +53,10 @@ final readonly class UpdateUserHandler
     /**
      * handle.
      *
+     * @param UpdateUserCommand $command
      * @throws \RuntimeException
      */
-    public function handle(UpdateUserCommand $command): void
+    public function handle(object $command): void
     {
 
         $this->logger->info('Updating user', [

@@ -155,6 +155,63 @@ final class EventDispatcherTest extends UnitTestCase
         $dispatcher->dispatch(new \stdClass());
     }
 
+    public function test_warn_on_no_listeners_emits_debug_log_when_enabled(): void
+    {
+        $logger = $this->createMock(LoggerInterface::class);
+        $logger->expects($this->once())
+            ->method('debug')
+            ->with(
+                'Event dispatched with no listeners',
+                $this->callback(static function (array $ctx): bool {
+                    return ($ctx['event_class'] ?? null) === \stdClass::class
+                        && ($ctx['component'] ?? null) === 'EventDispatcher'
+                        && array_key_exists('correlation_id', $ctx);
+                })
+            );
+
+        $dispatcher = new EventDispatcher($logger);
+        $previous = $dispatcher->setWarnOnNoListeners(true);
+        $this->assertFalse($previous, 'default mode must be silent on zero-listener dispatches');
+
+        $dispatcher->dispatch(new \stdClass());
+    }
+
+    public function test_warn_on_no_listeners_is_silent_by_default(): void
+    {
+        // Production must not pay for the diagnostic by default; the
+        // logger MUST NOT see a debug call when the hook is off.
+        $logger = $this->createMock(LoggerInterface::class);
+        $logger->expects($this->never())->method('debug');
+
+        $dispatcher = new EventDispatcher($logger);
+        $dispatcher->dispatch(new \stdClass());
+    }
+
+    public function test_set_warn_on_no_listeners_returns_previous_value_for_finally_restore(): void
+    {
+        $dispatcher = new EventDispatcher();
+
+        $first = $dispatcher->setWarnOnNoListeners(true);
+        $this->assertFalse($first);
+
+        $second = $dispatcher->setWarnOnNoListeners(false);
+        $this->assertTrue($second, 'must return the *previous* state so callers can restore it');
+    }
+
+    public function test_warn_on_no_listeners_does_not_fire_when_listeners_exist(): void
+    {
+        // Sanity: enabling the hook must NOT log on every dispatch — only
+        // on the zero-listener branch.
+        $logger = $this->createMock(LoggerInterface::class);
+        $logger->expects($this->never())->method('debug');
+
+        $dispatcher = new EventDispatcher($logger);
+        $dispatcher->setWarnOnNoListeners(true);
+        $dispatcher->subscribe(\stdClass::class, static fn () => null);
+
+        $dispatcher->dispatch(new \stdClass());
+    }
+
     public function test_listener_describer_falls_back_to_closure_label(): void
     {
         $logger = $this->createMock(LoggerInterface::class);

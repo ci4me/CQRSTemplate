@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Auth\Commands\LoginUser;
 
+use App\Domain\Shared\Bus\CommandHandlerInterface;
 use App\Domain\User\Ports\AuthenticationServiceInterface;
 use App\Domain\User\Repositories\UserRepository;
 use App\Domain\User\ValueObjects\AuthenticationResult;
@@ -16,8 +17,10 @@ use Psr\Log\LoggerInterface;
 
 /**
  * LoginUserHandler.
+ *
+ * @implements CommandHandlerInterface<LoginUserCommand, AuthenticationResult>
  */
-final readonly class LoginUserHandler
+final readonly class LoginUserHandler implements CommandHandlerInterface
 {
     /**
      * __construct.
@@ -45,7 +48,7 @@ final readonly class LoginUserHandler
      * @param LoginUserCommand $command
      * @return AuthenticationResult
      */
-    public function handle(LoginUserCommand $command): AuthenticationResult
+    public function handle(object $command): AuthenticationResult
     {
         $ipAddress = $command->ipAddress ?? '0.0.0.0';
         $userAgent = $command->userAgent ?? 'unknown';

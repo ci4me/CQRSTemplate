@@ -53,6 +53,8 @@ final class ErrorCodes
     // State errors (400-499)
     public const int COOKIE_STATE_DELETED = 401;
     public const int COOKIE_STATE_CONCURRENT_MODIFICATION = 402;
+    public const int COOKIE_STATE_NOT_PERSISTED = 403;
+    public const int COOKIE_STATE_NOT_DELETED = 404;
 
     // Repository errors (500-599)
     public const int COOKIE_REPOSITORY_SAVE_FAILED = 501;
