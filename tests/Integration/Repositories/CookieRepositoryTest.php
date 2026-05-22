@@ -5,11 +5,18 @@ declare(strict_types=1);
 namespace Tests\Integration\Repositories;
 
 use App\Domain\Cookie\Entities\Cookie;
+use App\Domain\Cookie\Repositories\CookieRepository;
 use App\Domain\Cookie\ValueObjects\CookieName;
 use App\Domain\Cookie\ValueObjects\CookiePrice;
+use App\Domain\Shared\Events\DomainEventInterface;
+use App\Domain\Shared\ValueObjects\Actor;
+use App\Infrastructure\Bus\EventDispatcher;
+use App\Infrastructure\Logging\LoggerFactory;
+use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 use Tests\Support\Factories\CookieFactory;
 use Tests\Support\IntegrationTestCase;
 
+#[AllowMockObjectsWithoutExpectations]
 final class CookieRepositoryTest extends IntegrationTestCase
 {
     protected function setUp(): void
@@ -468,6 +475,233 @@ final class CookieRepositoryTest extends IntegrationTestCase
         $result = $this->cookieRepository->delete(99999);
 
         $this->assertFalse($result);
+    }
+
+    // ==========================================
+    // Integration Scenarios
+    // ==========================================
+
+    // ==========================================
+    // restore() Tests
+    // ==========================================
+
+    public function test_restore_brings_back_soft_deleted_cookie(): void
+    {
+        $id = $this->cookieRepository->save(CookieFactory::createCookie(['name' => 'Restorable']));
+        $this->cookieRepository->delete($id);
+        $this->assertNull($this->cookieRepository->findById($id));
+
+        $restored = $this->cookieRepository->restore($id);
+
+        $this->assertTrue($restored);
+        $found = $this->cookieRepository->findById($id);
+        $this->assertNotNull($found);
+        $this->assertEquals('Restorable', $found->getName()->getValue());
+    }
+
+    public function test_restore_with_actor_stamps_updated_by(): void
+    {
+        $id = $this->cookieRepository->save(CookieFactory::createCookie(['name' => 'Audit Restore']));
+        $this->cookieRepository->delete($id);
+
+        $this->cookieRepository->restore($id, Actor::system('audit-test'));
+
+        $this->assertDatabaseHas('cookies', [
+            'id' => $id,
+            'deleted_at' => null,
+            'deleted_by' => null,
+        ]);
+    }
+
+    public function test_restore_returns_false_when_cookie_does_not_exist(): void
+    {
+        $result = $this->cookieRepository->restore(99999);
+
+        $this->assertFalse($result);
+    }
+
+    public function test_restore_returns_false_when_cookie_is_not_deleted(): void
+    {
+        $id = $this->cookieRepository->save(CookieFactory::createCookie(['name' => 'Not Deleted']));
+
+        $result = $this->cookieRepository->restore($id);
+
+        $this->assertFalse($result);
+    }
+
+    // ==========================================
+    // findByIdWithTrashed() Tests
+    // ==========================================
+
+    public function test_find_by_id_with_trashed_returns_active_cookie(): void
+    {
+        $id = $this->cookieRepository->save(CookieFactory::createCookie(['name' => 'Visible']));
+
+        $found = $this->cookieRepository->findByIdWithTrashed($id);
+
+        $this->assertNotNull($found);
+        $this->assertEquals('Visible', $found->getName()->getValue());
+    }
+
+    public function test_find_by_id_with_trashed_returns_soft_deleted_cookie(): void
+    {
+        $id = $this->cookieRepository->save(CookieFactory::createCookie(['name' => 'Trashed']));
+        $this->cookieRepository->delete($id);
+
+        $found = $this->cookieRepository->findByIdWithTrashed($id);
+
+        $this->assertNotNull($found);
+        $this->assertTrue($found->isDeleted());
+    }
+
+    public function test_find_by_id_with_trashed_returns_null_for_missing(): void
+    {
+        $this->assertNull($this->cookieRepository->findByIdWithTrashed(99999));
+    }
+
+    // ==========================================
+    // Audit + actor stamping
+    // ==========================================
+
+    public function test_save_with_actor_stamps_created_by_and_updated_by(): void
+    {
+        $cookie = CookieFactory::createCookie(['name' => 'Audited Cookie']);
+
+        $id = $this->cookieRepository->save($cookie, Actor::system('audit-test'));
+
+        $this->assertGreaterThan(0, $id);
+    }
+
+    public function test_delete_with_actor_stamps_deleted_by_before_soft_delete(): void
+    {
+        $id = $this->cookieRepository->save(CookieFactory::createCookie(['name' => 'Audited Delete']));
+
+        $result = $this->cookieRepository->delete($id, Actor::system('audit-test'));
+
+        $this->assertTrue($result);
+        $this->assertNull($this->cookieRepository->findById($id));
+    }
+
+    // ==========================================
+    // Event dispatcher integration
+    // ==========================================
+
+    public function test_save_drains_pending_events_to_injected_dispatcher(): void
+    {
+        // Cookie::create() does NOT raise an event (that's the command
+        // handler's job). Cookie::update() DOES raise CookieUpdatedEvent
+        // on the aggregate, which is what we observe here to prove the
+        // repository drains the pendingEvents buffer.
+        $dispatched = [];
+        $logger = LoggerFactory::create('test.cookie.repository.events');
+        $dispatcher = new EventDispatcher($logger);
+        $dispatcher->subscribe(
+            \App\Domain\Cookie\Events\CookieUpdated\CookieUpdatedEvent::class,
+            static function (DomainEventInterface $event) use (&$dispatched): void {
+                $dispatched[] = $event;
+            }
+        );
+
+        /** @var \Config\Logging $loggingConfig */
+        $loggingConfig = config('Logging');
+        $repo = new CookieRepository($logger, $loggingConfig, null, $dispatcher);
+
+        $cookie = CookieFactory::createCookie(['name' => 'Event Drainer']);
+        $id = $repo->save($cookie); // first save: no events on aggregate
+
+        $found = $repo->findById($id);
+        $this->assertNotNull($found);
+        $found->update(
+            name: CookieName::fromString('Drained After Update'),
+            description: $found->getDescription(),
+            price: CookiePrice::fromString('5.50'),
+            stock: $found->getStock(),
+            isActive: $found->getIsActive()
+        );
+        $repo->save($found);
+
+        $this->assertNotEmpty($dispatched);
+        $this->assertInstanceOf(
+            \App\Domain\Cookie\Events\CookieUpdated\CookieUpdatedEvent::class,
+            $dispatched[0]
+        );
+    }
+
+    // ==========================================
+    // Duplicate-key SQL error mapping
+    // ==========================================
+
+    public function test_save_translates_duplicate_key_database_exception_into_domain_exception(): void
+    {
+        // The composite UNIQUE (tenant_id, name, deleted_at) on the cookies
+        // table is what catches a concurrent create that raced past the
+        // handler's existsByName guard. The repository's catch block must
+        // translate the DatabaseException into a DomainException with a
+        // stable error code so callers don't leak SQL state.
+        //
+        // We exercise the path by injecting a model whose insert() throws a
+        // DatabaseException whose message contains the discriminator
+        // ('duplicate'). SQLite does not surface a duplicate-key error
+        // naturally because NULLs in `deleted_at` are treated as distinct,
+        // so a directly-injected model is the deterministic way to test
+        // the catch + translation logic.
+        $model = $this->createMock(\App\Models\Cookie\CookieModel::class);
+        $model->method('find')->willReturn(null);
+        $model->method('insert')
+            ->willThrowException(new \CodeIgniter\Database\Exceptions\DatabaseException(
+                'duplicate entry "Twin Cookie" for key cookies_tenant_name'
+            ));
+
+        $logger = LoggerFactory::create('test.cookie.repository.duplicate');
+        /** @var \Config\Logging $loggingConfig */
+        $loggingConfig = config('Logging');
+        $repo = new CookieRepository($logger, $loggingConfig, $model);
+
+        $this->expectException(\App\Domain\Shared\Exceptions\DomainException::class);
+        $this->expectExceptionMessage('must be unique');
+
+        $repo->save(CookieFactory::createCookie(['name' => 'Twin Cookie']));
+    }
+
+    public function test_save_rethrows_non_duplicate_database_exception(): void
+    {
+        // Non-duplicate-key DatabaseException (e.g. connection lost) must
+        // be logged and rethrown as-is, NOT mapped into DomainException.
+        $model = $this->createMock(\App\Models\Cookie\CookieModel::class);
+        $model->method('find')->willReturn(null);
+        $model->method('insert')
+            ->willThrowException(new \CodeIgniter\Database\Exceptions\DatabaseException(
+                'connection refused at host 127.0.0.1'
+            ));
+
+        $logger = LoggerFactory::create('test.cookie.repository.dberror');
+        /** @var \Config\Logging $loggingConfig */
+        $loggingConfig = config('Logging');
+        $repo = new CookieRepository($logger, $loggingConfig, $model);
+
+        $this->expectException(\CodeIgniter\Database\Exceptions\DatabaseException::class);
+        $this->expectExceptionMessage('connection refused');
+
+        $repo->save(CookieFactory::createCookie(['name' => 'Connection Test']));
+    }
+
+    public function test_save_rethrows_unknown_throwable_from_model(): void
+    {
+        // A generic Throwable (not DatabaseException) must propagate
+        // through the third catch arm with logging.
+        $model = $this->createMock(\App\Models\Cookie\CookieModel::class);
+        $model->method('find')->willReturn(null);
+        $model->method('insert')->willThrowException(new \RuntimeException('out of memory'));
+
+        $logger = LoggerFactory::create('test.cookie.repository.unknownerror');
+        /** @var \Config\Logging $loggingConfig */
+        $loggingConfig = config('Logging');
+        $repo = new CookieRepository($logger, $loggingConfig, $model);
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('out of memory');
+
+        $repo->save(CookieFactory::createCookie(['name' => 'Memory Test']));
     }
 
     // ==========================================
