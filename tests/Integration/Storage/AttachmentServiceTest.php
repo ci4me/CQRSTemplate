@@ -116,6 +116,29 @@ final class AttachmentServiceTest extends IntegrationTestCase
         $svc->attachTo('Invoice', '1', '', 'empty.txt', 'text/plain', Actor::system());
     }
 
+    public function test_empty_attachable_identifiers_are_rejected(): void
+    {
+        $svc = $this->makeService();
+
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('attachableType and attachableId are required');
+        $svc->attachTo('', '', 'data', 'note.txt', 'text/plain', Actor::system());
+    }
+
+    public function test_delete_is_idempotent_for_missing_id(): void
+    {
+        $svc = $this->makeService();
+        // No attachment with id=99999 — must not throw.
+        $svc->delete(99999);
+        $this->assertTrue(true, 'delete() is a no-op when the row is gone');
+    }
+
+    public function test_list_for_unknown_attachable_returns_empty(): void
+    {
+        $svc = $this->makeService();
+        $this->assertSame([], $svc->listFor('NeverHeardOf', 'no-id-like-this'));
+    }
+
     public function test_isolation_by_attachable_type(): void
     {
         $svc = $this->makeService();

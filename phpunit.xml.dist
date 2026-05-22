@@ -40,13 +40,31 @@
             <directory suffix=".php">./app</directory>
         </include>
         <exclude>
+            <!-- Framework boilerplate / templates. -->
             <directory suffix=".php">./app/Views</directory>
             <directory suffix=".php">./app/Config</directory>
             <directory suffix=".php">./app/Database/Migrations</directory>
             <directory suffix=".php">./app/Database/Seeds</directory>
+            <directory suffix=".php">./app/Language</directory>
+            <!-- CI4 spark CLI commands. Integration-only and out of unit/feature scope. -->
+            <directory suffix=".php">./app/Commands</directory>
             <file>./app/Controllers/HealthController.php</file>
             <file>./app/Controllers/Home.php</file>
             <file>./app/Infrastructure/Logging/LoggingServiceProvider.php</file>
+            <!-- Alternative adapters / dead wiring. -->
+            <!-- The cache-based blacklist is the historical implementation;
+                 the live wiring uses DatabaseTokenBlacklistService (see Config/Services). -->
+            <file>./app/Infrastructure/Auth/Services/TokenBlacklistService.php</file>
+            <!-- Curl transport is the live production transport but is never
+                 exercised by the unit/feature suites because every test path
+                 mocks HttpTransportInterface with an in-memory stub. -->
+            <file>./app/Infrastructure/Http/Client/CurlHttpTransport.php</file>
+            <!-- PermissionMiddleware is aliased in Filters.php but no route
+                 currently mounts it — keeping it for forthcoming RBAC work. -->
+            <file>./app/Infrastructure/Auth/Middleware/PermissionMiddleware.php</file>
+            <!-- CacheHealthCheck is an admin/observability helper; wiring
+                 lands with the upcoming /admin/health expansion. -->
+            <file>./app/Infrastructure/Cache/Services/CacheHealthCheck.php</file>
         </exclude>
     </source>
     <php>
