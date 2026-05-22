@@ -104,4 +104,27 @@ final class CurrencyTest extends UnitTestCase
             putenv('DEFAULT_CURRENCY');
         }
     }
+
+    public function test_eur_factory_returns_euro_currency(): void
+    {
+        $c = Currency::eur();
+        $this->assertSame('EUR', $c->iso);
+        $this->assertSame('€', $c->symbol);
+        $this->assertSame(2, $c->decimals);
+    }
+
+    public function test_brl_factory_returns_real_currency(): void
+    {
+        $c = Currency::brl();
+        $this->assertSame('BRL', $c->iso);
+        $this->assertSame('R$', $c->symbol);
+    }
+
+    public function test_default_symbols_for_known_currencies(): void
+    {
+        $this->assertSame('£', Currency::fromIso('GBP')->symbol);
+        $this->assertSame('¥', Currency::fromIso('JPY')->symbol);
+        $this->assertSame('C$', Currency::fromIso('CAD')->symbol);
+        $this->assertSame('A$', Currency::fromIso('AUD')->symbol);
+    }
 }

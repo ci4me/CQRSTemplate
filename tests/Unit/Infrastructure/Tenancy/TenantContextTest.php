@@ -77,4 +77,43 @@ final class TenantContextTest extends UnitTestCase
         $ctx->set(123);
         $this->assertSame(123, $ctx->currentTenantId());
     }
+
+    public function test_header_value_of_zero_is_treated_as_missing(): void
+    {
+        $request = $this->createStub(RequestInterface::class);
+        $request->method('getHeaderLine')->willReturn('0');
+
+        $ctx = new TenantContext($request);
+        $this->assertSame(1, $ctx->currentTenantId(), 'header=0 falls through to default(1)');
+    }
+
+    public function test_default_tenant_id_env_var_is_honoured(): void
+    {
+        putenv('DEFAULT_TENANT_ID=7');
+        try {
+            $this->assertSame(7, (new TenantContext())->currentTenantId());
+        } finally {
+            putenv('DEFAULT_TENANT_ID');
+        }
+    }
+
+    public function test_default_tenant_id_env_var_clamps_to_one_minimum(): void
+    {
+        putenv('DEFAULT_TENANT_ID=0');
+        try {
+            $this->assertSame(1, (new TenantContext())->currentTenantId());
+        } finally {
+            putenv('DEFAULT_TENANT_ID');
+        }
+    }
+
+    public function test_default_tenant_id_env_var_with_non_digit_value_is_ignored(): void
+    {
+        putenv('DEFAULT_TENANT_ID=invalid-string');
+        try {
+            $this->assertSame(1, (new TenantContext())->currentTenantId());
+        } finally {
+            putenv('DEFAULT_TENANT_ID');
+        }
+    }
 }
