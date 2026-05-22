@@ -11,6 +11,8 @@ use App\Domain\Cookie\ValueObjects\CookieName;
 use App\Domain\Cookie\ValueObjects\CookiePrice;
 use App\Domain\Cookie\ValueObjects\CookieStock;
 use App\Domain\Shared\AggregateRoot;
+use App\Domain\Shared\Events\AbstractDomainEvent;
+use App\Domain\Shared\Events\CookieChangeSet;
 use App\Domain\Shared\Exceptions\DomainException;
 use App\Domain\Shared\Exceptions\ValidationException;
 
@@ -170,27 +172,39 @@ final class Cookie
         }
 
         $this->raiseEvent(new CookieUpdatedEvent(
+            eventId: AbstractDomainEvent::newId(),
+            occurredAt: new \DateTimeImmutable('now', new \DateTimeZone('UTC')),
+            actorId: null, // E07 will thread the acting user through the entity.
             cookieId: $this->id,
             cookieName: $name->getValue(),
             cookiePrice: $price->toDecimalString(),
             previousState: $previousState,
-            newState: $this->snapshot()
+            newState: $this->snapshot(),
         ));
     }
 
     /**
-     * @return array<string, scalar|null>
+     * Build a {@see CookieChangeSet} snapshot of the entity's current
+     * whitelisted public state. The change set replaces the loose
+     * `array<string, scalar|null>` snapshots flagged in slice 05/F4.
+     *
+     * Note: `price` is decomposed into `price_minor` / `price_currency`
+     * to match the change-set whitelist (E09 will land the wider
+     * multi-currency schema; until then `USD` is the implicit default).
      */
-    private function snapshot(): array
+    private function snapshot(): CookieChangeSet
     {
-        return [
+        return CookieChangeSet::fromArray([
             'id' => $this->id,
             'name' => $this->name->getValue(),
             'description' => $this->description,
-            'price' => $this->price->toDecimalString(),
+            'price_minor' => $this->price->getMinorUnits(),
+            'price_currency' => $this->price->getCurrency()->iso,
             'stock' => $this->stock->value,
             'is_active' => $this->isActive,
-        ];
+            'version' => $this->version,
+            'deleted_at' => $this->deletedAt,
+        ]);
     }
 
     /**
@@ -251,11 +265,17 @@ final class Cookie
         $previous = $this->stock->value;
         $this->stock = $newStock;
 
+        // assertPersisted() above the public entry points guarantees $this->id
+        // is set by the time we reach this method, so the (int) cast is a
+        // type-narrowing no-op rather than masking a nullable.
         $this->raiseEvent(new CookieStockChangedEvent(
+            eventId: AbstractDomainEvent::newId(),
+            occurredAt: new \DateTimeImmutable('now', new \DateTimeZone('UTC')),
+            actorId: null, // E07 will thread the acting user through the entity.
             cookieId: (int) $this->id,
             previousStock: $previous,
             newStock: $newStock->value,
-            reason: $reason
+            reason: $reason,
         ));
     }
 
