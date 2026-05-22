@@ -10,7 +10,8 @@ use App\Domain\User\Commands\CreateUser\CreateUserCommand;
 use App\Domain\User\Commands\CreateUser\CreateUserHandler;
 use App\Domain\User\Events\UserRegistered\UserRegisteredEvent;
 use App\Domain\User\Ports\UserRepositoryInterface;
-use App\Infrastructure\Logging\LoggerFactory;
+use Monolog\Handler\TestHandler;
+use Monolog\Logger;
 use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 use Tests\Support\Factories\UserFactory;
 use Tests\Support\UnitTestCase;
@@ -31,7 +32,7 @@ final class CreateUserHandlerTest extends UnitTestCase
 
         $this->repository = $this->createMock(UserRepositoryInterface::class);
         $this->eventDispatcher = $this->createMock(EventDispatcherInterface::class);
-        $logger = LoggerFactory::create('test.user.commands');
+        $logger = new Logger('test.user.commands', [new TestHandler()]);
         $this->handler = new CreateUserHandler(
             $this->repository,
             $this->eventDispatcher,

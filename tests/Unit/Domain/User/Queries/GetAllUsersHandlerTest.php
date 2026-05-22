@@ -9,8 +9,9 @@ use App\Domain\User\Queries\GetAllUsers\GetAllUsersHandler;
 use App\Domain\User\Queries\GetAllUsers\GetAllUsersQuery;
 use App\Domain\User\Repositories\UserRepository;
 use App\Infrastructure\Logging\CodeIgniterLogConfig;
-use App\Infrastructure\Logging\LoggerFactory;
 use Config\Logging;
+use Monolog\Handler\TestHandler;
+use Monolog\Logger;
 use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 use Psr\Log\LoggerInterface;
 use Tests\Support\Factories\UserFactory;
@@ -33,7 +34,7 @@ final class GetAllUsersHandlerTest extends UnitTestCase
     {
         parent::setUp();
         $this->repository = $this->createMock(UserRepository::class);
-        $logger = LoggerFactory::create('test.user.queries');
+        $logger = new Logger('test.user.queries', [new TestHandler()]);
         $loggingConfig = new CodeIgniterLogConfig(new Logging());
         $this->handler = new GetAllUsersHandler($this->repository, $logger, $loggingConfig);
     }

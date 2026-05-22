@@ -6,6 +6,7 @@ namespace Tests\Unit\Domain\Cookie\Commands;
 
 use App\Domain\Cookie\Commands\RestoreCookie\RestoreCookieCommand;
 use App\Domain\Cookie\Commands\RestoreCookie\RestoreCookieHandler;
+use App\Domain\Cookie\Entities\Cookie;
 use App\Domain\Cookie\Events\CookieRestored\CookieRestoredEvent;
 use App\Domain\Cookie\Ports\CookieRepositoryInterface;
 use App\Domain\Cookie\ValueObjects\CookieName;
@@ -13,8 +14,8 @@ use App\Domain\Cookie\ValueObjects\CookiePrice;
 use App\Domain\Shared\Exceptions\DomainException;
 use App\Domain\Shared\ValueObjects\Actor;
 use App\Infrastructure\Bus\EventDispatcher;
-use App\Infrastructure\Logging\LoggerFactory;
-use App\Domain\Cookie\Entities\Cookie;
+use Monolog\Handler\TestHandler;
+use Monolog\Logger;
 use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 use Tests\Support\UnitTestCase;
 
@@ -30,7 +31,7 @@ final class RestoreCookieHandlerTest extends UnitTestCase
         parent::setUp();
         $this->repository = $this->createMock(CookieRepositoryInterface::class);
         $this->eventDispatcher = $this->createMock(EventDispatcher::class);
-        $logger = LoggerFactory::create('test.cookie.commands');
+        $logger = new Logger('test.cookie.commands', [new TestHandler()]);
         $this->handler = new RestoreCookieHandler($this->repository, $this->eventDispatcher, $logger);
     }
 

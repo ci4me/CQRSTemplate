@@ -7,7 +7,8 @@ namespace Tests\Unit\Domain\Cookie;
 use App\Domain\Cookie\CookieServiceProvider;
 use App\Infrastructure\Bus\CommandBus;
 use App\Infrastructure\Bus\QueryBus;
-use App\Infrastructure\Logging\LoggerFactory;
+use Monolog\Handler\TestHandler;
+use Monolog\Logger;
 use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 use Tests\Support\UnitTestCase;
 
@@ -70,7 +71,7 @@ final class CookieServiceProviderTest extends UnitTestCase
     {
         $provider = new CookieServiceProvider();
         $dispatcher = new \App\Infrastructure\Bus\EventDispatcher(
-            LoggerFactory::create('test.cookie.events')
+            new Logger('test.cookie.events', [new TestHandler()])
         );
 
         $provider->registerEvents($dispatcher);

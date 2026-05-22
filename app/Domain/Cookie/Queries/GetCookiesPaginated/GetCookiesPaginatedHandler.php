@@ -6,6 +6,8 @@ namespace App\Domain\Cookie\Queries\GetCookiesPaginated;
 
 use App\Domain\Cookie\DTOs\CookieDTO;
 use App\Domain\Cookie\Ports\CookieQueryRepositoryInterface;
+use App\Domain\Shared\Bus\LogSampler;
+use App\Domain\Shared\Bus\QueryHandlerInterface;
 use App\Domain\Shared\Ports\LogConfigPort;
 use Psr\Log\LoggerInterface;
 
@@ -27,8 +29,9 @@ use Psr\Log\LoggerInterface;
  * - Slow queries always logged regardless of level
  *
  * @package App\Domain\Cookie\Queries\GetCookiesPaginated
+ * @implements QueryHandlerInterface<GetCookiesPaginatedQuery, array{data: array<int, CookieDTO>, total: int, page: int, perPage: int, lastPage: int}>
  */
-final readonly class GetCookiesPaginatedHandler
+final readonly class GetCookiesPaginatedHandler implements QueryHandlerInterface
 {
     /**
      * Create a new GetCookiesPaginatedHandler.
@@ -50,7 +53,7 @@ final readonly class GetCookiesPaginatedHandler
      * @param GetCookiesPaginatedQuery $query The query
      * @return array{data: array<int, CookieDTO>, total: int, page: int, perPage: int, lastPage: int} Pagination result
      */
-    public function handle(GetCookiesPaginatedQuery $query): array
+    public function handle(object $query): array
     {
         $startTime = microtime(true);
 
@@ -139,10 +142,13 @@ final readonly class GetCookiesPaginatedHandler
     /**
      * Determine if query should be sampled for logging.
      *
+     * Delegates to the shared {@see LogSampler} — see GetCookieByIdHandler
+     * for the rationale (random_int over the Mersenne Twister).
+     *
      * @return bool True if query should be logged based on sampling rate
      */
     private function shouldSample(): bool
     {
-        return mt_rand() / mt_getrandmax() < $this->loggingConfig->samplingRate();
+        return (new LogSampler($this->loggingConfig->samplingRate()))->shouldSample();
     }
 }

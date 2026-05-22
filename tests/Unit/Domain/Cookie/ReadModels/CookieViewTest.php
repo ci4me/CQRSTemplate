@@ -77,7 +77,7 @@ final class CookieViewTest extends UnitTestCase
             createdAt: null,
             updatedAt: null,
             deletedAt: null,
-            version: 0
+            version: 1
         );
 
         $arr = CookieView::detail($cookie)->toArray();

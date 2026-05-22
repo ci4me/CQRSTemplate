@@ -354,13 +354,23 @@ final class CookieRepositoryTest extends IntegrationTestCase
 
     public function test_find_paginated_orders_by_created_at_desc(): void
     {
+        // Deterministic: stamp `created_at` directly via the DB after
+        // each insert. SQLite's default CURRENT_TIMESTAMP only resolves
+        // to whole seconds, so two `save()` calls in the same second
+        // would tie under the repository's `ORDER BY created_at DESC`.
+        // The previous implementation paid a wall-clock `sleep(1)` per
+        // run; that cost doubles for every cloned domain. Removing the
+        // sleep here closes audit slice 13/F6.
         $id1 = $this->cookieRepository->save(CookieFactory::createCookie(['name' => 'First Cookie']));
-        sleep(1); // Ensure different timestamps
         $id2 = $this->cookieRepository->save(CookieFactory::createCookie(['name' => 'Second Cookie']));
+
+        $db = \Config\Database::connect();
+        $db->table('cookies')->where('id', $id1)->update(['created_at' => '2026-01-01 09:00:00']);
+        $db->table('cookies')->where('id', $id2)->update(['created_at' => '2026-01-01 09:00:01']);
 
         $result = $this->cookieRepository->findPaginated(page: 1, perPage: 10);
 
-        // Most recent should be first
+        // Most recent (id2, stamped one second later) should be first.
         $this->assertEquals($id2, $result['data'][0]->getId());
         $this->assertEquals($id1, $result['data'][1]->getId());
     }

@@ -9,8 +9,9 @@ use App\Domain\User\Ports\UserRepositoryInterface;
 use App\Domain\User\Queries\SearchUsers\SearchUsersHandler;
 use App\Domain\User\Queries\SearchUsers\SearchUsersQuery;
 use App\Infrastructure\Logging\CodeIgniterLogConfig;
-use App\Infrastructure\Logging\LoggerFactory;
 use Config\Logging;
+use Monolog\Handler\TestHandler;
+use Monolog\Logger;
 use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 use Psr\Log\LoggerInterface;
 use Tests\Support\Factories\UserFactory;
@@ -33,7 +34,7 @@ final class SearchUsersHandlerTest extends UnitTestCase
     {
         parent::setUp();
         $this->repository = $this->createMock(UserRepositoryInterface::class);
-        $logger = LoggerFactory::create('test.user.queries');
+        $logger = new Logger('test.user.queries', [new TestHandler()]);
         $loggingConfig = new CodeIgniterLogConfig(new Logging());
         $this->handler = new SearchUsersHandler($this->repository, $logger, $loggingConfig);
     }

@@ -14,24 +14,26 @@ use Psr\Log\LoggerInterface;
 final readonly class CookieStockChangedEventHandler
 {
     /**
-     * __construct.
+     * @param LoggerInterface $logger PSR-3 logger for the always-on stock-movement audit trail.
      */
     public function __construct(private LoggerInterface $logger)
     {
     }
 
     /**
-     * __invoke.
+     * Handle a {@see CookieStockChangedEvent} by appending an audit log line
+     * with the previous/new stock and the movement reason.
      */
     public function __invoke(CookieStockChangedEvent $event): void
     {
         $this->logger->info('Cookie stock changed', [
             'domain' => 'Cookie',
             'event' => 'CookieStockChangedEvent',
+            'event_id' => $event->eventId,
             'cookie_id' => $event->cookieId,
             'previous_stock' => $event->previousStock,
             'new_stock' => $event->newStock,
-            'reason' => $event->reason,
+            'reason' => $event->reason->value,
         ]);
     }
 }
