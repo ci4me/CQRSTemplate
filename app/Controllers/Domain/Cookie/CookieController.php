@@ -209,6 +209,20 @@ class CookieController extends BaseController
             $isActiveParam = $this->request->getPost('is_active');
             $isActive = (bool) $isActiveParam;
 
+            // E08: expectedVersion is now REQUIRED on UpdateCookieCommand
+            // (closes 03/F9). Read the current version from the form payload
+            // when present (hidden input populated by the edit view), and
+            // fall back to the persisted entity's version when the client
+            // didn't echo it back. The "read the entity version here" path
+            // is the deliberate one — explicit last-write-wins replaces the
+            // old silent default-null footgun.
+            $versionParam = $this->request->getPost('version');
+            if (is_numeric($versionParam)) {
+                $expectedVersion = (int) $versionParam;
+            } else {
+                $expectedVersion = $this->loadCurrentVersion($id);
+            }
+
             $command = new UpdateCookieCommand(
                 id: $id,
                 name: $name,
@@ -216,7 +230,8 @@ class CookieController extends BaseController
                 price: $price,
                 stock: $stock,
                 isActive: $isActive,
-                updatedBy: Services::actorResolver()->resolve($this->request)
+                updatedBy: Services::actorResolver()->resolve($this->request),
+                expectedVersion: $expectedVersion
             );
 
             $commandBus->dispatch($command);
@@ -233,6 +248,28 @@ class CookieController extends BaseController
                 ->withInput()
                 ->with('error', $e->getMessage());
         }
+    }
+
+    /**
+     * Load the persisted entity's current `version` for the optimistic-locking
+     * pre-flight check. Falls back to 1 when the row is missing so the
+     * handler's findById() throws the canonical "not found" message rather
+     * than the controller producing a misleading concurrent-modification
+     * error code.
+     *
+     * @param int $id Cookie id to look up on the write repository.
+     * @return int Current version number; 1 when the row is missing.
+     */
+    private function loadCurrentVersion(int $id): int
+    {
+        $writeRepo = Services::repository('cookieRepository');
+        if (!$writeRepo instanceof \App\Domain\Cookie\Ports\CookieRepositoryInterface) {
+            return 1;
+        }
+
+        $cookie = $writeRepo->findById($id);
+
+        return $cookie?->getVersion() ?? 1;
     }
 
     /**
