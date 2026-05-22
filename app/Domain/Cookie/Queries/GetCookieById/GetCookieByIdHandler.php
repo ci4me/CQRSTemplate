@@ -6,6 +6,7 @@ namespace App\Domain\Cookie\Queries\GetCookieById;
 
 use App\Domain\Cookie\DTOs\CookieDTO;
 use App\Domain\Cookie\Ports\CookieQueryRepositoryInterface;
+use App\Domain\Shared\Bus\LogSampler;
 use App\Domain\Shared\Bus\QueryHandlerInterface;
 use App\Domain\Shared\Ports\LogConfigPort;
 use Psr\Log\LoggerInterface;
@@ -125,10 +126,16 @@ final readonly class GetCookieByIdHandler implements QueryHandlerInterface
     /**
      * Determine if query should be sampled for logging.
      *
+     * Delegates to the shared {@see LogSampler}, which uses random_int
+     * (CSPRNG) instead of the biased Mersenne Twister the previous
+     * implementation called (closes 04/F12, 14/F20, 17/F2). Constructing
+     * the sampler per-call is cheap (single integer cast); E08 lifts
+     * this to constructor injection when migrating onto AbstractQueryHandler.
+     *
      * @return bool True if query should be logged based on sampling rate
      */
     private function shouldSample(): bool
     {
-        return mt_rand() / mt_getrandmax() < $this->loggingConfig->samplingRate();
+        return (new LogSampler($this->loggingConfig->samplingRate()))->shouldSample();
     }
 }

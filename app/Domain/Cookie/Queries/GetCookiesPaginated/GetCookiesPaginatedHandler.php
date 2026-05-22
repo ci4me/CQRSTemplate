@@ -6,6 +6,7 @@ namespace App\Domain\Cookie\Queries\GetCookiesPaginated;
 
 use App\Domain\Cookie\DTOs\CookieDTO;
 use App\Domain\Cookie\Ports\CookieQueryRepositoryInterface;
+use App\Domain\Shared\Bus\LogSampler;
 use App\Domain\Shared\Bus\QueryHandlerInterface;
 use App\Domain\Shared\Ports\LogConfigPort;
 use Psr\Log\LoggerInterface;
@@ -141,10 +142,13 @@ final readonly class GetCookiesPaginatedHandler implements QueryHandlerInterface
     /**
      * Determine if query should be sampled for logging.
      *
+     * Delegates to the shared {@see LogSampler} — see GetCookieByIdHandler
+     * for the rationale (random_int over the Mersenne Twister).
+     *
      * @return bool True if query should be logged based on sampling rate
      */
     private function shouldSample(): bool
     {
-        return mt_rand() / mt_getrandmax() < $this->loggingConfig->samplingRate();
+        return (new LogSampler($this->loggingConfig->samplingRate()))->shouldSample();
     }
 }

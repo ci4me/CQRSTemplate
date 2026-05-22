@@ -46,7 +46,7 @@ namespace App\Domain\Shared\Bus;
  *    still infers the precise return through `@return TResult`.
  *
  * @template TCommand of object
- * @template TResult
+ * @template-covariant TResult
  * @package App\Domain\Shared\Bus
  */
 interface CommandHandlerInterface

@@ -21,7 +21,7 @@ namespace App\Domain\Shared\Bus;
  *   TResult — the read-model the handler returns (DTO, list, or null).
  *
  * @template TQuery of object
- * @template TResult
+ * @template-covariant TResult
  * @package App\Domain\Shared\Bus
  */
 interface QueryHandlerInterface
