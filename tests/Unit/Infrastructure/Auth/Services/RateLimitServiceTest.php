@@ -75,6 +75,54 @@ final class RateLimitServiceTest extends UnitTestCase
         $svc->checkLimit('ip', 5, 0);
     }
 
+    public function test_bucket_refills_proportionally_when_time_has_passed(): void
+    {
+        // Pre-seed a drained bucket whose lastRefillTime is far enough in the
+        // past that one full window's worth of tokens (5 in 60s) should be
+        // restored on the next checkLimit() call.
+        $cache = $this->makeCache();
+        $svc = new RateLimitService($cache);
+
+        $identifier = 'refill-A';
+        $cacheKey = 'rate_limit_' . hash('sha256', $identifier);
+        $now = time();
+        $cache->save($cacheKey, [
+            'tokens' => 0.0,
+            'lastRefillTime' => $now - 120, // 2 windows ago — bucket should be capped at 5
+            'resetTime' => $now - 60,
+        ], 60);
+
+        $result = $svc->checkLimit($identifier, 5, 60);
+
+        $this->assertTrue($result->isAllowed());
+        // After consuming one of the refilled tokens, 4 remain.
+        $this->assertSame(4, $result->getAttemptsRemaining());
+    }
+
+    public function test_partial_refill_leaves_bucket_below_capacity(): void
+    {
+        // Seed an empty bucket whose lastRefillTime is short enough that only
+        // a fraction of capacity gets refilled — the "bucket not full" branch
+        // sets resetTime relative to the missing tokens.
+        $cache = $this->makeCache();
+        $svc = new RateLimitService($cache);
+
+        $identifier = 'refill-partial';
+        $cacheKey = 'rate_limit_' . hash('sha256', $identifier);
+        $now = time();
+        // 12s elapsed at 5/60s refill rate ⇒ +1 token, capacity 5, so partial.
+        $cache->save($cacheKey, [
+            'tokens' => 0.0,
+            'lastRefillTime' => $now - 12,
+            'resetTime' => $now - 6,
+        ], 60);
+
+        $result = $svc->checkLimit($identifier, 5, 60);
+
+        $this->assertTrue($result->isAllowed());
+        $this->assertGreaterThan(time(), $result->getResetTime(), 'partial bucket projects forward reset');
+    }
+
     public function test_different_identifiers_have_independent_buckets(): void
     {
         $cache = $this->makeCache();

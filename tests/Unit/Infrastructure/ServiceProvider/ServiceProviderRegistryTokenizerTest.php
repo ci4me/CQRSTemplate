@@ -108,6 +108,56 @@ PHP);
         $this->assertNull($this->extract($path));
     }
 
+    public function test_returns_null_when_file_unreadable(): void
+    {
+        // file_get_contents() returns false for non-existent paths — the
+        // tokenizer must short-circuit (line 255) rather than tokenizing
+        // boolean false. Strict test mode promotes the warning to an
+        // exception, so we silence it for this assertion only.
+        set_error_handler(static fn () => true, E_WARNING);
+        try {
+            $this->assertNull($this->extract($this->tempDir . '/does-not-exist.php'));
+        } finally {
+            restore_error_handler();
+        }
+    }
+
+    public function test_handles_braced_namespace_block(): void
+    {
+        // namespace Foo { class Bar {} } — the brace terminates the
+        // namespace-name reader (line 308) before the dotted name is
+        // accumulated, so the returned namespace is empty.
+        $path = $this->writeFile('Braced', <<<'PHP'
+<?php
+namespace App\BracedNs {
+    class BracedClass {}
+}
+PHP);
+
+        $this->assertSame('App\\BracedNs\\BracedClass', $this->extract($path));
+    }
+
+    public function test_handles_class_keyword_as_constant_access(): void
+    {
+        // `SomeClass::class` is a constant-class expression. T_CLASS appears
+        // after a T_DOUBLE_COLON (which the isAnonymousClass guard treats as
+        // a non-modifier non-T_NEW token), so the extractor returns false
+        // and continues. We then fall through to the real class declaration.
+        $path = $this->writeFile('WithClassConst', <<<'PHP'
+<?php
+namespace App\ConstAccess;
+final class WithClassConst
+{
+    public function name(): string
+    {
+        return \stdClass::class;
+    }
+}
+PHP);
+
+        $this->assertSame('App\\ConstAccess\\WithClassConst', $this->extract($path));
+    }
+
     private function writeFile(string $name, string $contents): string
     {
         $path = $this->tempDir . '/' . $name . '.php';

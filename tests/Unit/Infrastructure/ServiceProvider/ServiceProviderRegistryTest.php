@@ -162,6 +162,66 @@ final class ServiceProviderRegistryTest extends UnitTestCase
         );
     }
 
+    public function test_instantiate_autobind_returns_no_arg_class_directly(): void
+    {
+        // No-constructor short-circuit (line 468): a class without an
+        // explicit constructor should be instantiated via newInstance().
+        $klass = new class {
+            public string $tag = 'no-ctor';
+        };
+
+        $registry = new \ReflectionClass(ServiceProviderRegistry::class);
+        $method = $registry->getMethod('instantiateAutoBind');
+        $method->setAccessible(true);
+
+        $result = $method->invoke(null, new \ReflectionClass($klass));
+        $this->assertInstanceOf($klass::class, $result);
+    }
+
+    public function test_resolve_autobind_parameter_falls_back_to_optional_default(): void
+    {
+        // Optional parameter with an unknown type and a default value
+        // (line 509-510): the registry should return the declared default.
+        $klass = new class ('default-value') {
+            public function __construct(public string $tag = 'default-value')
+            {
+            }
+        };
+
+        $reflection = new \ReflectionClass($klass);
+        $parameter = $reflection->getConstructor()->getParameters()[0];
+
+        $registry = new \ReflectionClass(ServiceProviderRegistry::class);
+        $method = $registry->getMethod('resolveAutoBindParameter');
+        $method->setAccessible(true);
+
+        $this->assertSame('default-value', $method->invoke(null, $reflection, $parameter));
+    }
+
+    public function test_resolve_autobind_parameter_throws_for_required_unknown_type(): void
+    {
+        // Required parameter with no known type (lines 513-519): the
+        // registry must throw rather than silently constructing a
+        // half-wired adapter.
+        $klass = new class ('x') {
+            public function __construct(public \stdClass|string $stuff)
+            {
+            }
+        };
+
+        $reflection = new \ReflectionClass($klass);
+        $parameter = $reflection->getConstructor()->getParameters()[0];
+
+        $registry = new \ReflectionClass(ServiceProviderRegistry::class);
+        $method = $registry->getMethod('resolveAutoBindParameter');
+        $method->setAccessible(true);
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('Cannot resolve required parameter');
+
+        $method->invoke(null, $reflection, $parameter);
+    }
+
     public function test_registerAll_wires_handlers_when_repositories_provided(): void
     {
         $commandBus = new CommandBus();
