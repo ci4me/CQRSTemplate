@@ -1799,3 +1799,283 @@ to focus on:
 
 Each reviewer should sign off on the epics that touch their gate before
 PR submission.
+## Cookie-ready-as-template binary checklist (v3)
+
+When every box below is ticked, Cookie is the **template**.
+
+### Phase 0 unblockers (E01 + E02 + E03)
+- [ ] `phpunit.xml.dist` no longer carries `force="true"` on `database.tests.DBDriver`.
+- [ ] CI runs `composer ci` (incl. `docblocks:audit`, `deptrac`) on every PR.
+- [ ] CI runs the test suite on **both** SQLite and MySQL 8 (pinned `mysql:8.0.36`) lanes.
+- [ ] `docker-compose.test.yml` + `make test-mysql` exist (local repro).
+- [ ] CI workflow includes `phpcov merge` step before the 90 % gate.
+- [ ] CI workflow includes the bidirectional `migrate --all → rollback → migrate --all` probe.
+- [ ] `composer ci` rejects class-level `#[AllowMockObjectsWithoutExpectations]`.
+- [ ] `phpstan.neon` pins `phpVersion: 80300`; `phpcs.xml` matches.
+- [ ] `phpstan.neon` has `reportUnmatchedIgnoredErrors: true`.
+- [ ] `composer.json` requires `slevomat/coding-standard: ^8.18`.
+- [ ] `bin/docblocks-audit` exits 1 on placeholder docblocks.
+- [ ] `bin/docblocks-generate` is patched (emits audited marker) or deleted.
+- [ ] Zero placeholder docblocks remain in Cookie scope.
+- [ ] `Config/Database.php` carries `sessionVariables` pinning sql_mode, isolation, charset, time_zone.
+- [ ] `DBCollat` aligned to `utf8mb4_unicode_ci`. `numberNative` is `true`.
+- [ ] `sessionVariables` applied to both `default` AND `tests` connection groups.
+- [ ] `test_session_variables_pinned_at_connect` AND `_after_reconnect` pass.
+
+### Foundation (E04 + E05 + E05.5 + E06)
+- [ ] `app/Domain/Shared/Events/AbstractDomainEvent.php` exists with `eventId`, `occurredAt`, `actorId`, `aggregateType`, `aggregateId`.
+- [ ] All 5 Cookie events extend `AbstractDomainEvent`.
+- [ ] `CookieStockChangedEvent::$cookieId` is non-nullable `int`.
+- [ ] `app/Domain/Cookie/ValueObjects/CookieChangeSet.php` exists; replaces loose array snapshots.
+- [ ] `EventDispatcher` emits `dev`-env warning on zero-listener dispatch.
+- [ ] `app/Domain/Shared/Handlers/AbstractCommandHandler.php` + `AbstractQueryHandler.php` exist with generics and `elapsedMs(int)` API.
+- [ ] `AbstractQueryHandler` exposes `cacheKey()` / `cacheTtlSeconds()` hooks.
+- [ ] `CommandBus` and `QueryBus` enforce typed handler interfaces (no `method_exists`).
+- [ ] `AbstractQueryHandler` logs slow queries at `warning`.
+- [ ] `LogSampler` uses `random_int`.
+- [ ] **E05.5 PHPStan custom rules** (handler-implements-interface; readonly DTO; handle param type) ship and pass against Cookie.
+- [ ] Two `@phpstan-ignore method.notFound` suppressions at `QueryBus.php:96` + matching `CommandBus.php` line are DELETED.
+- [ ] `Cookie` implements `AggregateRootInterface`.
+- [ ] `Cookie::reconstitute()` rejects `version < 1`.
+- [ ] `assignId`/`bumpVersion` require `AggregateHydrator` key.
+- [ ] `bumpVersion()` rejects transient (`$id === null`) entities.
+
+### Entity lifecycle (E07 + E08)
+- [ ] `Cookie::softDelete()` and `Cookie::restore()` exist and raise events.
+- [ ] `Cookie::activate()` / `deactivate()` raise events.
+- [ ] `CookieAccessors` trait is DELETED; getters inlined in `Cookie.php`.
+- [ ] `CookieSnapshot` VO exists; `CookieStateAssertions` extracted.
+- [ ] **`Cookie.php` ≤ 250 LoC.**
+- [ ] `StockChangeReason` enum exists (PHP 8.1 native); used by `Cookie::changeStock()`.
+- [ ] `ErrorCodes::COOKIE_STATE_NOT_PERSISTED = 403` used by `assertPersisted()`.
+- [ ] `assertPersisted` carries `@phpstan-assert non-null $this->id`.
+- [ ] `test_cookie_repository_does_not_dispatch_pulled_events` passes.
+- [ ] `test_dispatch_count_equals_pullevents_count` passes.
+- [ ] Every `handle()` method is ≤ 20 lines.
+- [ ] All four command handlers emit identical snake_case failure-log shapes.
+- [ ] `RestoreCookieHandler` uses `DomainException` not `\RuntimeException`.
+- [ ] `RestoreCookieCommand` field is `$id`.
+- [ ] `CreateCookieHandler::determineErrorCode()` no longer uses `str_contains`.
+- [ ] Controller documents `expectedVersion=null` semantics.
+
+### Multi-currency (E09)
+- [ ] `CookiePrice`, `CookieName`, `CookieStock` ALL implement `JsonSerializable`.
+- [ ] `CookiePrice` factories require `Currency`.
+- [ ] `CookiePrice` bounds recompute per-call from `$currency->decimals`.
+- [ ] `CookieName::equalsIgnoreCase()` is DELETED; equality is case-folded on construction.
+- [ ] Migration `up()` follows the **four-step** sequence: add-nullable → backfill → not-null → drop.
+- [ ] `cookies.price_minor` BIGINT UNSIGNED NOT NULL; `price_currency` CHAR(3) NOT NULL.
+- [ ] Migration declares explicit `ENGINE`/`CHARSET`/`COLLATE`/`ROW_FORMAT`; FKs in place.
+- [ ] `name_active_key` generated column created via raw SQL post-`createTable()`.
+- [ ] Create+Drop read-model migration pair squashed.
+- [ ] `CookieSeeder` dispatches `CreateCookieCommand`.
+- [ ] `CookieStock::fromInt` has `MAX_STOCK` overflow guard.
+- [ ] `tenant_id` is `NOT NULL DEFAULT 0`.
+- [ ] CHECK constraints in place.
+- [ ] `purge(int $id, Actor $actor)` method on `CookieRepository`.
+- [ ] PHPStan array-shape annotation on `toDomainEntity()`.
+
+### Outbox + audit (E12)
+- [ ] `event_outbox.status` is VARCHAR(32) with CHECK; accepts `'unsupported_schema'`.
+- [ ] `event_outbox.event_uuid` exists with UNIQUE.
+- [ ] `event_outbox` has `reserved_at`, `reserved_by`, `tenant_id`.
+- [ ] Relay uses `FOR UPDATE SKIP LOCKED`.
+- [ ] `audit_log` has `entity_type`/`entity_id` with index.
+- [ ] `PiiRegistry` exists; `.claude/documentation/RETENTION.md` exists.
+
+### Handler-side idempotency (E12.5)
+- [ ] `app/Domain/Shared/Events/ProcessedEventStore.php` interface exists.
+- [ ] `DatabaseProcessedEventStore` adapter + migration shipped.
+- [ ] `AtMostOnceHandlerTrait` exists and is consumed by Cookie side-effect handlers (or "future" comments stripped).
+- [ ] CLAUDE.md note: side-effect handlers MUST be at-most-once via `eventId`.
+
+### Repository hygiene (E11)
+- [ ] `CookieRepository.php` ≤ 250 LoC.
+- [ ] `phpcs.xml` `<exclude-pattern>` for `CookieRepository.php` is DELETED; `composer phpcs` proves the cap.
+- [ ] `existsByName*` no longer calls `withDeleted()` or wraps in `LOWER()`.
+- [ ] `delete()`/`restore()` persist entity-decided state (lifecycle owned by E07).
+- [ ] Search uses `addcslashes($term, '%_\\')` before `like()`.
+- [ ] `CookieName::fromTrusted` / `CookiePrice::fromTrusted` exist and are used.
+- [ ] `numberNative=true` sweep complete (no `=== '1'` / `=== '0'` against numeric columns).
+- [ ] `CookieModel::$validationRules` reduced to DB-shape safety only.
+
+### Read-side + views (E10 + E14)
+- [ ] Only one read-side DTO exists (`CookieView` deleted, `ReadModels/` directory removed).
+- [ ] `phpcs.xml` `<exclude-pattern>` for CookieView removed.
+- [ ] `CookieDTO` implements `JsonSerializable` snake_case.
+- [ ] `CookieDTO::id` is non-nullable `int`.
+- [ ] `CookieDTO::fromRow(array)` carries explicit `array{...}` PHPStan shape.
+- [ ] `app/Domain/Shared/DTOs/ReadDTOInterface` exists.
+- [ ] `app/Domain/Shared/Services/MoneyFormatter` exists.
+- [ ] `tests/bootstrap.php` pins `setlocale(LC_ALL, 'C')`.
+- [ ] `app/Language/en/Cookies.php` exists; views use `lang('Cookies.…')`.
+- [ ] Every action button gated by `<?php if (can('cookies.…')) ?>`.
+- [ ] `partials/_pagination.php` invoked from `cookies/index.php`.
+
+### Provider + HTTP (E13)
+- [ ] `CookieServiceProvider` uses constructor injection.
+- [ ] `setRepositories` / `getRepositories` are DELETED (no deprecation; not present).
+- [ ] `DomainServiceProviderInterface` exposes `registerProjections()`.
+- [ ] Route group carries `'filter' => 'web_auth'`; `Filters.php` deny-list cleaned.
+- [ ] `Services::cookieController()` factory binding exists and resolves channeled logger.
+- [ ] `app/Domain/Shared/Logging/RepositoryLogging.php` + `BusinessMetricsLogging.php` exist (moved from Cookie).
+- [ ] No `'Cookie'`/`'cookie'` literal in `Domain/Shared/Logging/`.
+- [ ] `CookieController` is `final` and constructor-injected.
+- [ ] Controller has generic `catch (\Throwable $e)`.
+- [ ] Boolean inputs parsed via `filter_var(..., FILTER_VALIDATE_BOOLEAN)`.
+- [ ] Routes auto-mount fails fast on provider throw.
+
+### Test infrastructure (E18)
+- [ ] No `tests/Unit/**` file imports `LoggerFactory` (deptrac rule).
+- [ ] No `sleep(*)` calls anywhere under `tests/`.
+- [ ] `CookieRepositoryTest` is purely real-DB.
+- [ ] `CookieCrudTest` asserts content not view-paths.
+- [ ] 11 event-handler tests use **Monolog `TestHandler`** (not `NullLogger`).
+- [ ] `test_outbox_skip_locked_under_real_concurrency` uses `pcntl_fork` with fresh per-child connections + barrier.
+- [ ] New tests: `CookieStockTest`, `MoneyFormatterTest`, `ErrorCodesTest`, `CookieFactoryTest`.
+- [ ] New MySQL-conditional integration tests in place.
+
+### Documentation (E15)
+- [ ] `.claude/skills/domain-scaffolding/SKILL.md` lists every file in the current Cookie tree.
+- [ ] SKILL.md documents E05.5 PHPStan rules so scaffold output complies.
+- [ ] SKILL.md documents `AtMostOnceHandlerTrait` for scaffolded event handlers.
+- [ ] SKILL.md documents `Services::fooController()` factory binding.
+- [ ] `COMPLETE_FILE_INVENTORY.md` matches `find app/Domain/Cookie -type f`.
+- [ ] `.claude/documentation/PROJECTIONS.md` + `RETENTION.md` + `PRODUCTION_DEPLOY.md` exist.
+- [ ] `composer docs:cookie-sync` CI guard fails when Cookie changes without scaffolding skill updates.
+
+### PHP 8.3 polish (E17)
+- [ ] `#[\Override]` on every interface/parent-method implementation (~25 sites).
+- [ ] `CookieName` and `CookiePrice` `implements \Stringable`.
+- [ ] `CookieController` and `CookieModel` are `final`.
+- [ ] `CookieName::MIN_LENGTH` / `MAX_LENGTH` typed const types.
+- [ ] All handlers + middleware use `hrtime(true)` (via `elapsedMs`).
+- [ ] `UseFirstClassCallable` sniff active (or documented unavailability).
+- [ ] `test_no_implicit_nullable_types_remain` (G12) passes.
+
+### PHP 8.4 bump (E16 — READY ON BUMP)
+- [ ] `composer.json` requires `^8.4`.
+- [ ] `phpstan.neon` `phpVersion: 80400`; `phpcs.xml` matches.
+- [ ] Slevomat bumped to `^8.20` (or property-hook / `private(set)` deferral documented).
+- [ ] `Cookie::$id` and `$version` are `public private(set)`.
+- [ ] `LogSampler` uses `Random\Randomizer`.
+- [ ] `#[\Deprecated]` on any retained legacy methods.
+- [ ] `#[\SensitiveParameter]` on `AuditMiddleware::digestOf`.
+
+### Final smoke test
+- [ ] Manual: run `/add-domain Product` against the regenerated skill — passes `composer check` unedited.
+- [ ] Generated `ProductController` / `ProductServiceProvider` / `Product` entity have **no remaining literal `'Cookie'` strings**, **no string-keyed DI**, **no `Services::*` per-action lookups**, and **no hand-written timing/logging boilerplate** in handlers.
+- [ ] Generated handlers ship with `AtMostOnceHandlerTrait` consumption.
+- [ ] Generated handlers pass the E05.5 custom PHPStan rules with zero violations.
+
+---
+
+## Specialist review integration log
+
+The table below records exactly where each v2-review correction was
+absorbed into v3.
+
+### DDD review (REVIEW-ddd.md)
+| Review item | Type | Absorbed at |
+|---|---|---|
+| #1 E07 owns lifecycle; E11 persistence only | Required | E07 epic body + E11 acceptance `test_repository_does_not_compute_lifecycle_transitions` |
+| #2 AbstractDomainEvent adds `aggregateType`+`aggregateId` | Required | E04 file list + acceptance `test_event_envelope_exposes_aggregate_type_and_id` |
+| #3 CookieName one equality semantics | Required | E09 body + acceptance `test_cookie_name_equals_is_case_folded_via_normalize_on_construction` |
+| #4 bumpVersion persisted-precondition | Required | E06 acceptance `test_bump_version_rejected_on_transient_entity` |
+| Missing 1 (01/F8 trait) | Missing | E07 (trait DELETED); matrix row updated to E07 |
+| Missing 2 (01/F9 StockChangeReason 8.1) | Missing | Moved to E07; matrix row updated |
+| Missing 3 (JsonSerializable on all VOs) | Missing | E09 file list + acceptance `test_all_cookie_value_objects_implement_json_serializable` |
+| Missing 4 (06/F16 validationRules) | Missing | E11 file list + acceptance `test_model_validation_rules_carry_db_shape_only`; matrix row updated |
+| Reorder E07→E09 graph clarity | Reorder | Dep graph + parallel calendar updated |
+| Reorder E11 before E10 | Reorder | Phase plan + dep graph updated |
+
+### CQRS review (REVIEW-cqrs.md)
+| Review item | Type | Absorbed at |
+|---|---|---|
+| #1 Handler-side idempotency | Required | **NEW E12.5 epic** + CLAUDE.md note |
+| #2 Double-dispatch removal gates | Required | E07 acceptance `test_cookie_repository_does_not_dispatch_pulled_events` + `test_dispatch_count_equals_pullevents_count` |
+| #3 PHPStan-level enforcement of HandlerInterface | Required | **NEW E05.5 epic** |
+| #4 Delete legacy setRepositories/getRepositories | Required | E13 body + acceptance negative-existence tests |
+| Missing 1 (05/F4 typed snapshot VO) | Missing | E04 new `CookieChangeSet` VO + acceptance gate |
+| Missing 2 (05/F8 dev-env warning) | Missing | E04 dispatcher hook + acceptance gate |
+| Missing 3 (04/F11 cache seam) | Missing | E05 hooks `cacheKey`/`cacheTtlSeconds` |
+| Missing 4 (03/F9 expectedVersion) | Missing | E08 controller doc + acceptance gate |
+| Reorder E12 before E10 | Reorder | Phase plan, dep graph, calendar, gh script reorder |
+| Slow-query escalation into E05 gates | Reorder | E05 acceptance `test_query_handler_logs_slow_at_warning_not_info` |
+
+### PHP review (REVIEW-php.md)
+| Review item | Type | Absorbed at |
+|---|---|---|
+| #1 Slevomat typed-const + property-hook sniffs | Required | E02 file list (verify sniffs + bump to `^8.18`) |
+| #2 E16 Slevomat ^8.20 bump | Required | E16 body + acceptance gate (or documented deferral) |
+| #3 G11/G12 explicit allocation | Required | Matrix rows added for G11 (E17) and G12 (E17); explicit `test_no_implicit_nullable_types_remain` |
+| Missing 1 (first-class-callable sniff) | Missing | E17 file list + acceptance |
+| Missing 2 (`elapsedMs` API on base) | Missing | E05 body + acceptance `test_no_microtime_in_handlers` |
+| Missing 3 (`json_validate`/WeakMap 8.3-not-8.4) | Missing | E17 epic body explicit note |
+| Missing 4 (named-args sniff) | Missing | E15 SKILL.md documents the convention |
+| Missing 5 (AbstractDomainEvent rehydration via `new`) | Missing | E04 acceptance note |
+
+### Clean-code review (REVIEW-clean-code.md)
+| Review item | Type | Absorbed at |
+|---|---|---|
+| #1 Explicit `handle()` template | Required | E05 body carries the worked example; acceptance `test_command_handlers_use_first_class_callable` |
+| #2 Cookie.php LoC ≤ 250 | Required | E07 acceptance `test_cookie_entity_loc_under_250`; `CookieSnapshot` VO + `CookieStateAssertions` extraction |
+| #3 Hoist `'Cookie'`/`'cookie'` literals | Required | E13 sub-task with own gates (`test_repository_logging_uses_domain_const`, `test_business_metrics_logging_uses_domain_const`) |
+| Missing SRP risk check on bases | Missing | E05 epic body distributes responsibilities; ≤ 80 LoC base target in compliance table |
+| Missing ReadModels/ directory decision | Missing | E10 deletes the directory; gate `test_read_models_directory_removed` |
+| Missing F8 `@deprecated` deletion | Missing | E09 body — aliases DELETED not retained |
+| Missing F15 docblock-audit regex | Missing | E02 sub-bullet (unit test for the regex) |
+| Missing F12 snake_case decision | Missing | E08 body explicit; acceptance gate greps `duration_ms`/`cookie_id`/`result_count` |
+| Missing F17 `@phpstan-assert` | Missing | E07 body |
+| Missing F19 two-layer clamping | Missing | matrix shows E08; E11 |
+
+### CI4 review (REVIEW-ci4.md)
+| Review item | Type | Absorbed at |
+|---|---|---|
+| #1 Four-step destructive migration | Required | E09 body sketch + acceptance `test_migration_step_b_backfills_zero_loss` |
+| #2 `Services::cookieController()` factory | Required | E13 file list + acceptance gate |
+| #3 Reconnect-safe sessionVariables | Required | E03 file list + acceptance `test_session_variables_pinned_after_reconnect` |
+| Missing `numberNative` sweep | Missing | E11 body + sweep description |
+| Missing routes auto-mount fail-fast | Missing | E13 body + acceptance `test_routes_auto_mount_fails_fast_on_provider_throw` |
+| Missing `Config\Cookie` rename schedule | Missing | gh script — explicit follow-up issue scheduled |
+| Missing `name_active_key` generated col via raw SQL | Missing | E09 file list (raw SQL post-createTable) |
+| Missing CSRF rejection test allocation | Missing | E18 MySQL-conditional list |
+| Risk: filter precedence + permission filter | Risk | E13 acceptance `test_permission_filter_reads_argument_correctly` |
+| Risk: SQLite Forge JSON downgrade | Risk | E12 body explicit MySQL-only note |
+| Risk: provider re-entrance regression | Risk | E13 acceptance `test_event_dispatcher_resolved_during_provider_registration_still_works` |
+| Risk: MigrationsHistoryFixup | Risk | E09 body explicit step |
+
+### Tests review (REVIEW-tests.md)
+| Review item | Type | Absorbed at |
+|---|---|---|
+| #1 docker-compose + GH Actions matrix specifics | Required | E01 file list (matrix yaml, `mysql:8.0.36`, docker-compose.test.yml, `make test-mysql`, pcntl extension) |
+| #2 `pcntl_fork` real concurrency | Required | E18 body commits to Option A (pcntl_fork + per-child connections + barrier) with documented Option B fallback |
+| #3 Monolog `TestHandler` not `NullLogger` | Required | E18 body + acceptance gate |
+| #4 `phpcov merge` gate | Required | E01 acceptance + E18 acceptance |
+| Missing locale pinning | Missing | E10 file list — `tests/bootstrap.php` `setlocale(LC_ALL, 'C')` |
+| Missing `failOnRisky` interaction | Missing | E18 body note — method-level attribute, never class-level |
+| Missing migrate up-down probe | Missing | E01 workflow + acceptance |
+| Missing IntegrationTestCase allocation for E03 | Missing | E03 file list now explicit |
+| Missing rule preventing class-level `AllowMockObjectsWithoutExpectations` | Missing | E01 acceptance (`composer ci` grep/sniff) |
+
+### PHPStan review (REVIEW-phpstan.md)
+| Review item | Type | Absorbed at |
+|---|---|---|
+| #1 Explicit generics + `@phpstan-require-extends` | Required | E05 body carries the sketch + `test_query_bus_dispatch_return_type_is_narrowed_by_phpstan` (TypeInferenceTestCase fixture) |
+| #2 Delete two `@phpstan-ignore method.notFound` | Required | E05 acceptance lists file:line entries explicitly |
+| #3 Baseline policy | Required | E02 body — no baseline without paired burn-down |
+| #4 Array-shape annotations on `fromRow()` | Required | E10 acceptance — zero `offsetAccess.notFound`; E09 `toDomainEntity` shape |
+| #5 Cross-check existing `ignoreErrors` block | Required | E05 acceptance — attempt removal; document survivors |
+| #6 Flip `reportUnmatchedIgnoredErrors: true` | Required | E02 body + checklist |
+| #7 Generic covariance for nullable TResult | Required | E05 epic body explicit |
+
+### Slevomat review (REVIEW-slevomat.md)
+| Review item | Type | Absorbed at |
+|---|---|---|
+| #1 Delete `<exclude-pattern>` lines after fix | Required | E08, E10, E11 acceptance gates each name the file to delete and require `composer phpcs` to pass without the exclude |
+| #2 Abstract base `UnusedParameter` | Required | E05 body declares hook methods abstract OR scoped suppression; checked at acceptance |
+| #3 Patch or delete `bin/docblocks-generate` | Required | E02 body — explicit choice; covered by checklist |
+| Optional `UselessFunctionDocComment` sniff | Suggestion | E02 body — added as optional follow-up |
+| `Generic.PHP.ForbiddenFunctions mt_rand` sniff | Suggestion | E05 (deferred to E17/E18 to keep E05 scope tight; documented) |
+| `vendor/bin/phpcbf` per-epic | Suggestion | Documented as workflow convention; not a per-epic gate |
+
