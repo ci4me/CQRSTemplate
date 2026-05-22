@@ -91,14 +91,30 @@ abstract class AbstractQueryHandler
     /**
      * Decide whether the query should be logged + at which level.
      *
-     * Subclasses CAN override to honour a per-handler policy port (e.g.
-     * LogConfigPort). Default behaviour: log slow queries at `warning`,
-     * other queries at `info` only when the sampler fires.
+     * Subclasses CAN override to honour a per-handler policy (e.g.
+     * force-log search queries, force-log not-found results). Receives
+     * the full query+result+duration triple so subclass decisions can
+     * inspect the read-side output.
      *
-     * @param float $durationMs Wall time.
+     * Default behaviour: log slow queries (the private
+     * {@see logQueryExecution()} promotes those to `warning`), other
+     * queries at `info` only when the sampler fires.
+     *
+     * E08 widened the signature to `(query, result, durationMs)` from
+     * the original duration-only shape so Cookie's GetCookieByIdHandler
+     * (force-log nulls under the 'errors' policy) and
+     * GetCookiesPaginatedHandler (force-log search queries) can implement
+     * their slice-specific predicates without overriding the private
+     * dispatch site.
+     *
+     * @param object $query      The query DTO.
+     * @param mixed  $result     The doHandle return value.
+     * @param float  $durationMs Wall time.
      */
-    protected function shouldLog(float $durationMs): bool
+    protected function shouldLog(object $query, mixed $result, float $durationMs): bool
     {
+        unset($query, $result);
+
         return $this->isSlowQuery($durationMs) || $this->sampler->shouldSample();
     }
 
@@ -169,16 +185,14 @@ abstract class AbstractQueryHandler
      */
     private function logQueryExecution(object $query, mixed $result, float $durationMs): void
     {
-        $isSlow = $this->isSlowQuery($durationMs);
-
-        if (!$isSlow && !$this->sampler->shouldSample()) {
+        if (!$this->shouldLog($query, $result, $durationMs)) {
             return;
         }
 
         $context = $this->logContext($query, $result);
         $context['duration_ms'] = round($durationMs, 2);
 
-        if ($isSlow) {
+        if ($this->isSlowQuery($durationMs)) {
             $context['slow_query'] = true;
             $this->logger->warning('Slow query executed', $context);
 

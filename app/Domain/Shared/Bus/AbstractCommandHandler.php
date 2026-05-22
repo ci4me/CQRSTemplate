@@ -74,6 +74,7 @@ abstract class AbstractCommandHandler
 
         try {
             $result = $this->doHandle($command);
+            $this->postCommit($command, $result);
             $durationMs = $this->durationMs($startTime);
             $this->logSuccess($durationMs, $this->resultId($result));
 
@@ -85,12 +86,75 @@ abstract class AbstractCommandHandler
     }
 
     /**
+     * Hook called AFTER {@see doHandle()} returns successfully and BEFORE
+     * the success line is logged.
+     *
+     * Concrete subclasses use this to drain entity-raised events from an
+     * aggregate the doHandle returned (or referenced) and hand them to
+     * the dispatcher, so the call site for {@see \App\Domain\Shared\Aggregate\AggregateRoot::pullEvents()}
+     * lives in exactly one place per handler. By keeping the drain INSIDE
+     * the timing window we ensure event dispatch latency shows up in the
+     * handler's `duration_ms` figure rather than being invisible.
+     *
+     * Critical invariant: implementations MUST drain only ONCE — the
+     * repository no longer drains (E07), so the handler's drain is the
+     * single source of dispatch. Closes 03/F1.
+     *
+     * The default implementation is a no-op so handlers that don't deal
+     * with an aggregate (e.g. CreateCookieHandler, which dispatches its
+     * event manually because the entity hasn't been persisted yet at the
+     * point the id becomes known) can ignore this hook.
+     *
+     * @param object $command The command DTO (for context, mostly unused).
+     * @param mixed  $result  Whatever doHandle returned (e.g. an int id).
+     */
+    protected function postCommit(object $command, mixed $result): void
+    {
+        unset($command, $result);
+    }
+
+    /**
+     * Helper used by subclass postCommit() implementations: drain every
+     * event the aggregate raised + dispatch each via the subclass's own
+     * dispatcher reference.
+     *
+     * Lives on the base so the drain shape is consistent across every
+     * Cookie handler — and so future domains can reuse it without
+     * re-implementing the `foreach … dispatch` loop. The base does NOT
+     * own the dispatcher (constructor injection happens in the subclass
+     * because not every handler needs one), which is why this method is
+     * intentionally a static helper rather than an instance method
+     * pulling from a base-level field.
+     *
+     * @param iterable<object>                                     $events     Output of `$aggregate->pullEvents()`.
+     * @param \App\Domain\Shared\Events\EventDispatcherInterface  $dispatcher Concrete dispatcher (typically injected
+     *                                                                         on the subclass).
+     */
+    final protected function dispatchPulledEvents(
+        iterable $events,
+        \App\Domain\Shared\Events\EventDispatcherInterface $dispatcher
+    ): void {
+        foreach ($events as $event) {
+            $dispatcher->dispatch($event);
+        }
+    }
+
+    /**
      * Subclass-specific business logic. Called from {@see handle()}.
      *
+     * The native return type is intentionally OMITTED for the same reason
+     * {@see CommandHandlerInterface::handle()} omits it: concrete handlers
+     * declare their precise return shape (`int` for Create*, `void` for
+     * the others) without tripping PHP's incompatibility rule between
+     * `void` and `mixed`. PHPStan recovers the precise return via the
+     * subclass's own `@return` tag.
+     *
      * @param object $command The (narrowed) command DTO.
-     * @return mixed Subclass-specific result.
+     * @return mixed Subclass-specific result (int / void / value object).
      */
-    abstract protected function doHandle(object $command): mixed;
+    // phpcs:disable SlevomatCodingStandard.TypeHints.ReturnTypeHint
+    abstract protected function doHandle(object $command);
+    // phpcs:enable SlevomatCodingStandard.TypeHints.ReturnTypeHint
 
     /**
      * Domain label used in log payloads (e.g. 'Cookie').

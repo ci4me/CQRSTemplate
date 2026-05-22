@@ -60,4 +60,12 @@ final class ErrorCodes
     public const int COOKIE_REPOSITORY_SAVE_FAILED = 501;
     public const int COOKIE_REPOSITORY_DELETE_FAILED = 502;
     public const int COOKIE_REPOSITORY_QUERY_FAILED = 503;
+    public const int COOKIE_RESTORE_FAILED = 504;
+
+    // Validation errors continued (1xx range) — query-shape caps surface
+    // here so they share the `Validation` family in the response payload.
+    // (E08 — closes 04/F2, 04/F4, 04/F6.)
+    public const int COOKIE_QUERY_RESULT_LIMIT_EXCEEDED = 110;
+    public const int COOKIE_QUERY_PAGE_LIMIT_EXCEEDED = 111;
+    public const int COOKIE_QUERY_SEARCH_TERM_TOO_LONG = 112;
 }

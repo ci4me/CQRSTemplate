@@ -151,6 +151,29 @@ parameters:
         -
             identifier: return.unusedType
             path: app/Infrastructure/I18n/LocaleResolver.php
+        # E08 — Cookie command/query handlers extend AbstractCommandHandler /
+        # AbstractQueryHandler. Their constructors prepend domain-specific
+        # collaborators (repository, eventDispatcher) before forwarding
+        # logger/clock/sampler to parent via parent::__construct(). PHP
+        # itself doesn't enforce LSP on constructors, but PHPStan flags
+        # the shape difference. The doHandle() / shouldLog() / logContext()
+        # overrides similarly narrow `object` → concrete command/query
+        # class via @param — which is the documented pattern on
+        # {@see CommandHandlerInterface} / {@see QueryHandlerInterface},
+        # but flagged because the native parameter type widens between
+        # parent and subclass.
+        -
+            identifier: method.childParameterType
+            path: app/Domain/Cookie/Commands/
+        -
+            identifier: method.childParameterType
+            path: app/Domain/Cookie/Queries/
+        -
+            identifier: parameter.notOptional
+            path: app/Domain/Cookie/Commands/
+        -
+            identifier: parameter.notOptional
+            path: app/Domain/Cookie/Queries/
     bootstrapFiles:
         - phpstan-bootstrap.php
 
