@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Infrastructure\Bus;
 
+use App\Domain\Shared\Bus\CommandHandlerInterface;
 use App\Infrastructure\Bus\CommandBus;
 use App\Infrastructure\Bus\CommandMiddlewareInterface;
 use Tests\Support\UnitTestCase;
@@ -42,13 +43,14 @@ final class CommandBusMiddlewareTest extends UnitTestCase
             }
         });
 
-        $bus->register(\stdClass::class, new class ($log) {
+        $bus->register(\stdClass::class, new class ($log) implements CommandHandlerInterface {
             /** @param list<string> $log */
             public function __construct(private array &$log)
             {
             }
-            public function handle(\stdClass $c): string
+            public function handle(object $command): string
             {
+                unset($command);
                 $this->log[] = 'handler';
                 return 'ok';
             }
@@ -74,9 +76,10 @@ final class CommandBusMiddlewareTest extends UnitTestCase
             }
         });
 
-        $bus->register(\stdClass::class, new class {
-            public function handle(\stdClass $c): string
+        $bus->register(\stdClass::class, new class implements CommandHandlerInterface {
+            public function handle(object $command): string
             {
+                unset($command);
                 return 'should-not-run';
             }
         });
@@ -93,9 +96,10 @@ final class CommandBusMiddlewareTest extends UnitTestCase
                 throw new \RuntimeException('mw boom');
             }
         });
-        $bus->register(\stdClass::class, new class {
-            public function handle(\stdClass $c): string
+        $bus->register(\stdClass::class, new class implements CommandHandlerInterface {
+            public function handle(object $command): string
             {
+                unset($command);
                 return 'never';
             }
         });

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\User\Queries\GetUserByEmail;
 
+use App\Domain\Shared\Bus\QueryHandlerInterface;
 use App\Domain\Shared\Ports\LogConfigPort;
 use App\Domain\User\DTOs\UserDTO;
 use App\Domain\User\Entities\User;
@@ -13,8 +14,10 @@ use Psr\Log\LoggerInterface;
 
 /**
  * GetUserByEmailHandler.
+ *
+ * @implements QueryHandlerInterface<GetUserByEmailQuery, UserDTO|null>
  */
-final readonly class GetUserByEmailHandler
+final readonly class GetUserByEmailHandler implements QueryHandlerInterface
 {
     /**
      * __construct.
@@ -28,8 +31,10 @@ final readonly class GetUserByEmailHandler
 
     /**
      * handle.
+     *
+     * @param GetUserByEmailQuery $query
      */
-    public function handle(GetUserByEmailQuery $query): ?UserDTO
+    public function handle(object $query): ?UserDTO
     {
         $startTime = microtime(true);
 
