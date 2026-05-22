@@ -62,6 +62,7 @@
         "phpstan": "phpstan analyse",
         "phpcs": "phpcs",
         "phpcbf": "phpcbf",
+        "deptrac": "deptrac analyse --no-progress",
         "gitleaks": "@php -r \"passthru('command -v gitleaks >/dev/null 2>&1 && gitleaks detect --no-banner --redact --staged || echo gitleaks-not-installed-skipping');\"",
         "docblocks:generate": "@php bin/docblocks-generate app/",
         "docblocks:audit": "@php bin/docblocks-audit",
@@ -69,19 +70,22 @@
             "@docblocks:audit",
             "@phpcs",
             "@phpstan",
+            "@deptrac",
             "@test"
         ],
         "ci": [
             "@docblocks:audit",
             "@phpcs",
             "@phpstan",
+            "@deptrac",
             "@test:clover"
         ]
     },
     "scripts-descriptions": {
         "setup-hooks": "Wire .githooks/ as core.hooksPath (idempotent; runs automatically on install/update).",
-        "check": "Run PHPStan + PHPCS + PHPUnit + docblocks audit locally before pushing.",
+        "check": "Run docblocks audit + PHPCS + PHPStan + deptrac + PHPUnit locally before pushing.",
         "ci": "CI variant of check (with Clover coverage output).",
+        "deptrac": "Run deptrac to enforce architectural layer boundaries (zero violations enforced).",
         "docblocks:generate": "Walk app/ and insert PHPDoc stubs on every class/method/property that lacks one. Reuses the AST so existing docblocks are preserved.",
         "docblocks:audit": "Fail the build if any auto-generated docblock markers remain. AI agents and developers must replace each placeholder with a real description before committing."
     }
