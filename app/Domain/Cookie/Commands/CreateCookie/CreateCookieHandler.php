@@ -10,6 +10,7 @@ use App\Domain\Cookie\Events\CookieCreated\CookieCreatedEvent;
 use App\Domain\Cookie\Ports\CookieRepositoryInterface;
 use App\Domain\Cookie\ValueObjects\CookieName;
 use App\Domain\Cookie\ValueObjects\CookiePrice;
+use App\Domain\Shared\Events\AbstractDomainEvent;
 use App\Domain\Shared\Events\EventDispatcherInterface;
 use App\Domain\Shared\Exceptions\DomainException;
 use App\Domain\Shared\Exceptions\ValidationException;
@@ -101,12 +102,19 @@ final readonly class CreateCookieHandler
             // Persist to database; stamp created_by/updated_by audit columns.
             $cookieId = $this->repository->save($cookie, $command->createdBy);
 
-            // Dispatch domain event
+            // Dispatch domain event with the AbstractDomainEvent envelope.
+            // The actorId comes from the audit-stamping Actor on the
+            // command — system actors collapse to null (the envelope's
+            // contract is "null for system events"), human actors carry
+            // their user id.
             $this->eventDispatcher->dispatch(new CookieCreatedEvent(
+                eventId: AbstractDomainEvent::newId(),
+                occurredAt: new \DateTimeImmutable('now', new \DateTimeZone('UTC')),
+                actorId: $command->createdBy->isSystem() ? null : $command->createdBy->id,
                 cookieId: $cookieId,
                 cookieName: $name->getValue(),
                 cookiePrice: $price->toDecimalString(),
-                initialStock: $command->stock
+                initialStock: $command->stock,
             ));
 
             $durationMs = (microtime(true) - $startTime) * 1000;

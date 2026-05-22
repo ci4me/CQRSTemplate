@@ -7,6 +7,7 @@ namespace App\Domain\Cookie\Commands\RestoreCookie;
 use App\Domain\Cookie\ErrorCodes;
 use App\Domain\Cookie\Events\CookieRestored\CookieRestoredEvent;
 use App\Domain\Cookie\Ports\CookieRepositoryInterface;
+use App\Domain\Shared\Events\AbstractDomainEvent;
 use App\Domain\Shared\Events\EventDispatcherInterface;
 use App\Domain\Shared\Exceptions\DomainException;
 use Psr\Log\LoggerInterface;
@@ -68,11 +69,14 @@ final readonly class RestoreCookieHandler
             'restored_by' => $command->restoredBy->id,
         ]);
 
+        // The envelope's `occurredAt` supersedes the legacy `restoredAt`
+        // string field (slice 05/F3).
         $this->eventDispatcher->dispatch(
             new CookieRestoredEvent(
+                eventId: AbstractDomainEvent::newId(),
+                occurredAt: new \DateTimeImmutable('now', new \DateTimeZone('UTC')),
+                actorId: $command->restoredBy->isSystem() ? null : $command->restoredBy->id,
                 cookieId: $command->cookieId,
-                restoredBy: $command->restoredBy->id,
-                restoredAt: (new \DateTimeImmutable())->format('c')
             )
         );
     }

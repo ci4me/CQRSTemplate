@@ -72,11 +72,18 @@ abstract readonly class AbstractDomainEvent implements DomainEventInterface, \Js
 
     /**
      * Generate a fresh UUIDv7 string suitable for the `eventId` envelope
-     * field. Centralised so callers do not couple to ramsey/uuid directly.
+     * field. Centralised so callers (entities, command handlers) do not
+     * couple to ramsey/uuid directly — substituting the id generator in a
+     * future refactor only touches this one place.
+     *
+     * Exposed as `public static` rather than `protected` so an aggregate
+     * raising an event from outside the AbstractDomainEvent hierarchy can
+     * still mint a canonical id (the Cookie entity is the reference call
+     * site).
      *
      * @return string UUIDv7 in canonical 8-4-4-4-12 hexadecimal form.
      */
-    protected static function newId(): string
+    public static function newId(): string
     {
         return Uuid::uuid7()->toString();
     }
