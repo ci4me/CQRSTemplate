@@ -6,6 +6,8 @@ namespace App\Domain\Cookie\Queries\GetAllCookies;
 
 use App\Domain\Cookie\DTOs\CookieDTO;
 use App\Domain\Cookie\Ports\CookieQueryRepositoryInterface;
+use App\Domain\Shared\Bus\LogSampler;
+use App\Domain\Shared\Bus\QueryHandlerInterface;
 use App\Domain\Shared\Ports\LogConfigPort;
 use Psr\Log\LoggerInterface;
 
@@ -26,8 +28,9 @@ use Psr\Log\LoggerInterface;
  * - Slow queries always logged regardless of level
  *
  * @package App\Domain\Cookie\Queries\GetAllCookies
+ * @implements QueryHandlerInterface<GetAllCookiesQuery, array<int, CookieDTO>>
  */
-final readonly class GetAllCookiesHandler
+final readonly class GetAllCookiesHandler implements QueryHandlerInterface
 {
     /**
      * Create a new GetAllCookiesHandler.
@@ -49,7 +52,7 @@ final readonly class GetAllCookiesHandler
      * @param GetAllCookiesQuery $query The query
      * @return array<int, CookieDTO> Array of cookie DTOs
      */
-    public function handle(GetAllCookiesQuery $query): array
+    public function handle(object $query): array
     {
         $startTime = microtime(true);
 
@@ -129,10 +132,13 @@ final readonly class GetAllCookiesHandler
     /**
      * Determine if query should be sampled for logging.
      *
+     * Delegates to the shared {@see LogSampler} — see GetCookieByIdHandler
+     * for the rationale (random_int over the Mersenne Twister).
+     *
      * @return bool True if query should be logged based on sampling rate
      */
     private function shouldSample(): bool
     {
-        return mt_rand() / mt_getrandmax() < $this->loggingConfig->samplingRate();
+        return (new LogSampler($this->loggingConfig->samplingRate()))->shouldSample();
     }
 }

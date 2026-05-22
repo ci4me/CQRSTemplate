@@ -200,6 +200,13 @@
              (Phase 3). They legitimately map raw DB rows (array<string, mixed>)
              into domain entities/DTOs at the persistence boundary. -->
         <exclude-pattern>app/Domain/*/Repositories/</exclude-pattern>
+        <!-- Shared command/query bus base classes are type-erased at the bus
+             boundary by design. CommandHandlerInterface<TCommand, TResult>
+             and AbstractCommandHandler use `mixed` as the native return so
+             subclasses can specialise via @template parameters (PHPStan
+             still narrows end-to-end). Treating the bus seam like a Port
+             is consistent with the exclusions above. -->
+        <exclude-pattern>app/Domain/Shared/Bus/</exclude-pattern>
     </rule>
 
     <!-- Identity-only comparisons. `==` allows coercion surprises that

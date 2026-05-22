@@ -10,6 +10,7 @@ use App\Domain\Cookie\Events\CookieCreated\CookieCreatedEvent;
 use App\Domain\Cookie\Ports\CookieRepositoryInterface;
 use App\Domain\Cookie\ValueObjects\CookieName;
 use App\Domain\Cookie\ValueObjects\CookiePrice;
+use App\Domain\Shared\Bus\CommandHandlerInterface;
 use App\Domain\Shared\Events\EventDispatcherInterface;
 use App\Domain\Shared\Exceptions\DomainException;
 use App\Domain\Shared\Exceptions\ValidationException;
@@ -38,8 +39,9 @@ use Psr\Log\LoggerInterface;
  * - Can be decorated with cross-cutting concerns (logging, transactions)
  *
  * @package App\Domain\Cookie\Commands\CreateCookie
+ * @implements CommandHandlerInterface<CreateCookieCommand, int>
  */
-final readonly class CreateCookieHandler
+final readonly class CreateCookieHandler implements CommandHandlerInterface
 {
     /**
      * Create a new CreateCookieHandler.
@@ -62,7 +64,7 @@ final readonly class CreateCookieHandler
      * @return int The ID of the newly created cookie
      * @throws DomainException If business rules are violated
      */
-    public function handle(CreateCookieCommand $command): int
+    public function handle(object $command): int
     {
         $startTime = microtime(true);
 

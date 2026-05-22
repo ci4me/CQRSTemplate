@@ -80,6 +80,12 @@ final class CookieServiceProvider implements DomainServiceProviderInterface
      *
      * Commands represent write operations that change state.
      *
+     * Contract (post-E05): every handler passed to `$commandBus->register()`
+     * MUST implement {@see \App\Domain\Shared\Bus\CommandHandlerInterface}.
+     * The bus typehints the interface so any future Cookie handler that
+     * forgets the implements clause fails at boot with a PHP TypeError
+     * instead of at the first dispatch call site.
+     *
      * @param CommandBus $commandBus The command bus
      * @throws \RuntimeException
      */
@@ -126,6 +132,10 @@ final class CookieServiceProvider implements DomainServiceProviderInterface
      * Register all query handlers for the Cookie domain.
      *
      * Queries represent read operations that return data.
+     *
+     * Contract (post-E05): every handler passed to `$queryBus->register()`
+     * MUST implement {@see \App\Domain\Shared\Bus\QueryHandlerInterface}.
+     * Same register-time enforcement as registerCommands().
      *
      * @param QueryBus $queryBus The query bus
      * @throws \RuntimeException

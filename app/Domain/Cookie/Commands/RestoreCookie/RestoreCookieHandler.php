@@ -7,14 +7,17 @@ namespace App\Domain\Cookie\Commands\RestoreCookie;
 use App\Domain\Cookie\ErrorCodes;
 use App\Domain\Cookie\Events\CookieRestored\CookieRestoredEvent;
 use App\Domain\Cookie\Ports\CookieRepositoryInterface;
+use App\Domain\Shared\Bus\CommandHandlerInterface;
 use App\Domain\Shared\Events\EventDispatcherInterface;
 use App\Domain\Shared\Exceptions\DomainException;
 use Psr\Log\LoggerInterface;
 
 /**
  * RestoreCookieHandler.
+ *
+ * @implements CommandHandlerInterface<RestoreCookieCommand, void>
  */
-final readonly class RestoreCookieHandler
+final readonly class RestoreCookieHandler implements CommandHandlerInterface
 {
     /**
      * __construct.
@@ -29,10 +32,11 @@ final readonly class RestoreCookieHandler
     /**
      * handle.
      *
+     * @param RestoreCookieCommand $command
      * @throws DomainException
      * @throws \RuntimeException
      */
-    public function handle(RestoreCookieCommand $command): void
+    public function handle(object $command): void
     {
         $cookie = $this->repository->findByIdWithTrashed($command->cookieId);
 
