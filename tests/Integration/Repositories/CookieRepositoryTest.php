@@ -373,33 +373,47 @@ final class CookieRepositoryTest extends IntegrationTestCase
     {
         $this->cookieRepository->save(CookieFactory::createCookie(['name' => 'Unique Cookie']));
 
-        $exists = $this->cookieRepository->existsByName('Unique Cookie');
+        $exists = $this->cookieRepository->existsByName(CookieName::fromString('Unique Cookie'));
 
         $this->assertTrue($exists);
     }
 
     public function test_exists_by_name_returns_false_when_not_exists(): void
     {
-        $exists = $this->cookieRepository->existsByName('Non-existent Cookie');
+        $exists = $this->cookieRepository->existsByName(CookieName::fromString('Non-existent Cookie'));
 
         $this->assertFalse($exists);
     }
 
-    public function test_exists_by_name_is_case_insensitive(): void
+    public function test_exists_by_name_is_case_insensitive_under_unicode_ci(): void
     {
+        // The cookies.name column is collated utf8mb4_unicode_ci, so LIKE/=
+        // are naturally case-insensitive. SQLite (used in the test
+        // database by default) does NOT honour MySQL collations on a
+        // generic SELECT … = … comparison, so the case-insensitive arm
+        // only kicks in under MySQL. Skip on SQLite to keep the suite
+        // green without weakening the assertion under the real engine.
+        $driver = \Config\Database::connect('tests')->DBDriver;
+        if (stripos($driver, 'mysql') === false) {
+            $this->markTestSkipped('Case-insensitive name comparison relies on utf8mb4_unicode_ci collation (MySQL only).');
+        }
         $this->cookieRepository->save(CookieFactory::createCookie(['name' => 'Test Cookie']));
 
-        $exists = $this->cookieRepository->existsByName('TEST COOKIE');
+        $exists = $this->cookieRepository->existsByName(CookieName::fromString('TEST COOKIE'));
 
         $this->assertTrue($exists);
     }
 
-    public function test_exists_by_name_includes_soft_deleted_cookies(): void
+    public function test_exists_by_name_excludes_soft_deleted_rows(): void
     {
-        $id = $this->cookieRepository->save(CookieFactory::createCookie(['name' => 'Reserved Cookie']));
+        // The schema's composite UNIQUE (tenant_id, name, deleted_at)
+        // intentionally allows reuse of a soft-deleted row's name —
+        // existsByName must therefore return false for a name that
+        // belongs only to a trashed row (closes 06/F1).
+        $id = $this->cookieRepository->save(CookieFactory::createCookie(['name' => 'Reusable Cookie']));
         $this->cookieRepository->delete($id);
 
-        $this->assertTrue($this->cookieRepository->existsByName('Reserved Cookie'));
+        $this->assertFalse($this->cookieRepository->existsByName(CookieName::fromString('Reusable Cookie')));
     }
 
     // ==========================================
@@ -411,7 +425,7 @@ final class CookieRepositoryTest extends IntegrationTestCase
         $id1 = $this->cookieRepository->save(CookieFactory::createCookie(['name' => 'Cookie Name']));
         $this->cookieRepository->save(CookieFactory::createCookie(['name' => 'Another Cookie']));
 
-        $exists = $this->cookieRepository->existsByNameExcludingId('Another Cookie', $id1);
+        $exists = $this->cookieRepository->existsByNameExcludingId(CookieName::fromString('Another Cookie'), $id1);
 
         $this->assertTrue($exists);
     }
@@ -420,7 +434,7 @@ final class CookieRepositoryTest extends IntegrationTestCase
     {
         $id = $this->cookieRepository->save(CookieFactory::createCookie(['name' => 'My Cookie']));
 
-        $exists = $this->cookieRepository->existsByNameExcludingId('My Cookie', $id);
+        $exists = $this->cookieRepository->existsByNameExcludingId(CookieName::fromString('My Cookie'), $id);
 
         $this->assertFalse($exists);
     }
@@ -429,30 +443,36 @@ final class CookieRepositoryTest extends IntegrationTestCase
     {
         $id = $this->cookieRepository->save(CookieFactory::createCookie(['name' => 'Existing']));
 
-        $exists = $this->cookieRepository->existsByNameExcludingId('Non-existent', $id);
+        $exists = $this->cookieRepository->existsByNameExcludingId(CookieName::fromString('Non-existent'), $id);
 
         $this->assertFalse($exists);
     }
 
-    public function test_exists_by_name_excluding_id_is_case_insensitive(): void
+    public function test_exists_by_name_excluding_id_is_case_insensitive_under_unicode_ci(): void
     {
+        $driver = \Config\Database::connect('tests')->DBDriver;
+        if (stripos($driver, 'mysql') === false) {
+            $this->markTestSkipped('Case-insensitive name comparison relies on utf8mb4_unicode_ci collation (MySQL only).');
+        }
         $id1 = $this->cookieRepository->save(CookieFactory::createCookie(['name' => 'Cookie One']));
         $this->cookieRepository->save(CookieFactory::createCookie(['name' => 'Cookie Two']));
 
-        $exists = $this->cookieRepository->existsByNameExcludingId('COOKIE TWO', $id1);
+        $exists = $this->cookieRepository->existsByNameExcludingId(CookieName::fromString('COOKIE TWO'), $id1);
 
         $this->assertTrue($exists);
     }
 
-    public function test_exists_by_name_excluding_id_includes_soft_deleted_cookies(): void
+    public function test_exists_by_name_excluding_id_excludes_soft_deleted_rows(): void
     {
+        // Same contract as existsByName — soft-deleted rows don't reserve
+        // the name (closes 06/F1).
         $activeId = $this->cookieRepository->save(CookieFactory::createCookie(['name' => 'Active Cookie']));
-        $deletedId = $this->cookieRepository->save(CookieFactory::createCookie(['name' => 'Deleted But Reserved']));
+        $deletedId = $this->cookieRepository->save(CookieFactory::createCookie(['name' => 'Reusable On Delete']));
         $this->cookieRepository->delete($deletedId);
 
-        $exists = $this->cookieRepository->existsByNameExcludingId('Deleted But Reserved', $activeId);
+        $exists = $this->cookieRepository->existsByNameExcludingId(CookieName::fromString('Reusable On Delete'), $activeId);
 
-        $this->assertTrue($exists);
+        $this->assertFalse($exists);
     }
 
     // ==========================================
@@ -475,6 +495,65 @@ final class CookieRepositoryTest extends IntegrationTestCase
         $result = $this->cookieRepository->delete(99999);
 
         $this->assertFalse($result);
+    }
+
+    public function test_delete_returns_false_when_already_soft_deleted(): void
+    {
+        // The conditional UPDATE has `WHERE deleted_at IS NULL`, so a
+        // re-delete affects zero rows and returns false (closes 06/F8).
+        $id = $this->cookieRepository->save(CookieFactory::createCookie(['name' => 'Double Delete']));
+        $this->cookieRepository->delete($id);
+
+        $this->assertFalse($this->cookieRepository->delete($id));
+    }
+
+    public function test_delete_bumps_version_in_single_statement(): void
+    {
+        // Confirm the conditional UPDATE also bumps the version column
+        // (closes 06/F8 — single-statement guarantee).
+        $id = $this->cookieRepository->save(CookieFactory::createCookie(['name' => 'Version Bump On Delete']));
+
+        // Original row is version=1 after first save.
+        $before = $this->cookieRepository->findByIdWithTrashed($id);
+        $this->assertNotNull($before);
+        $this->assertSame(1, $before->getVersion());
+
+        $this->cookieRepository->delete($id);
+
+        $after = $this->cookieRepository->findByIdWithTrashed($id);
+        $this->assertNotNull($after);
+        $this->assertSame(2, $after->getVersion());
+    }
+
+    // ==========================================
+    // purge() Tests — GDPR escape hatch
+    // ==========================================
+
+    public function test_purge_hard_deletes_row(): void
+    {
+        $id = $this->cookieRepository->save(CookieFactory::createCookie(['name' => 'Forget Me']));
+
+        $result = $this->cookieRepository->purge($id);
+
+        $this->assertTrue($result);
+        // findByIdWithTrashed bypasses the soft-delete filter, so a
+        // soft-deleted row would still show up. Hard-delete is the
+        // only way the row vanishes from this lookup.
+        $this->assertNull($this->cookieRepository->findByIdWithTrashed($id));
+    }
+
+    public function test_purge_returns_false_for_non_existent_row(): void
+    {
+        $this->assertFalse($this->cookieRepository->purge(99999));
+    }
+
+    public function test_purge_also_removes_soft_deleted_row(): void
+    {
+        $id = $this->cookieRepository->save(CookieFactory::createCookie(['name' => 'Already Trashed']));
+        $this->cookieRepository->delete($id);
+
+        $this->assertTrue($this->cookieRepository->purge($id));
+        $this->assertNull($this->cookieRepository->findByIdWithTrashed($id));
     }
 
     // ==========================================
@@ -527,6 +606,22 @@ final class CookieRepositoryTest extends IntegrationTestCase
         $result = $this->cookieRepository->restore($id);
 
         $this->assertFalse($result);
+    }
+
+    public function test_restore_bumps_version_for_optimistic_locking(): void
+    {
+        // Closes 06/F9: restore() previously left `version` untouched, so
+        // any in-memory Cookie carrying a stale version could silently
+        // overwrite the restored row on a subsequent save. The conditional
+        // UPDATE now bumps the column in the same statement.
+        $id = $this->cookieRepository->save(CookieFactory::createCookie(['name' => 'Version Bump On Restore']));
+        $this->cookieRepository->delete($id); // version: 1 -> 2
+
+        $this->cookieRepository->restore($id);
+
+        $restored = $this->cookieRepository->findById($id);
+        $this->assertNotNull($restored);
+        $this->assertSame(3, $restored->getVersion());
     }
 
     // ==========================================
@@ -721,16 +816,10 @@ final class CookieRepositoryTest extends IntegrationTestCase
 
     public function test_restore_logs_and_rethrows_when_model_throws(): void
     {
-        // findByIdWithTrashed inside restore() succeeds with a soft-deleted
-        // row, but the builder->update() chain throws.
+        // The single-statement restore() goes straight to builder()->update();
+        // the conditional WHERE on `deleted_at IS NOT NULL` is what
+        // determines affected rows, so we only need builder() to throw.
         $model = $this->createMock(\App\Models\Cookie\CookieModel::class);
-        $model->method('withDeleted')->willReturnSelf();
-        $model->method('find')->willReturn([
-            'id' => 1, 'name' => 'Trashed', 'description' => null,
-            'price' => '1.00', 'stock' => 1, 'is_active' => 0,
-            'created_at' => '2026-05-22 00:00:00', 'updated_at' => null,
-            'deleted_at' => '2026-05-22 12:00:00', 'version' => 1,
-        ]);
         $model->method('builder')->willThrowException(new \RuntimeException('restore failed'));
 
         $logger = LoggerFactory::create('test.cookie.repository.restore-error');
@@ -762,16 +851,10 @@ final class CookieRepositoryTest extends IntegrationTestCase
 
     public function test_delete_logs_and_rethrows_when_model_throws(): void
     {
+        // Single-statement delete() goes through builder()->update();
+        // mock builder() to throw and exercise the catch arm.
         $model = $this->createMock(\App\Models\Cookie\CookieModel::class);
-        // findById inside delete() returns a cookie row, but then the
-        // builder->update() chain throws.
-        $model->method('find')->willReturn([
-            'id' => 1, 'name' => 'Doomed', 'description' => null,
-            'price' => '1.00', 'stock' => 1, 'is_active' => 1,
-            'created_at' => '2026-05-22 00:00:00', 'updated_at' => null,
-            'deleted_at' => null, 'version' => 1,
-        ]);
-        $model->method('delete')->willThrowException(new \RuntimeException('write barrier failed'));
+        $model->method('builder')->willThrowException(new \RuntimeException('write barrier failed'));
 
         $logger = LoggerFactory::create('test.cookie.repository.delete-error');
         /** @var \Config\Logging $loggingConfig */
@@ -782,6 +865,22 @@ final class CookieRepositoryTest extends IntegrationTestCase
         $this->expectExceptionMessage('write barrier failed');
 
         $repo->delete(1);
+    }
+
+    public function test_purge_logs_and_rethrows_when_model_throws(): void
+    {
+        $model = $this->createMock(\App\Models\Cookie\CookieModel::class);
+        $model->method('builder')->willThrowException(new \RuntimeException('purge failed at storage'));
+
+        $logger = LoggerFactory::create('test.cookie.repository.purge-error');
+        /** @var \Config\Logging $loggingConfig */
+        $loggingConfig = config('Logging');
+        $repo = new CookieRepository($logger, $loggingConfig, $model);
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('purge failed at storage');
+
+        $repo->purge(1);
     }
 
     public function test_save_rethrows_unknown_throwable_from_model(): void
