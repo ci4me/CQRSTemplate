@@ -1,5 +1,10 @@
 parameters:
     level: 8
+    # E02 — pin to require.php = ^8.3 (PHPStan packs PHP_VERSION_ID:
+    # 8 * 10000 + 3 * 100 + 0 = 80300). Without this, an analyser run
+    # on PHP 8.4 silently accepts 8.4-only syntax in code targeting
+    # ^8.3. Bumped in lock-step with composer.json in epic E16.
+    phpVersion: 80300
     paths:
         - app/Domain
         - app/Infrastructure
@@ -19,6 +24,26 @@ parameters:
         - tests/session
         - tests/database
         - tests/unit
+    # BASELINE POLICY (E02): do NOT introduce `phpstan-baseline.neon` in any
+    # subsequent epic without (a) generating it via `--generate-baseline`,
+    # (b) committing it in the same PR as the offending change, and
+    # (c) opening a tracked burn-down issue. (REVIEW-phpstan.md req. #3.)
+    #
+    # TODO E02-FOLLOWUP: REVIEW-phpstan.md req. #6 asks for this flag to
+    # flip to `true` so stale ignoreErrors entries cannot rot. Today the
+    # block below carries 11 already-stale entries (3x
+    # method.childParameterType in tests/, trait.unused on
+    # app/Models/Cookie/Traits, constant.notFound + function.notFound on
+    # app/Config, missingType.iterableValue/return/generics on tests/,
+    # argument.templateType on Bus/Middleware/, and return.unusedType on
+    # LocaleResolver.php). Flipping the flag fails phpstan with 11 errors
+    # immediately. Pruning the stale entries is a cross-cutting cleanup
+    # that touches assertions made under E05 (bus interface tightening
+    # removes argument.templateType for middleware), E08 (handler refactor
+    # changes the Bulk/OutboundHttp test types), and E18 (test pyramid
+    # cleanup adds back the missing generics). Flipping this flag is
+    # therefore deferred to the epic that lands AFTER E05 + E08. The pin
+    # (phpVersion: 80300) above is the load-bearing E02 change.
     reportUnmatchedIgnoredErrors: false
     ignoreErrors:
         -

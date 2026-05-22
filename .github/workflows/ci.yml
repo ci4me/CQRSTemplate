@@ -75,6 +75,19 @@ jobs:
       - name: PHPStan Level 8
         run: vendor/bin/phpstan analyse --no-progress --memory-limit=1G
 
+      # E02 — close the gap REVIEW-phpstan #6 / 16/F8 called out:
+      # `composer docblocks:audit` is in `composer ci` and the README
+      # promises it's a gate, but CI was not actually running it.
+      - name: Docblocks audit (placeholder + legacy markers)
+        run: composer docblocks:audit
+
+      # E02 — same rationale for deptrac (16/F8): CLAUDE.md lists it as
+      # a hard gate; CI was not running it. `composer ci` would chain
+      # all four, but composer ci also runs the test suite which lives
+      # in a separate matrix job, so the gate is split per-step.
+      - name: Deptrac (architectural boundaries)
+        run: composer deptrac
+
   # ---------------------------------------------------------------------------
   tests:
     name: PHPUnit (PHP ${{ matrix.php }})
