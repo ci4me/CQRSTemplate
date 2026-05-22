@@ -100,6 +100,59 @@ final class LocalStorageTest extends UnitTestCase
         $this->assertSame('local', (new LocalStorage($this->tempDir))->name());
     }
 
+    public function test_base_directory_returns_resolved_path(): void
+    {
+        $storage = new LocalStorage($this->tempDir);
+        $this->assertSame(realpath($this->tempDir), $storage->baseDirectory());
+    }
+
+    public function test_empty_key_is_rejected(): void
+    {
+        $storage = new LocalStorage($this->tempDir);
+
+        $this->expectException(StorageException::class);
+        $this->expectExceptionMessage('Invalid storage key');
+        $storage->put('', 'no');
+    }
+
+    public function test_size_bytes_throws_for_missing_key(): void
+    {
+        $storage = new LocalStorage($this->tempDir);
+
+        $this->expectException(StorageException::class);
+        $this->expectExceptionMessage('Storage key not found');
+        $storage->sizeBytes('does-not-exist.txt');
+    }
+
+    public function test_exists_returns_false_for_invalid_key(): void
+    {
+        // An invalid key would normally throw via resolveKey(); exists() must
+        // catch the StorageException and answer false instead.
+        $storage = new LocalStorage($this->tempDir);
+
+        $this->assertFalse($storage->exists('../traversal.txt'));
+    }
+
+    public function test_constructor_creates_base_directory_if_missing(): void
+    {
+        $fresh = $this->tempDir . '/auto-created-base';
+        $this->assertDirectoryDoesNotExist($fresh);
+
+        $storage = new LocalStorage($fresh);
+
+        $this->assertDirectoryExists($fresh);
+        $this->assertSame(realpath($fresh), $storage->baseDirectory());
+    }
+
+    public function test_constructor_throws_when_base_directory_cannot_be_created(): void
+    {
+        // /proc/<pid>/i-do-not-exist is on a read-only filesystem on Linux —
+        // mkdir() WILL fail with EROFS, exercising the throw branch.
+        $this->expectException(StorageException::class);
+
+        @new LocalStorage('/proc/self/forbidden/' . uniqid());
+    }
+
     private function rrmdir(string $dir): void
     {
         if (!is_dir($dir)) {
