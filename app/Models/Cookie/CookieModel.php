@@ -23,6 +23,25 @@ use CodeIgniter\Model;
  * - Domain layer doesn't depend on CI4
  * - Easy to swap persistence implementation
  *
+ * Validation policy (06/F16):
+ *   `$validationRules` carries DB-shape safety ONLY (required, type,
+ *   max length). Business range checks — minimum name length, positive
+ *   price, non-negative stock — are value-object invariants and
+ *   duplicating them here silently swallows the VO's structured error
+ *   codes when CI4 short-circuits the insert before the repository
+ *   even runs.
+ *
+ * Finalization carve-out (06/F11):
+ *   Intentionally NOT `final`. The integration tests in
+ *   {@see \Tests\Integration\Repositories\CookieRepositoryTest} drive
+ *   error-branch coverage by mocking this model
+ *   (`$this->createMock(CookieModel::class)`); PHPUnit cannot mock a
+ *   final class out of the box. Until those tests are migrated to a
+ *   thin port wrapper, the class stays open for substitution. The
+ *   Slevomat `RequireAbstractOrFinal` rule already excludes
+ *   `app/Models/` (see `phpcs.xml`), so this is enforced project-wide
+ *   for CI4 models and recorded here for future readers.
+ *
  * @package App\Models\Cookie
  */
 class CookieModel extends Model
@@ -52,29 +71,32 @@ class CookieModel extends Model
     protected $updatedField = 'updated_at';
     protected $deletedField = 'deleted_at';
 
-    // Validation rules (database level validation)
+    // Validation rules — DB-shape safety ONLY (06/F16).
+    //
+    // Business ranges (e.g. min name length, price > 0, stock >= 0) are
+    // value-object invariants — see CookieName, CookiePrice. Duplicating
+    // them here would silently swallow the VO's structured error codes
+    // because CI4 fails the insert before the repository's catch can
+    // translate the DB error.
     protected $validationRules = [
-        'name' => 'required|min_length[3]|max_length[100]',
-        'price' => 'required|decimal|greater_than[0]',
-        'stock' => 'required|integer|greater_than_equal_to[0]',
+        'name' => 'required|max_length[100]',
+        'price' => 'required|decimal',
+        'stock' => 'required|integer',
         'is_active' => 'in_list[0,1]',
     ];
 
     protected $validationMessages = [
         'name' => [
             'required' => 'Cookie name is required',
-            'min_length' => 'Cookie name must be at least 3 characters',
             'max_length' => 'Cookie name cannot exceed 100 characters',
         ],
         'price' => [
             'required' => 'Price is required',
             'decimal' => 'Price must be a valid decimal number',
-            'greater_than' => 'Price must be greater than 0',
         ],
         'stock' => [
             'required' => 'Stock is required',
             'integer' => 'Stock must be an integer',
-            'greater_than_equal_to' => 'Stock cannot be negative',
         ],
     ];
 
@@ -84,23 +106,30 @@ class CookieModel extends Model
     /**
      * Check if a cookie exists with the given name.
      *
-     * Cookie names are reserved after soft delete. This matches the database
-     * unique key and preserves historical ERP/audit references.
+     * Scope EXCLUDES soft-deleted rows (no `withDeleted()`): the schema's
+     * composite UNIQUE on (`tenant_id`, `name`, `deleted_at`) intentionally
+     * allows a trashed row's name to be reused by a new active row
+     * (closes 06/F1 — `withDeleted()` here contradicted the migration's
+     * documented contract).
+     *
+     * No `LOWER()` wrapper: the `cookies.name` column is collated
+     * `utf8mb4_unicode_ci`, which already provides case-insensitive
+     * comparison. Wrapping the column in `LOWER()` would force a
+     * sequential scan and void the UNIQUE index (closes 06/F6).
      *
      * @param string $name The cookie name to check
      * @return bool True if exists
      */
     public function existsByName(string $name): bool
     {
-        return $this->withDeleted()
-            ->where('LOWER(name)', strtolower($name))
+        return $this->where('name', $name)
             ->countAllResults() > 0;
     }
 
     /**
      * Check if a cookie exists with the given name, excluding a specific ID.
      *
-     * Used for update operations to allow keeping the same name.
+     * Same scoping and collation rationale as {@see self::existsByName()}.
      *
      * @param string $name The cookie name to check
      * @param int $excludeId The ID to exclude from the search
@@ -108,9 +137,21 @@ class CookieModel extends Model
      */
     public function existsByNameExcludingId(string $name, int $excludeId): bool
     {
-        return $this->withDeleted()
-            ->where('LOWER(name)', strtolower($name))
+        return $this->where('name', $name)
             ->where('id !=', $excludeId)
             ->countAllResults() > 0;
+    }
+
+    /**
+     * Affected-row count from the last UPDATE / DELETE on this model.
+     *
+     * Hides the leaky `$this->db->affectedRows()` access (06/F11) so the
+     * repository talks to the model, not to framework internals. The
+     * underlying connection is resolved via the framework helper so the
+     * wrapper works under the same test injection paths as the model.
+     */
+    public function lastAffectedRows(): int
+    {
+        return $this->db->affectedRows();
     }
 }
