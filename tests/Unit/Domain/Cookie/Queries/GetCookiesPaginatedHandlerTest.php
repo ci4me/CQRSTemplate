@@ -8,104 +8,206 @@ use App\Domain\Cookie\DTOs\CookieDTO;
 use App\Domain\Cookie\Ports\CookieQueryRepositoryInterface;
 use App\Domain\Cookie\Queries\GetCookiesPaginated\GetCookiesPaginatedHandler;
 use App\Domain\Cookie\Queries\GetCookiesPaginated\GetCookiesPaginatedQuery;
-use App\Infrastructure\Logging\CodeIgniterLogConfig;
-use App\Infrastructure\Logging\LoggerFactory;
-use Config\Logging;
+use App\Domain\Shared\Ports\LogConfigPort;
+use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
+use Psr\Log\LoggerInterface;
 use Tests\Support\UnitTestCase;
 
+#[AllowMockObjectsWithoutExpectations]
 final class GetCookiesPaginatedHandlerTest extends UnitTestCase
 {
     private CookieQueryRepositoryInterface $repository;
-    private GetCookiesPaginatedHandler $handler;
+    private LoggerInterface $logger;
+    private LogConfigPort $loggingConfig;
 
     protected function setUp(): void
     {
         parent::setUp();
         $this->repository = $this->createMock(CookieQueryRepositoryInterface::class);
-        $logger = LoggerFactory::create('test.cookie.queries');
-        $loggingConfig = new CodeIgniterLogConfig(new Logging());
-        $this->handler = new GetCookiesPaginatedHandler($this->repository, $logger, $loggingConfig);
+        $this->logger = $this->createMock(LoggerInterface::class);
+        $this->loggingConfig = $this->createMock(LogConfigPort::class);
     }
 
     public function test_returns_paginated_results(): void
     {
-        $query = new GetCookiesPaginatedQuery(page: 1, perPage: 20);
-        $cookies = $this->makeDtos(20);
-
-        $expectedResult = [
-            'data' => $cookies,
-            'total' => 100,
-            'page' => 1,
-            'perPage' => 20,
-            'lastPage' => 5,
-        ];
+        $this->stubConfig(level: 'errors');
+        $expected = $this->paginationResult($this->makeDtos(20), total: 100, page: 1, perPage: 20, lastPage: 5);
 
         $this->repository->expects($this->once())
             ->method('findPaginated')
             ->with(1, 20, null, false)
-            ->willReturn($expectedResult);
+            ->willReturn($expected);
 
-        $result = $this->handler->handle($query);
+        $result = $this->makeHandler()->handle(new GetCookiesPaginatedQuery(page: 1, perPage: 20));
 
-        $this->assertArrayHasKey('data', $result);
-        $this->assertArrayHasKey('total', $result);
-        $this->assertEquals(100, $result['total']);
-        $this->assertEquals(1, $result['page']);
-        $this->assertEquals(20, $result['perPage']);
+        $this->assertSame(100, $result['total']);
+        $this->assertSame(1, $result['page']);
         $this->assertContainsOnlyInstancesOf(CookieDTO::class, $result['data']);
     }
 
-    public function test_handles_search_term(): void
+    public function test_search_term_is_passed_to_repository(): void
     {
-        $query = new GetCookiesPaginatedQuery(
-            page: 1,
-            perPage: 20,
-            searchTerm: 'Chocolate'
-        );
-
-        $cookies = $this->makeDtos(5);
-        $expectedResult = [
-            'data' => $cookies,
-            'total' => 5,
-            'page' => 1,
-            'perPage' => 20,
-            'lastPage' => 1,
-        ];
+        $this->stubConfig(level: 'errors');
+        $expected = $this->paginationResult($this->makeDtos(5), total: 5, page: 1, perPage: 20, lastPage: 1);
 
         $this->repository->expects($this->once())
             ->method('findPaginated')
             ->with(1, 20, 'Chocolate', false)
-            ->willReturn($expectedResult);
+            ->willReturn($expected);
 
-        $result = $this->handler->handle($query);
+        $result = $this->makeHandler()->handle(
+            new GetCookiesPaginatedQuery(page: 1, perPage: 20, searchTerm: 'Chocolate')
+        );
 
-        $this->assertArrayHasKey('data', $result);
         $this->assertCount(5, $result['data']);
     }
 
-    public function test_handles_include_inactive(): void
+    public function test_include_inactive_is_passed_to_repository(): void
     {
-        $query = new GetCookiesPaginatedQuery(
-            page: 1,
-            perPage: 20,
-            searchTerm: null,
-            includeInactive: true
-        );
-
-        $expectedResult = [
-            'data' => [],
-            'total' => 0,
-            'page' => 1,
-            'perPage' => 20,
-            'lastPage' => 1,
-        ];
+        $this->stubConfig(level: 'errors');
+        $expected = $this->paginationResult([], total: 0, page: 1, perPage: 20, lastPage: 1);
 
         $this->repository->expects($this->once())
             ->method('findPaginated')
             ->with(1, 20, null, true)
-            ->willReturn($expectedResult);
+            ->willReturn($expected);
 
-        $this->handler->handle($query);
+        $this->makeHandler()->handle(
+            new GetCookiesPaginatedQuery(page: 1, perPage: 20, searchTerm: null, includeInactive: true)
+        );
+    }
+
+    public function test_search_queries_are_always_logged_for_analytics(): void
+    {
+        // Default level is 'errors' (which would skip logging) — but a search
+        // term must force-log for analytics regardless of level.
+        $this->stubConfig(level: 'errors');
+        $this->repository->method('findPaginated')->willReturn(
+            $this->paginationResult($this->makeDtos(2), total: 2, page: 1, perPage: 20, lastPage: 1)
+        );
+
+        $this->logger->expects($this->once())
+            ->method('info')
+            ->with('Query executed', $this->callback(function (array $ctx): bool {
+                return $ctx['searchTerm'] === 'gluten free' && $ctx['result_count'] === 2;
+            }));
+
+        $this->makeHandler()->handle(
+            new GetCookiesPaginatedQuery(page: 1, perPage: 20, searchTerm: 'gluten free')
+        );
+    }
+
+    public function test_empty_string_search_term_is_treated_as_no_search(): void
+    {
+        $this->stubConfig(level: 'errors');
+        $this->repository->method('findPaginated')->willReturn(
+            $this->paginationResult([], total: 0, page: 1, perPage: 20, lastPage: 1)
+        );
+
+        // Empty string search term => not a search query => 'errors' mode is silent.
+        $this->logger->expects($this->never())->method('info');
+
+        $this->makeHandler()->handle(
+            new GetCookiesPaginatedQuery(page: 1, perPage: 20, searchTerm: '')
+        );
+    }
+
+    public function test_all_level_logs_every_call(): void
+    {
+        $this->stubConfig(level: 'all');
+        $this->repository->method('findPaginated')->willReturn(
+            $this->paginationResult($this->makeDtos(2), total: 2, page: 1, perPage: 20, lastPage: 1)
+        );
+
+        $this->logger->expects($this->once())
+            ->method('info')
+            ->with('Query executed', $this->callback(function (array $ctx): bool {
+                return !isset($ctx['searchTerm']) && !isset($ctx['slow_query']);
+            }));
+
+        $this->makeHandler()->handle(new GetCookiesPaginatedQuery(page: 1, perPage: 20));
+    }
+
+    public function test_slow_query_short_circuits_irrespective_of_level(): void
+    {
+        $this->stubConfig(level: 'errors', slowMs: 0);
+        $this->repository->method('findPaginated')->willReturn(
+            $this->paginationResult($this->makeDtos(1), total: 1, page: 1, perPage: 20, lastPage: 1)
+        );
+
+        $this->logger->expects($this->once())
+            ->method('info')
+            ->with('Query executed', $this->callback(function (array $ctx): bool {
+                return ($ctx['slow_query'] ?? false) === true;
+            }));
+
+        $this->makeHandler()->handle(new GetCookiesPaginatedQuery(page: 1, perPage: 20));
+    }
+
+    public function test_sampling_with_rate_one_always_logs(): void
+    {
+        $this->stubConfig(level: 'sampling', samplingRate: 1.0);
+        $this->repository->method('findPaginated')->willReturn(
+            $this->paginationResult([], total: 0, page: 1, perPage: 20, lastPage: 1)
+        );
+
+        $this->logger->expects($this->once())->method('info');
+
+        $this->makeHandler()->handle(new GetCookiesPaginatedQuery(page: 1, perPage: 20));
+    }
+
+    public function test_sampling_with_rate_zero_never_logs(): void
+    {
+        $this->stubConfig(level: 'sampling', samplingRate: 0.0);
+        $this->repository->method('findPaginated')->willReturn(
+            $this->paginationResult([], total: 0, page: 1, perPage: 20, lastPage: 1)
+        );
+
+        $this->logger->expects($this->never())->method('info');
+
+        $this->makeHandler()->handle(new GetCookiesPaginatedQuery(page: 1, perPage: 20));
+    }
+
+    public function test_unknown_logging_level_falls_back_to_silent(): void
+    {
+        $this->stubConfig(level: 'foo');
+        $this->repository->method('findPaginated')->willReturn(
+            $this->paginationResult([], total: 0, page: 1, perPage: 20, lastPage: 1)
+        );
+
+        $this->logger->expects($this->never())->method('info');
+
+        $this->makeHandler()->handle(new GetCookiesPaginatedQuery(page: 1, perPage: 20));
+    }
+
+    private function makeHandler(): GetCookiesPaginatedHandler
+    {
+        return new GetCookiesPaginatedHandler($this->repository, $this->logger, $this->loggingConfig);
+    }
+
+    private function stubConfig(
+        string $level,
+        int $slowMs = 1_000_000,
+        float $samplingRate = 0.0,
+    ): void {
+        $this->loggingConfig->method('queryLoggingLevel')->willReturn($level);
+        $this->loggingConfig->method('slowQueryThresholdMs')->willReturn($slowMs);
+        $this->loggingConfig->method('samplingRate')->willReturn($samplingRate);
+    }
+
+    /**
+     * @param list<CookieDTO> $data
+     * @return array{data: list<CookieDTO>, total: int, page: int, perPage: int, lastPage: int}
+     */
+    private function paginationResult(array $data, int $total, int $page, int $perPage, int $lastPage): array
+    {
+        return [
+            'data' => $data,
+            'total' => $total,
+            'page' => $page,
+            'perPage' => $perPage,
+            'lastPage' => $lastPage,
+        ];
     }
 
     /**

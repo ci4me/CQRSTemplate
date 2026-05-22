@@ -8,31 +8,165 @@ use App\Domain\Cookie\DTOs\CookieDTO;
 use App\Domain\Cookie\Ports\CookieQueryRepositoryInterface;
 use App\Domain\Cookie\Queries\GetCookieById\GetCookieByIdHandler;
 use App\Domain\Cookie\Queries\GetCookieById\GetCookieByIdQuery;
-use App\Infrastructure\Logging\CodeIgniterLogConfig;
-use App\Infrastructure\Logging\LoggerFactory;
-use Config\Logging;
+use App\Domain\Shared\Ports\LogConfigPort;
+use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
+use Psr\Log\LoggerInterface;
 use Tests\Support\UnitTestCase;
 
+#[AllowMockObjectsWithoutExpectations]
 final class GetCookieByIdHandlerTest extends UnitTestCase
 {
     private CookieQueryRepositoryInterface $repository;
-    private GetCookieByIdHandler $handler;
+    private LoggerInterface $logger;
+    private LogConfigPort $loggingConfig;
 
     protected function setUp(): void
     {
         parent::setUp();
         $this->repository = $this->createMock(CookieQueryRepositoryInterface::class);
-        $logger = LoggerFactory::create('test.cookie.queries');
-        $loggingConfig = new CodeIgniterLogConfig(new Logging());
-        $this->handler = new GetCookieByIdHandler($this->repository, $logger, $loggingConfig);
+        $this->logger = $this->createMock(LoggerInterface::class);
+        $this->loggingConfig = $this->createMock(LogConfigPort::class);
     }
 
     public function test_returns_cookie_when_found(): void
     {
-        $query = new GetCookieByIdQuery(id: 1);
-        $expected = new CookieDTO(
-            id: 1,
-            name: 'Chip',
+        $this->stubConfig(level: 'errors');
+        $expected = $this->makeDto(1, 'Chip');
+
+        $this->repository->expects($this->once())
+            ->method('findById')
+            ->with(1)
+            ->willReturn($expected);
+
+        $result = $this->makeHandler()->handle(new GetCookieByIdQuery(id: 1));
+
+        $this->assertInstanceOf(CookieDTO::class, $result);
+        $this->assertSame(1, $result->id);
+    }
+
+    public function test_returns_null_when_not_found(): void
+    {
+        $this->stubConfig(level: 'errors');
+        $this->repository->expects($this->once())
+            ->method('findById')
+            ->with(999)
+            ->willReturn(null);
+
+        $this->assertNull($this->makeHandler()->handle(new GetCookieByIdQuery(id: 999)));
+    }
+
+    public function test_errors_level_logs_only_not_found_results(): void
+    {
+        $this->stubConfig(level: 'errors');
+        $this->repository->method('findById')->willReturn(null);
+
+        $this->logger->expects($this->once())
+            ->method('info')
+            ->with('Query executed', $this->callback(function (array $ctx): bool {
+                return $ctx['result'] === 'not_found' && $ctx['cookieId'] === 42;
+            }));
+
+        $this->makeHandler()->handle(new GetCookieByIdQuery(id: 42));
+    }
+
+    public function test_errors_level_does_not_log_found_results(): void
+    {
+        $this->stubConfig(level: 'errors');
+        $this->repository->method('findById')->willReturn($this->makeDto(1, 'X'));
+
+        $this->logger->expects($this->never())->method('info');
+
+        $this->makeHandler()->handle(new GetCookieByIdQuery(id: 1));
+    }
+
+    public function test_all_level_logs_every_call(): void
+    {
+        $this->stubConfig(level: 'all');
+        $this->repository->method('findById')->willReturn($this->makeDto(1, 'X'));
+
+        $this->logger->expects($this->once())
+            ->method('info')
+            ->with('Query executed', $this->callback(function (array $ctx): bool {
+                return $ctx['result'] === 'found' && !isset($ctx['slow_query']);
+            }));
+
+        $this->makeHandler()->handle(new GetCookieByIdQuery(id: 1));
+    }
+
+    public function test_slow_level_does_not_log_fast_queries(): void
+    {
+        $this->stubConfig(level: 'slow');
+        $this->repository->method('findById')->willReturn($this->makeDto(1, 'X'));
+
+        $this->logger->expects($this->never())->method('info');
+
+        $this->makeHandler()->handle(new GetCookieByIdQuery(id: 1));
+    }
+
+    public function test_slow_query_short_circuits_irrespective_of_level(): void
+    {
+        $this->stubConfig(level: 'errors', slowMs: 0);
+        $this->repository->method('findById')->willReturn($this->makeDto(1, 'X'));
+
+        $this->logger->expects($this->once())
+            ->method('info')
+            ->with('Query executed', $this->callback(function (array $ctx): bool {
+                return ($ctx['slow_query'] ?? false) === true && $ctx['result'] === 'found';
+            }));
+
+        $this->makeHandler()->handle(new GetCookieByIdQuery(id: 1));
+    }
+
+    public function test_sampling_with_rate_one_always_logs(): void
+    {
+        $this->stubConfig(level: 'sampling', samplingRate: 1.0);
+        $this->repository->method('findById')->willReturn($this->makeDto(1, 'X'));
+
+        $this->logger->expects($this->once())->method('info');
+
+        $this->makeHandler()->handle(new GetCookieByIdQuery(id: 1));
+    }
+
+    public function test_sampling_with_rate_zero_never_logs(): void
+    {
+        $this->stubConfig(level: 'sampling', samplingRate: 0.0);
+        $this->repository->method('findById')->willReturn($this->makeDto(1, 'X'));
+
+        $this->logger->expects($this->never())->method('info');
+
+        $this->makeHandler()->handle(new GetCookieByIdQuery(id: 1));
+    }
+
+    public function test_unknown_logging_level_falls_back_to_silent(): void
+    {
+        $this->stubConfig(level: 'mystery');
+        $this->repository->method('findById')->willReturn($this->makeDto(1, 'X'));
+
+        $this->logger->expects($this->never())->method('info');
+
+        $this->makeHandler()->handle(new GetCookieByIdQuery(id: 1));
+    }
+
+    private function makeHandler(): GetCookieByIdHandler
+    {
+        return new GetCookieByIdHandler($this->repository, $this->logger, $this->loggingConfig);
+    }
+
+    private function stubConfig(
+        string $level,
+        int $slowMs = 1_000_000,
+        float $samplingRate = 0.0,
+    ): void {
+        $this->loggingConfig->method('queryLoggingLevel')->willReturn($level);
+        $this->loggingConfig->method('slowQueryThresholdMs')->willReturn($slowMs);
+        $this->loggingConfig->method('samplingRate')->willReturn($samplingRate);
+    }
+
+    private function makeDto(int $id, string $name): CookieDTO
+    {
+        return new CookieDTO(
+            id: $id,
+            name: $name,
             description: 'A cookie',
             price: '2.99',
             formattedPrice: '$2.99',
@@ -41,30 +175,5 @@ final class GetCookieByIdHandlerTest extends UnitTestCase
             createdAt: '2025-10-21 10:00:00',
             updatedAt: null
         );
-
-        $this->repository->expects($this->once())
-            ->method('findById')
-            ->with(1)
-            ->willReturn($expected);
-
-        $result = $this->handler->handle($query);
-
-        $this->assertInstanceOf(CookieDTO::class, $result);
-        $this->assertSame(1, $result->id);
-        $this->assertSame('Chip', $result->name);
-    }
-
-    public function test_returns_null_when_not_found(): void
-    {
-        $query = new GetCookieByIdQuery(id: 999);
-
-        $this->repository->expects($this->once())
-            ->method('findById')
-            ->with(999)
-            ->willReturn(null);
-
-        $result = $this->handler->handle($query);
-
-        $this->assertNull($result);
     }
 }
