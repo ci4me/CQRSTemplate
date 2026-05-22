@@ -6,149 +6,119 @@ namespace App\Domain\Cookie\Queries\GetCookiesPaginated;
 
 use App\Domain\Cookie\DTOs\CookieDTO;
 use App\Domain\Cookie\Ports\CookieQueryRepositoryInterface;
+use App\Domain\Shared\Bus\AbstractQueryHandler;
+use App\Domain\Shared\Bus\ClockInterface;
 use App\Domain\Shared\Bus\LogSampler;
 use App\Domain\Shared\Bus\QueryHandlerInterface;
 use App\Domain\Shared\Ports\LogConfigPort;
 use Psr\Log\LoggerInterface;
 
 /**
- * Handler for GetCookiesPaginatedQuery.
+ * Handler for {@see GetCookiesPaginatedQuery}.
  *
- * Responsibilities:
- * 1. Fetch paginated cookies from repository
- * 2. Apply search filters if provided
- * 3. Return pagination result with cookies and metadata
- * 4. Log query execution with search analytics
- *
- * Logging Behavior:
- * - 'all': Logs every query execution
- * - 'errors': Logs only when query fails
- * - 'slow': Logs only when execution exceeds threshold
- * - 'sampling': Logs based on random sampling rate
- * - Search queries always logged for analytics (when searchTerm provided)
- * - Slow queries always logged regardless of level
+ * Post-E08:
+ *  - Boilerplate lives in {@see AbstractQueryHandler}.
+ *  - The query DTO is responsible for bounding `$page` + LIKE-escaping
+ *    `$searchTerm`; the handler just forwards the safe values to the
+ *    repository (closes 04/F4 + 04/F6 consumption).
+ *  - {@see shouldLog()} force-logs search queries regardless of level so
+ *    search analytics survive the move to the abstract base.
  *
  * @package App\Domain\Cookie\Queries\GetCookiesPaginated
- * @implements QueryHandlerInterface<GetCookiesPaginatedQuery, array{data: array<int, CookieDTO>, total: int, page: int, perPage: int, lastPage: int}>
+ * @implements QueryHandlerInterface<GetCookiesPaginatedQuery, array{data: list<CookieDTO>, total: int, page: int, perPage: int, lastPage: int}>
  */
-final readonly class GetCookiesPaginatedHandler implements QueryHandlerInterface
+final class GetCookiesPaginatedHandler extends AbstractQueryHandler implements QueryHandlerInterface
 {
     /**
-     * Create a new GetCookiesPaginatedHandler.
-     *
-     * @param CookieQueryRepositoryInterface $repository    For data retrieval
-     * @param LoggerInterface                $logger        For query logging
-     * @param LogConfigPort                  $loggingConfig For logging configuration
+     * @param CookieQueryRepositoryInterface $repository    Read-side port returning DTOs.
+     * @param LoggerInterface                $logger        PSR-3 logger (channel: cookie.query.paginated).
+     * @param ClockInterface                 $clock         Monotonic time source for duration.
+     * @param LogSampler                     $sampler       Shared sampling policy.
+     * @param LogConfigPort                  $loggingConfig Per-handler logging-level policy.
      */
     public function __construct(
-        private CookieQueryRepositoryInterface $repository,
-        private LoggerInterface $logger,
-        private LogConfigPort $loggingConfig
+        private readonly CookieQueryRepositoryInterface $repository,
+        LoggerInterface $logger,
+        ClockInterface $clock,
+        LogSampler $sampler,
+        private readonly LogConfigPort $loggingConfig
     ) {
+        parent::__construct($logger, $clock, $sampler);
     }
 
     /**
-     * Handle the GetCookiesPaginatedQuery.
-     *
-     * @param GetCookiesPaginatedQuery $query The query
-     * @return array{data: array<int, CookieDTO>, total: int, page: int, perPage: int, lastPage: int} Pagination result
+     * @param GetCookiesPaginatedQuery $query The query DTO.
+     * @return array{data: list<CookieDTO>, total: int, page: int, perPage: int, lastPage: int}
      */
-    public function handle(object $query): array
+    protected function doHandle(object $query): array
     {
-        $startTime = microtime(true);
-
-        // Read-side port returns DTOs already; no per-row reconstitution.
-        $result = $this->repository->findPaginated(
+        return $this->repository->findPaginated(
             page: $query->page,
             perPage: $query->perPage,
             searchTerm: $query->searchTerm,
-            includeInactive: $query->includeInactive
+            includeInactive: $query->includeInactive,
         );
-
-        $durationMs = (microtime(true) - $startTime) * 1000;
-
-        $this->logQueryExecution($query, $result, $durationMs);
-
-        return $result;
     }
 
     /**
-     * Log query execution based on configured logging level.
+     * Force-log search queries even when the level is 'errors' or 'slow'
+     * (search analytics is a separate concern from operational logging).
      *
-     * @param GetCookiesPaginatedQuery                                                               $query      The query being executed
-     * @param array{data: array<int, CookieDTO>, total: int, page: int, perPage: int, lastPage: int} $result     The query result
-     * @param float                                                                                  $durationMs Execution duration in milliseconds
+     * @param GetCookiesPaginatedQuery $query
+     * @param array{data: list<CookieDTO>, total: int, page: int, perPage: int, lastPage: int} $result
      */
-    private function logQueryExecution(GetCookiesPaginatedQuery $query, array $result, float $durationMs): void
+    protected function shouldLog(object $query, mixed $result, float $durationMs): bool
     {
-        $isSlowQuery = $durationMs > $this->loggingConfig->slowQueryThresholdMs();
-        $isSearchQuery = $query->searchTerm !== null && $query->searchTerm !== '';
-
-        if ($isSlowQuery || $isSearchQuery) {
-            $this->logQuery($query, $result, $durationMs, $isSlowQuery);
-            return;
+        unset($result);
+        if ($this->isSlowQuery($durationMs)) {
+            return true;
+        }
+        if ($query->searchTerm !== null && $query->searchTerm !== '') {
+            return true;
         }
 
-        $shouldLog = match ($this->loggingConfig->queryLoggingLevel()) {
+        return match ($this->loggingConfig->queryLoggingLevel()) {
             'all' => true,
-            'errors' => false,
-            'slow' => false,
-            'sampling' => $this->shouldSample(),
+            'sampling' => $this->sampler->shouldSample(),
             default => false,
         };
-
-        if (!$shouldLog) {
-            return;
-        }
-
-        $this->logQuery($query, $result, $durationMs, false);
     }
 
     /**
-     * Log query details with context.
-     *
-     * @param GetCookiesPaginatedQuery                                                               $query       The query being executed
-     * @param array{data: array<int, CookieDTO>, total: int, page: int, perPage: int, lastPage: int} $result      The query result
-     * @param float                                                                                  $durationMs  Execution duration in milliseconds
-     * @param bool                                                                                   $isSlowQuery Whether this is a slow query
+     * @param GetCookiesPaginatedQuery $query
+     * @param array{data: list<CookieDTO>, total: int, page: int, perPage: int, lastPage: int} $result
+     * @return array<string, scalar|null>
      */
-    private function logQuery(
-        GetCookiesPaginatedQuery $query,
-        array $result,
-        float $durationMs,
-        bool $isSlowQuery
-    ): void {
+    protected function logContext(object $query, mixed $result): array
+    {
         $context = [
-            'domain' => 'Cookie',
-            'query' => 'GetCookiesPaginatedQuery',
+            'domain' => $this->getDomain(),
+            'query' => $this->queryClass(),
             'page' => $query->page,
             'perPage' => $query->perPage,
             'result_count' => count($result['data']),
             'total' => $result['total'],
-            'duration_ms' => round($durationMs, 2),
         ];
 
         if ($query->searchTerm !== null && $query->searchTerm !== '') {
             $context['searchTerm'] = $query->searchTerm;
         }
 
-        if ($isSlowQuery) {
-            $context['slow_query'] = true;
-        }
-
-        $this->logger->info('Query executed', $context);
+        return $context;
     }
 
-    /**
-     * Determine if query should be sampled for logging.
-     *
-     * Delegates to the shared {@see LogSampler} — see GetCookieByIdHandler
-     * for the rationale (random_int over the Mersenne Twister).
-     *
-     * @return bool True if query should be logged based on sampling rate
-     */
-    private function shouldSample(): bool
+    protected function getDomain(): string
     {
-        return (new LogSampler($this->loggingConfig->samplingRate()))->shouldSample();
+        return 'Cookie';
+    }
+
+    protected function queryClass(): string
+    {
+        return GetCookiesPaginatedQuery::class;
+    }
+
+    protected function slowQueryThresholdMs(): int
+    {
+        return $this->loggingConfig->slowQueryThresholdMs();
     }
 }

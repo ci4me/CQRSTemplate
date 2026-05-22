@@ -5,140 +5,117 @@ declare(strict_types=1);
 namespace App\Domain\Cookie\Queries\GetAllCookies;
 
 use App\Domain\Cookie\DTOs\CookieDTO;
+use App\Domain\Cookie\ErrorCodes;
 use App\Domain\Cookie\Ports\CookieQueryRepositoryInterface;
+use App\Domain\Shared\Bus\AbstractQueryHandler;
+use App\Domain\Shared\Bus\ClockInterface;
 use App\Domain\Shared\Bus\LogSampler;
 use App\Domain\Shared\Bus\QueryHandlerInterface;
+use App\Domain\Shared\Exceptions\ValidationException;
 use App\Domain\Shared\Ports\LogConfigPort;
 use Psr\Log\LoggerInterface;
 
 /**
- * Handler for GetAllCookiesQuery.
+ * Handler for {@see GetAllCookiesQuery}.
  *
- * Responsibilities:
- * 1. Fetch all cookies from repository
- * 2. Optionally filter by active status
- * 3. Return array of cookie entities
- * 4. Log query execution based on configurable logging level
- *
- * Logging Behavior:
- * - 'all': Logs every query execution
- * - 'errors': No error logging (query always succeeds)
- * - 'slow': Logs only when execution exceeds threshold
- * - 'sampling': Logs based on random sampling rate
- * - Slow queries always logged regardless of level
+ * Post-E08 the boilerplate lives in {@see AbstractQueryHandler}. The
+ * handler body:
+ *  - Loads via the read-side repo.
+ *  - Asserts the response size respects {@see GetAllCookiesQuery::MAX_RESULTS}
+ *    — closes 04/F2.
+ *  - Layers the LogConfigPort policy on top of the base via
+ *    {@see shouldLog()}.
  *
  * @package App\Domain\Cookie\Queries\GetAllCookies
- * @implements QueryHandlerInterface<GetAllCookiesQuery, array<int, CookieDTO>>
+ * @implements QueryHandlerInterface<GetAllCookiesQuery, list<CookieDTO>>
  */
-final readonly class GetAllCookiesHandler implements QueryHandlerInterface
+final class GetAllCookiesHandler extends AbstractQueryHandler implements QueryHandlerInterface
 {
     /**
-     * Create a new GetAllCookiesHandler.
-     *
-     * @param CookieQueryRepositoryInterface $repository    For data retrieval
-     * @param LoggerInterface                $logger        For query logging
-     * @param LogConfigPort                  $loggingConfig For logging configuration
+     * @param CookieQueryRepositoryInterface $repository    Read-side port returning DTOs.
+     * @param LoggerInterface                $logger        PSR-3 logger (channel: cookie.query.getAll).
+     * @param ClockInterface                 $clock         Monotonic time source for duration.
+     * @param LogSampler                     $sampler       Shared sampling policy.
+     * @param LogConfigPort                  $loggingConfig Per-handler logging-level policy.
      */
     public function __construct(
-        private CookieQueryRepositoryInterface $repository,
-        private LoggerInterface $logger,
-        private LogConfigPort $loggingConfig
+        private readonly CookieQueryRepositoryInterface $repository,
+        LoggerInterface $logger,
+        ClockInterface $clock,
+        LogSampler $sampler,
+        private readonly LogConfigPort $loggingConfig
     ) {
+        parent::__construct($logger, $clock, $sampler);
     }
 
     /**
-     * Handle the GetAllCookiesQuery.
-     *
-     * @param GetAllCookiesQuery $query The query
-     * @return array<int, CookieDTO> Array of cookie DTOs
+     * @param GetAllCookiesQuery $query The query DTO.
+     * @return list<CookieDTO> Array of cookie DTOs.
+     * @throws ValidationException When the repository returned more than
+     *                             {@see GetAllCookiesQuery::MAX_RESULTS}.
      */
-    public function handle(object $query): array
+    protected function doHandle(object $query): array
     {
-        $startTime = microtime(true);
-
         $cookies = $this->repository->findAll($query->includeInactive);
-
-        $durationMs = (microtime(true) - $startTime) * 1000;
-
-        $this->logQueryExecution($query->includeInactive, count($cookies), $durationMs);
+        $count = count($cookies);
+        if ($count > GetAllCookiesQuery::MAX_RESULTS) {
+            throw ValidationException::outOfRange(
+                'result_count',
+                0,
+                GetAllCookiesQuery::MAX_RESULTS,
+                $count,
+                ErrorCodes::COOKIE_QUERY_RESULT_LIMIT_EXCEEDED
+            );
+        }
 
         return $cookies;
     }
 
     /**
-     * Log query execution based on configured logging level.
-     *
-     * @param bool  $includeInactive Whether inactive cookies were included
-     * @param int   $resultCount     Number of cookies returned
-     * @param float $durationMs      Execution duration in milliseconds
+     * @param GetAllCookiesQuery $query
+     * @param list<CookieDTO>    $result
      */
-    private function logQueryExecution(bool $includeInactive, int $resultCount, float $durationMs): void
+    protected function shouldLog(object $query, mixed $result, float $durationMs): bool
     {
-        $isSlowQuery = $durationMs > $this->loggingConfig->slowQueryThresholdMs();
-
-        if ($isSlowQuery) {
-            $this->logQuery($includeInactive, $resultCount, $durationMs, true);
-            return;
+        unset($query, $result);
+        if ($this->isSlowQuery($durationMs)) {
+            return true;
         }
 
-        if (!$this->shouldLogByLevel()) {
-            return;
-        }
-
-        $this->logQuery($includeInactive, $resultCount, $durationMs, false);
-    }
-
-    /**
-     * Determine if query should be logged based on configured level.
-     *
-     * @return bool True if query should be logged
-     */
-    private function shouldLogByLevel(): bool
-    {
         return match ($this->loggingConfig->queryLoggingLevel()) {
             'all' => true,
-            'errors' => false,
-            'slow' => false,
-            'sampling' => $this->shouldSample(),
+            'sampling' => $this->sampler->shouldSample(),
             default => false,
         };
     }
 
     /**
-     * Log query details with context.
-     *
-     * @param bool  $includeInactive Whether inactive cookies were included
-     * @param int   $resultCount     Number of cookies returned
-     * @param float $durationMs      Execution duration in milliseconds
-     * @param bool  $isSlowQuery     Whether this is a slow query
+     * @param GetAllCookiesQuery $query
+     * @param list<CookieDTO>    $result
+     * @return array<string, scalar|null>
      */
-    private function logQuery(bool $includeInactive, int $resultCount, float $durationMs, bool $isSlowQuery): void
+    protected function logContext(object $query, mixed $result): array
     {
-        $context = [
-            'domain' => 'Cookie',
-            'query' => 'GetAllCookiesQuery',
-            'includeInactive' => $includeInactive,
-            'result_count' => $resultCount,
-            'duration_ms' => round($durationMs, 2),
+        return [
+            'domain' => $this->getDomain(),
+            'query' => $this->queryClass(),
+            'includeInactive' => $query->includeInactive,
+            'result_count' => count($result),
         ];
-
-        if ($isSlowQuery) {
-            $context['slow_query'] = true;
-        }
-
-        $this->logger->info('Query executed', $context);
     }
 
-    /**
-     * Determine if query should be sampled for logging.
-     *
-     * Delegates to the shared {@see LogSampler} — see GetCookieByIdHandler
-     * for the rationale (random_int over the Mersenne Twister).
-     *
-     * @return bool True if query should be logged based on sampling rate
-     */
-    private function shouldSample(): bool
+    protected function getDomain(): string
     {
-        return (new LogSampler($this->loggingConfig->samplingRate()))->shouldSample();
+        return 'Cookie';
+    }
+
+    protected function queryClass(): string
+    {
+        return GetAllCookiesQuery::class;
+    }
+
+    protected function slowQueryThresholdMs(): int
+    {
+        return $this->loggingConfig->slowQueryThresholdMs();
     }
 }

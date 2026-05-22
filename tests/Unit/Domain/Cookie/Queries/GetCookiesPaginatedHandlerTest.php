@@ -8,6 +8,9 @@ use App\Domain\Cookie\DTOs\CookieDTO;
 use App\Domain\Cookie\Ports\CookieQueryRepositoryInterface;
 use App\Domain\Cookie\Queries\GetCookiesPaginated\GetCookiesPaginatedHandler;
 use App\Domain\Cookie\Queries\GetCookiesPaginated\GetCookiesPaginatedQuery;
+use App\Domain\Shared\Bus\LogSampler;
+use App\Domain\Shared\Bus\SystemClock;
+use App\Domain\Shared\Exceptions\ValidationException;
 use App\Domain\Shared\Ports\LogConfigPort;
 use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 use Psr\Log\LoggerInterface;
@@ -19,6 +22,7 @@ final class GetCookiesPaginatedHandlerTest extends UnitTestCase
     private CookieQueryRepositoryInterface $repository;
     private LoggerInterface $logger;
     private LogConfigPort $loggingConfig;
+    private float $samplingRate = 0.0;
 
     protected function setUp(): void
     {
@@ -130,14 +134,15 @@ final class GetCookiesPaginatedHandlerTest extends UnitTestCase
 
     public function test_slow_query_short_circuits_irrespective_of_level(): void
     {
+        // Post-E08, slow queries promote to `warning` (closes 04/F7).
         $this->stubConfig(level: 'errors', slowMs: 0);
         $this->repository->method('findPaginated')->willReturn(
             $this->paginationResult($this->makeDtos(1), total: 1, page: 1, perPage: 20, lastPage: 1)
         );
 
         $this->logger->expects($this->once())
-            ->method('info')
-            ->with('Query executed', $this->callback(function (array $ctx): bool {
+            ->method('warning')
+            ->with('Slow query executed', $this->callback(function (array $ctx): bool {
                 return ($ctx['slow_query'] ?? false) === true;
             }));
 
@@ -180,9 +185,66 @@ final class GetCookiesPaginatedHandlerTest extends UnitTestCase
         $this->makeHandler()->handle(new GetCookiesPaginatedQuery(page: 1, perPage: 20));
     }
 
+    public function test_do_handle_is_under_the_twenty_line_ceiling(): void
+    {
+        $method = (new \ReflectionClass(GetCookiesPaginatedHandler::class))->getMethod('doHandle');
+        $end = $method->getEndLine();
+        $start = $method->getStartLine();
+        $this->assertNotFalse($end);
+        $this->assertNotFalse($start);
+        $lines = ($end - $start) - 1;
+        $this->assertLessThanOrEqual(
+            20,
+            $lines,
+            sprintf('GetCookiesPaginatedHandler::doHandle() is %d lines; CLAUDE.md caps it at 20.', $lines)
+        );
+    }
+
+    /**
+     * Query DTO enforces the page ceiling — closes 04/F6.
+     */
+    public function test_query_constructor_caps_page_overflow(): void
+    {
+        $this->expectException(ValidationException::class);
+        new GetCookiesPaginatedQuery(page: GetCookiesPaginatedQuery::MAX_PAGE + 1);
+    }
+
+    /**
+     * Query DTO length-caps the search term — closes 04/F4.
+     */
+    public function test_query_constructor_rejects_overlong_search_term(): void
+    {
+        $this->expectException(ValidationException::class);
+        new GetCookiesPaginatedQuery(
+            page: 1,
+            perPage: 20,
+            searchTerm: str_repeat('a', GetCookiesPaginatedQuery::MAX_SEARCH_LENGTH + 1)
+        );
+    }
+
+    /**
+     * Query DTO LIKE-escapes `%`, `_`, and `\` — closes 04/F4 (the
+     * repository receives an already-safe term).
+     */
+    public function test_query_constructor_like_escapes_wildcards(): void
+    {
+        $query = new GetCookiesPaginatedQuery(
+            page: 1,
+            perPage: 20,
+            searchTerm: '50% off_now'
+        );
+        $this->assertSame('50\\% off\\_now', $query->searchTerm);
+    }
+
     private function makeHandler(): GetCookiesPaginatedHandler
     {
-        return new GetCookiesPaginatedHandler($this->repository, $this->logger, $this->loggingConfig);
+        return new GetCookiesPaginatedHandler(
+            $this->repository,
+            $this->logger,
+            new SystemClock(),
+            new LogSampler($this->samplingRate),
+            $this->loggingConfig
+        );
     }
 
     private function stubConfig(
@@ -193,6 +255,7 @@ final class GetCookiesPaginatedHandlerTest extends UnitTestCase
         $this->loggingConfig->method('queryLoggingLevel')->willReturn($level);
         $this->loggingConfig->method('slowQueryThresholdMs')->willReturn($slowMs);
         $this->loggingConfig->method('samplingRate')->willReturn($samplingRate);
+        $this->samplingRate = $samplingRate;
     }
 
     /**

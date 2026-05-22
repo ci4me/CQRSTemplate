@@ -6,136 +6,116 @@ namespace App\Domain\Cookie\Queries\GetCookieById;
 
 use App\Domain\Cookie\DTOs\CookieDTO;
 use App\Domain\Cookie\Ports\CookieQueryRepositoryInterface;
+use App\Domain\Shared\Bus\AbstractQueryHandler;
+use App\Domain\Shared\Bus\ClockInterface;
 use App\Domain\Shared\Bus\LogSampler;
 use App\Domain\Shared\Bus\QueryHandlerInterface;
 use App\Domain\Shared\Ports\LogConfigPort;
 use Psr\Log\LoggerInterface;
 
 /**
- * Handler for GetCookieByIdQuery.
+ * Handler for {@see GetCookieByIdQuery}.
  *
- * Responsibilities:
- * 1. Fetch cookie from repository by ID
- * 2. Return cookie entity or null
- * 3. Log query execution based on configurable logging level
- *
- * Logging Behavior:
- * - 'all': Logs every query execution
- * - 'errors': Logs only when cookie not found
- * - 'slow': Logs only when execution exceeds threshold
- * - 'sampling': Logs based on random sampling rate
- * - Slow queries always logged regardless of level
- *
- * Note: Returns null if cookie not found instead of throwing exception.
- * The controller can decide how to handle not found cases.
+ * Post-E08 the timing + slow-query promotion + sampling decision lives
+ * in {@see AbstractQueryHandler}. This subclass:
+ *  - Loads the DTO in {@see doHandle()} — that's the whole business
+ *    surface.
+ *  - Overrides {@see shouldLog()} to layer the {@see LogConfigPort}
+ *    policy on top of the base default (slow OR sampled). The 'errors'
+ *    level force-logs `null` results because not-found is the only
+ *    interesting error condition for this query (closes 04/F1
+ *    consumption).
+ *  - Overrides {@see logContext()} to add `cookieId` + `result` so the
+ *    log line carries the shape operators expect.
  *
  * @package App\Domain\Cookie\Queries\GetCookieById
  * @implements QueryHandlerInterface<GetCookieByIdQuery, CookieDTO|null>
  */
-final readonly class GetCookieByIdHandler implements QueryHandlerInterface
+final class GetCookieByIdHandler extends AbstractQueryHandler implements QueryHandlerInterface
 {
     /**
-     * Create a new GetCookieByIdHandler.
-     *
-     * @param CookieQueryRepositoryInterface $repository    For data retrieval
-     * @param LoggerInterface                $logger        For query logging
-     * @param LogConfigPort                  $loggingConfig For logging configuration
+     * @param CookieQueryRepositoryInterface $repository    Read-side port returning DTOs.
+     * @param LoggerInterface                $logger        PSR-3 logger (channel: cookie.query.getById).
+     * @param ClockInterface                 $clock         Monotonic time source for duration.
+     * @param LogSampler                     $sampler       Shared sampling policy (random_int-backed).
+     * @param LogConfigPort                  $loggingConfig Per-handler logging-level policy.
      */
     public function __construct(
-        private CookieQueryRepositoryInterface $repository,
-        private LoggerInterface $logger,
-        private LogConfigPort $loggingConfig
+        private readonly CookieQueryRepositoryInterface $repository,
+        LoggerInterface $logger,
+        ClockInterface $clock,
+        LogSampler $sampler,
+        private readonly LogConfigPort $loggingConfig
     ) {
+        parent::__construct($logger, $clock, $sampler);
     }
 
     /**
-     * Handle the GetCookieByIdQuery.
-     *
-     * @param GetCookieByIdQuery $query The query
-     * @return CookieDTO|null The cookie DTO or null if not found
+     * @param GetCookieByIdQuery $query The query DTO.
+     * @return CookieDTO|null The cookie DTO or null if not found.
      */
-    public function handle(object $query): ?CookieDTO
+    protected function doHandle(object $query): ?CookieDTO
     {
-        $startTime = microtime(true);
-
-        $dto = $this->repository->findById($query->id);
-
-        $durationMs = (microtime(true) - $startTime) * 1000;
-
-        $this->logQueryExecution($query->id, $dto, $durationMs);
-
-        return $dto;
+        return $this->repository->findById($query->id);
     }
 
     /**
-     * Log query execution based on configured logging level.
+     * Layer the LogConfigPort policy on top of the base "slow OR sampled".
      *
-     * @param int            $cookieId   The cookie ID being queried
-     * @param CookieDTO|null $result     The query result
-     * @param float          $durationMs Execution duration in milliseconds
+     * 'errors' fires when result is null (the only error condition we
+     * surface); 'all' always logs; 'slow' never logs from this branch
+     * (slow queries are caught by the parent's isSlowQuery check);
+     * 'sampling' delegates to the parent's sampler.
+     *
+     * @param GetCookieByIdQuery $query
+     * @param CookieDTO|null     $result
      */
-    private function logQueryExecution(int $cookieId, ?CookieDTO $result, float $durationMs): void
+    protected function shouldLog(object $query, mixed $result, float $durationMs): bool
     {
-        $isSlowQuery = $durationMs > $this->loggingConfig->slowQueryThresholdMs();
-
-        if ($isSlowQuery) {
-            $this->logQuery($cookieId, $result, $durationMs, true);
-            return;
+        unset($query);
+        if ($this->isSlowQuery($durationMs)) {
+            return true;
         }
 
-        $shouldLog = match ($this->loggingConfig->queryLoggingLevel()) {
+        return match ($this->loggingConfig->queryLoggingLevel()) {
             'all' => true,
             'errors' => $result === null,
-            'slow' => false,
-            'sampling' => $this->shouldSample(),
+            'sampling' => $this->sampler->shouldSample(),
             default => false,
         };
-
-        if (!$shouldLog) {
-            return;
-        }
-
-        $this->logQuery($cookieId, $result, $durationMs, false);
     }
 
     /**
-     * Log query details with context.
-     *
-     * @param int            $cookieId    The cookie ID being queried
-     * @param CookieDTO|null $result      The query result
-     * @param float          $durationMs  Execution duration in milliseconds
-     * @param bool           $isSlowQuery Whether this is a slow query
+     * @param GetCookieByIdQuery $query
+     * @param CookieDTO|null     $result
+     * @return array<string, scalar|null>
      */
-    private function logQuery(int $cookieId, ?CookieDTO $result, float $durationMs, bool $isSlowQuery): void
+    protected function logContext(object $query, mixed $result): array
     {
-        $context = [
-            'domain' => 'Cookie',
-            'query' => 'GetCookieByIdQuery',
-            'cookieId' => $cookieId,
+        return [
+            'domain' => $this->getDomain(),
+            'query' => $this->queryClass(),
+            'cookieId' => $query->id,
             'result' => $result === null ? 'not_found' : 'found',
-            'duration_ms' => round($durationMs, 2),
         ];
+    }
 
-        if ($isSlowQuery) {
-            $context['slow_query'] = true;
-        }
+    protected function getDomain(): string
+    {
+        return 'Cookie';
+    }
 
-        $this->logger->info('Query executed', $context);
+    protected function queryClass(): string
+    {
+        return GetCookieByIdQuery::class;
     }
 
     /**
-     * Determine if query should be sampled for logging.
-     *
-     * Delegates to the shared {@see LogSampler}, which uses random_int
-     * (CSPRNG) instead of the biased Mersenne Twister the previous
-     * implementation called (closes 04/F12, 14/F20, 17/F2). Constructing
-     * the sampler per-call is cheap (single integer cast); E08 lifts
-     * this to constructor injection when migrating onto AbstractQueryHandler.
-     *
-     * @return bool True if query should be logged based on sampling rate
+     * Delegate to the injected {@see LogConfigPort} so operators can dial
+     * the threshold at runtime without touching code.
      */
-    private function shouldSample(): bool
+    protected function slowQueryThresholdMs(): int
     {
-        return (new LogSampler($this->loggingConfig->samplingRate()))->shouldSample();
+        return $this->loggingConfig->slowQueryThresholdMs();
     }
 }
