@@ -12,25 +12,10 @@ use App\Domain\Shared\ValueObjects\Money;
 /**
  * Cookie sale price (D7).
  *
- * Thin domain-specific wrapper around {@see Money}. Encodes the Cookie
- * domain's business rules around price (must be > 0, must fit a typical
- * retail catalogue) while delegating amount / currency mechanics to the
- * shared Money value object.
- *
- * Why a wrapper instead of using Money directly:
- *  - Self-validates against COOKIE_VALIDATION_PRICE so callers get the
- *    right domain error code.
- *  - Keeps the type signature explicit: a method that takes a CookiePrice
- *    can never receive a Money for shipping fees.
- *  - Pins the currency choice for cookies at the boundary (currently USD;
- *    becomes configurable via SettingsService when multi-currency lands).
- *
- * Usage:
- *   $price = CookiePrice::fromString('2.99');     // assumes USD
- *   $price->toDecimalString();                    // "2.99"
- *   $price->getMinorUnits();                       // 299
- *   $price->getMoney()->currency->iso;             // "USD"
- *   $price->format();                              // "$2.99"
+ * Thin domain-specific wrapper around {@see Money}. Self-validates against
+ * COOKIE_VALIDATION_PRICE (must be > 0, must fit a retail catalogue) and
+ * pins the currency choice at the boundary. Presentation formatting is
+ * delegated to {@see \App\Domain\Cookie\Services\PriceFormatter}.
  */
 final readonly class CookiePrice
 {
@@ -39,9 +24,6 @@ final readonly class CookiePrice
 
     private Money $money;
 
-    /**
-     * __construct.
-     */
     private function __construct(Money $money)
     {
         $this->assertPositiveAndInRange($money->amountMinor());
@@ -64,17 +46,12 @@ final readonly class CookiePrice
             throw ValidationException::required('price', ErrorCodes::COOKIE_VALIDATION_PRICE);
         }
 
-        // Parse first (a format failure is mapped to the cookie-specific code).
-        // The constructor enforces the cookie-specific range and emits the
-        // existing tooSmall/outOfRange messages — those are not caught here.
         $money = self::parseMoneyOrFail($trimmed, $currency ?? self::defaultCurrency());
 
         return new self($money);
     }
 
     /**
-     * parseMoneyOrFail.
-     *
      * @throws ValidationException
      */
     private static function parseMoneyOrFail(string $value, Currency $currency): Money
@@ -90,9 +67,6 @@ final readonly class CookiePrice
         }
     }
 
-    /**
-     * fromMinorUnits.
-     */
     public static function fromMinorUnits(int $minorUnits, ?Currency $currency = null): self
     {
         return new self(Money::fromMinorUnits($minorUnits, $currency ?? self::defaultCurrency()));
@@ -109,25 +83,16 @@ final readonly class CookiePrice
         return new self(Money::fromFloat($price, $currency ?? self::defaultCurrency()));
     }
 
-    /**
-     * getMoney.
-     */
     public function getMoney(): Money
     {
         return $this->money;
     }
 
-    /**
-     * getCurrency.
-     */
     public function getCurrency(): Currency
     {
         return $this->money->currency;
     }
 
-    /**
-     * getMinorUnits.
-     */
     public function getMinorUnits(): int
     {
         return $this->money->amountMinor();
@@ -142,27 +107,20 @@ final readonly class CookiePrice
         return $this->money->amountMinor() / (10 ** $this->money->currency->decimals);
     }
 
-    /**
-     * toDecimalString.
-     */
     public function toDecimalString(): string
     {
         return $this->money->toDecimalString();
     }
 
-    /**
-     * toString.
-     */
     public function toString(): string
     {
         return $this->toDecimalString();
     }
 
     /**
-     * Format with the underlying currency's symbol. The legacy `$currency`
-     * parameter is preserved for callers that want to override the symbol
-     * (e.g. for a localised display) without changing the underlying
-     * monetary value.
+     * Format with the underlying currency's symbol.
+     *
+     * @deprecated Use {@see \App\Domain\Cookie\Services\PriceFormatter::format()}.
      */
     public function format(?string $currencySymbol = null): string
     {
@@ -172,65 +130,32 @@ final readonly class CookiePrice
         return $currencySymbol . $this->toDecimalString();
     }
 
-    /**
-     * equals.
-     */
     public function equals(self $other): bool
     {
         return $this->money->equals($other->money);
     }
 
-    /**
-     * greaterThan.
-     */
-    public function greaterThan(self $other): bool
+    public function isGreaterThan(self $other): bool
     {
         return $this->money->greaterThan($other->money);
     }
 
-    /**
-     * isGreaterThan.
-     */
-    public function isGreaterThan(self $other): bool
-    {
-        return $this->greaterThan($other);
-    }
-
-    /**
-     * lessThan.
-     */
-    public function lessThan(self $other): bool
+    public function isLessThan(self $other): bool
     {
         return $this->money->lessThan($other->money);
     }
 
-    /**
-     * isLessThan.
-     */
-    public function isLessThan(self $other): bool
-    {
-        return $this->lessThan($other);
-    }
-
-    /**
-     * add.
-     */
     public function add(self $other): self
     {
         return new self($this->money->add($other->money));
     }
 
-    /**
-     * subtract.
-     */
     public function subtract(self $other): self
     {
         return new self($this->money->subtract($other->money));
     }
 
     /**
-     * multiplyBy.
-     *
      * @throws ValidationException
      */
     public function multiplyBy(int $quantity): self
@@ -242,8 +167,6 @@ final readonly class CookiePrice
     }
 
     /**
-     * applyDiscount.
-     *
      * @throws ValidationException
      */
     public function applyDiscount(float $discountPercent): self
@@ -261,17 +184,12 @@ final readonly class CookiePrice
         return new self(Money::fromMinorUnits($discountedMinor, $this->money->currency));
     }
 
-    /**
-     * __toString.
-     */
     public function __toString(): string
     {
         return $this->toDecimalString();
     }
 
     /**
-     * assertPositiveAndInRange.
-     *
      * @throws ValidationException
      */
     private function assertPositiveAndInRange(int $minorUnits): void
@@ -301,10 +219,6 @@ final readonly class CookiePrice
      */
     private static function defaultCurrency(): Currency
     {
-        // Read from the deployment-wide source of truth so a multi-
-        // currency rollout doesn't have to fork CookiePrice. Falls back
-        // to USD when DEFAULT_CURRENCY env isn't set, matching the
-        // pre-existing single-currency behaviour.
         return Currency::default();
     }
 }
