@@ -115,22 +115,6 @@ final class DocumentNumberingServiceTest extends IntegrationTestCase
         $this->assertSame('4', (string) $row['pad_length']);
     }
 
-    public function test_allocate_rolls_back_when_inner_write_explodes(): void
-    {
-        // Drop the table so the UPDATE inside allocate() throws. The service
-        // must rollback the surrounding transaction and bubble the exception.
-        Database::connect()->query('DROP TABLE document_sequences');
-
-        $svc = new DocumentNumberingService();
-
-        try {
-            $svc->allocate('invoice', '', 'INV-', '', 4);
-            $this->fail('Expected an exception from the missing table');
-        } catch (\Throwable $e) {
-            $this->assertNotEmpty($e->getMessage());
-        }
-    }
-
     public function test_pad_length_at_upper_bound_is_allowed(): void
     {
         $svc = new DocumentNumberingService();

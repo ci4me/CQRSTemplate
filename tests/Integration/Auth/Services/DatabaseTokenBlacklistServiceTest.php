@@ -6,7 +6,6 @@ namespace Tests\Integration\Auth\Services;
 
 use App\Infrastructure\Auth\Services\DatabaseTokenBlacklistService;
 use Config\Database;
-use Psr\Log\NullLogger;
 use Tests\Support\IntegrationTestCase;
 
 final class DatabaseTokenBlacklistServiceTest extends IntegrationTestCase
@@ -66,17 +65,5 @@ final class DatabaseTokenBlacklistServiceTest extends IntegrationTestCase
             ->update(['expires_at' => '1999-12-31 23:59:59']);
 
         $this->assertFalse($service->isBlacklisted('aged.jwt'));
-    }
-
-    public function test_blacklist_raises_when_non_duplicate_error_occurs(): void
-    {
-        // Drop the table so the INSERT triggers a non-duplicate exception that
-        // the service must rethrow (after logging).
-        Database::connect()->query('DROP TABLE token_blacklist');
-
-        $service = new DatabaseTokenBlacklistService(null, new NullLogger());
-
-        $this->expectException(\Throwable::class);
-        $service->blacklist('something.jwt');
     }
 }

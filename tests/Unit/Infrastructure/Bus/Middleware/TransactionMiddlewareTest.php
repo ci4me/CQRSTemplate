@@ -31,10 +31,25 @@ final class TransactionMiddlewareTest extends CIUnitTestCase
     protected function setUp(): void
     {
         parent::setUp();
+        $this->resetTransactionalState();
+    }
+
+    protected function tearDown(): void
+    {
+        // The "transStatus=false" branch leaves a contaminated connection
+        // behind. CI4's DatabaseTestTrait keeps a cached BaseConnection across
+        // test classes, so we MUST scrub the transactional state on the way
+        // out or subsequent integration tests fail with "Transaction failed".
+        $this->resetTransactionalState();
+        parent::tearDown();
+    }
+
+    private function resetTransactionalState(): void
+    {
         // CI4's BaseConnection caches _transStatus = false across tests once
         // any failing query has flipped it (see test_rolls_back_when_trans_status_is_false).
-        // We reflectively reset transStatus to true before each test so the
-        // success paths can begin with a clean transactional state.
+        // We reflectively reset transStatus to true so the next test sees a
+        // clean transactional state.
         $db = Database::connect();
         $ref = new \ReflectionObject($db);
         if ($ref->hasProperty('transStatus')) {
