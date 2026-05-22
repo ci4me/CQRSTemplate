@@ -157,6 +157,56 @@ final class JwtMiddlewareTest extends FeatureTestCase
         }
     }
 
+    public function test_token_with_fingerprint_mismatch_within_grace_period_is_allowed(): void
+    {
+        // 1-hour grace period — the fingerprint mismatch is tolerated because
+        // the session was created moments ago. Exercises the early-return
+        // branch in validateDeviceFingerprint() (~line 270).
+        putenv('AUTH_DEVICE_FINGERPRINT_GRACE_PERIOD=3600');
+
+        try {
+            $email = 'jwt-mw-grace@test.local';
+            $this->createUser($email, self::TEST_PASSWORD);
+            $token = $this->loginAndExtractAccessToken($email, self::TEST_PASSWORD);
+
+            \Config\Database::connect()
+                ->table('sessions')
+                ->update(['device_fingerprint' => 'other-fingerprint-but-grace-active']);
+
+            $response = $this->withHeaders([
+                'Authorization' => 'Bearer ' . $token,
+                'User-Agent' => 'GraceBrowser/1.0',
+            ])->call('GET', '/api/v1/auth/me');
+
+            $response->assertStatus(200);
+        } finally {
+            putenv('AUTH_DEVICE_FINGERPRINT_GRACE_PERIOD');
+        }
+    }
+
+    public function test_token_for_explicitly_suspended_user_returns_user_inactive(): void
+    {
+        $email = 'jwt-mw-suspended@test.local';
+        $user = $this->createUser($email, self::TEST_PASSWORD);
+        $token = $this->loginAndExtractAccessToken($email, self::TEST_PASSWORD);
+
+        // Flip the row to `status = suspended` directly so findById() returns
+        // the user (no soft-delete) but isActive() returns false. That is
+        // the exact code path that returns 'user_inactive' (lines 181-189).
+        \Config\Database::connect()
+            ->table('users')
+            ->where('id', (int) $user->getId())
+            ->update(['status' => 'suspended']);
+
+        $response = $this->withHeaders(['Authorization' => 'Bearer ' . $token])
+            ->call('GET', '/api/v1/auth/me');
+
+        $response->assertStatus(401);
+        $body = json_decode((string) $response->getJSON(), true);
+        $this->assertIsArray($body);
+        $this->assertSame('user_inactive', $body['error']);
+    }
+
     public function test_token_with_device_fingerprint_mismatch_is_rejected(): void
     {
         // Disable the grace period so any UA change is rejected immediately.
