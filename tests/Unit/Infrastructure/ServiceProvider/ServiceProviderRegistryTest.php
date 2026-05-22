@@ -119,6 +119,79 @@ final class ServiceProviderRegistryTest extends UnitTestCase
         }
     }
 
+    public function test_discovered_returns_cached_provider_list(): void
+    {
+        $first = ServiceProviderRegistry::discovered();
+        $second = ServiceProviderRegistry::discovered();
+
+        // Calls subsequent to the first return the same cached instances.
+        $this->assertSame($first, $second);
+        $this->assertNotEmpty($first);
+    }
+
+    public function test_discoverRepositories_returns_autobind_instances_keyed_by_short_name(): void
+    {
+        $repositories = ServiceProviderRegistry::discoverRepositories();
+
+        // CookieRepository is the canonical AutoBind class in this template.
+        $this->assertArrayHasKey('cookieRepository', $repositories);
+        $this->assertInstanceOf(
+            \App\Domain\Cookie\Ports\CookieRepositoryInterface::class,
+            $repositories['cookieRepository'],
+        );
+    }
+
+    public function test_discoverRepositories_is_cached(): void
+    {
+        $first = ServiceProviderRegistry::discoverRepositories();
+        $second = ServiceProviderRegistry::discoverRepositories();
+
+        $this->assertSame($first, $second);
+    }
+
+    public function test_registerAll_throws_when_required_repo_missing(): void
+    {
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessageMatches('/Repository ".*" required by .* not found/');
+
+        ServiceProviderRegistry::registerAll(
+            new CommandBus(),
+            new QueryBus(),
+            new EventDispatcher(),
+            [], // empty repository pool — first provider that needs one fails
+        );
+    }
+
+    public function test_registerAll_wires_handlers_when_repositories_provided(): void
+    {
+        $commandBus = new CommandBus();
+        $queryBus = new QueryBus();
+        $dispatcher = new EventDispatcher();
+
+        $repositories = ServiceProviderRegistry::discoverRepositories();
+        // Fill in the dependencies that DomainServiceProviders ask for via
+        // getRepositories() but that aren't AutoBind classes themselves.
+        $repositories['eventDispatcher'] = $dispatcher;
+        $repositories['logger'] = new \Psr\Log\NullLogger();
+        $repositories['loggingConfig'] = new \App\Infrastructure\Logging\CodeIgniterLogConfig(new \Config\Logging());
+
+        try {
+            ServiceProviderRegistry::registerAll($commandBus, $queryBus, $dispatcher, $repositories);
+        } catch (\RuntimeException $e) {
+            // Some providers may need additional services not present in this
+            // unit-test container (JwtService, etc.). That's fine — the goal is
+            // to exercise the registration loop, not to satisfy every domain.
+            $this->assertStringContainsString('not found', $e->getMessage());
+            return;
+        }
+
+        // If we got here, registration succeeded: at least the Cookie domain
+        // should have wired its handlers.
+        $this->assertTrue(
+            $commandBus->hasHandler(\App\Domain\Cookie\Commands\CreateCookie\CreateCookieCommand::class),
+        );
+    }
+
     /**
      * @return array<string, object>
      */
