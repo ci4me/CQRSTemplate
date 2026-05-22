@@ -8,8 +8,11 @@ use App\Domain\Cookie\Entities\Cookie;
 use App\Domain\Cookie\Events\CookieStockChanged\CookieStockChangedEvent;
 use App\Domain\Cookie\ValueObjects\CookieName;
 use App\Domain\Cookie\ValueObjects\CookiePrice;
+use App\Domain\Shared\Aggregate\AggregateHydrator;
+use App\Domain\Shared\Aggregate\AggregateRootInterface;
 use App\Domain\Shared\Exceptions\DomainException;
 use App\Domain\Shared\Exceptions\ValidationException;
+use ReflectionMethod;
 use Tests\Support\UnitTestCase;
 
 /**
@@ -183,7 +186,7 @@ final class CookieTest extends UnitTestCase
             isActive: true
         );
 
-        $cookie->assignId(1);
+        $cookie->assignId(1, AggregateHydrator::key());
 
         $cookie->increaseStock(25);
 
@@ -199,7 +202,7 @@ final class CookieTest extends UnitTestCase
             stock: 50,
             isActive: true
         );
-        $cookie->assignId(1);
+        $cookie->assignId(1, AggregateHydrator::key());
 
         $this->expectException(ValidationException::class);
         $this->expectExceptionMessage('must be at least 1');
@@ -217,7 +220,7 @@ final class CookieTest extends UnitTestCase
             isActive: true
         );
 
-        $cookie->assignId(1);
+        $cookie->assignId(1, AggregateHydrator::key());
 
         $cookie->decreaseStock(20);
 
@@ -233,7 +236,7 @@ final class CookieTest extends UnitTestCase
             stock: 10,
             isActive: true
         );
-        $cookie->assignId(1);
+        $cookie->assignId(1, AggregateHydrator::key());
 
         $this->expectException(DomainException::class);
         $this->expectExceptionMessage('Stock cannot be negative');
@@ -251,7 +254,7 @@ final class CookieTest extends UnitTestCase
             isActive: true
         );
 
-        $cookie->assignId(1);
+        $cookie->assignId(1, AggregateHydrator::key());
 
         $cookie->decreaseStock(10);
 
@@ -267,7 +270,7 @@ final class CookieTest extends UnitTestCase
             stock: 10,
             isActive: true
         );
-        $cookie->assignId(1);
+        $cookie->assignId(1, AggregateHydrator::key());
 
         $this->assertFalse($cookie->hasPendingEvents(), 'fresh aggregate has no events');
 
@@ -293,7 +296,7 @@ final class CookieTest extends UnitTestCase
             isActive: true
         );
 
-        $cookie->assignId(1);
+        $cookie->assignId(1, AggregateHydrator::key());
 
         $cookie->increaseStock(8);
 
@@ -345,7 +348,7 @@ final class CookieTest extends UnitTestCase
             isActive: false
         );
 
-        $cookie->assignId(1);
+        $cookie->assignId(1, AggregateHydrator::key());
 
         $cookie->activate();
 
@@ -362,7 +365,7 @@ final class CookieTest extends UnitTestCase
             isActive: true
         );
 
-        $cookie->assignId(1);
+        $cookie->assignId(1, AggregateHydrator::key());
 
         $cookie->deactivate();
 
@@ -481,12 +484,12 @@ final class CookieTest extends UnitTestCase
             stock: 10,
             isActive: true
         );
-        $cookie->assignId(7);
+        $cookie->assignId(7, AggregateHydrator::key());
 
         $this->expectException(\LogicException::class);
         $this->expectExceptionMessage('refusing to reassign');
 
-        $cookie->assignId(99);
+        $cookie->assignId(99, AggregateHydrator::key());
     }
 
     public function test_assign_id_is_idempotent_for_same_id(): void
@@ -499,9 +502,107 @@ final class CookieTest extends UnitTestCase
             isActive: true
         );
 
-        $cookie->assignId(42);
-        $cookie->assignId(42);
+        $cookie->assignId(42, AggregateHydrator::key());
+        $cookie->assignId(42, AggregateHydrator::key());
 
         $this->assertSame(42, $cookie->getId());
+    }
+
+    // ==================== HYDRATION CONTRACT TESTS (E06) ====================
+
+    public function test_cookie_implements_aggregate_root_interface(): void
+    {
+        $cookie = Cookie::create(
+            name: CookieName::fromString('Marker'),
+            description: null,
+            price: CookiePrice::fromString('1.00'),
+            stock: 1,
+            isActive: true
+        );
+
+        $this->assertInstanceOf(AggregateRootInterface::class, $cookie);
+    }
+
+    public function test_assign_id_requires_aggregate_hydrator_key_parameter(): void
+    {
+        $reflection = new ReflectionMethod(Cookie::class, 'assignId');
+        $parameters = $reflection->getParameters();
+
+        $this->assertCount(2, $parameters, 'assignId must take (int $id, AggregateHydrator $key)');
+        $this->assertSame('id', $parameters[0]->getName());
+        $this->assertSame('key', $parameters[1]->getName());
+
+        $type = $parameters[1]->getType();
+        $this->assertInstanceOf(\ReflectionNamedType::class, $type);
+        $this->assertSame(AggregateHydrator::class, $type->getName());
+        $this->assertFalse($type->allowsNull(), 'hydrator key is required, not optional');
+    }
+
+    public function test_bump_version_requires_aggregate_hydrator_key_parameter(): void
+    {
+        $reflection = new ReflectionMethod(Cookie::class, 'bumpVersion');
+        $parameters = $reflection->getParameters();
+
+        $this->assertCount(1, $parameters, 'bumpVersion must take (AggregateHydrator $key)');
+        $this->assertSame('key', $parameters[0]->getName());
+
+        $type = $parameters[0]->getType();
+        $this->assertInstanceOf(\ReflectionNamedType::class, $type);
+        $this->assertSame(AggregateHydrator::class, $type->getName());
+        $this->assertFalse($type->allowsNull(), 'hydrator key is required, not optional');
+    }
+
+    public function test_bump_version_increments_with_valid_key(): void
+    {
+        $cookie = Cookie::create(
+            name: CookieName::fromString('Versioned'),
+            description: null,
+            price: CookiePrice::fromString('1.00'),
+            stock: 1,
+            isActive: true
+        );
+        $this->assertSame(0, $cookie->getVersion());
+
+        $cookie->bumpVersion(AggregateHydrator::key());
+
+        $this->assertSame(1, $cookie->getVersion());
+    }
+
+    public function test_reconstitute_rejects_version_zero(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('Persisted Cookie must have version >= 1');
+
+        Cookie::reconstitute(
+            id: 1,
+            name: CookieName::fromString('Bad Row'),
+            description: null,
+            price: CookiePrice::fromString('1.00'),
+            stock: 1,
+            isActive: true,
+            createdAt: '2025-10-21 10:00:00',
+            updatedAt: '2025-10-21 10:00:00',
+            deletedAt: null,
+            version: 0
+        );
+    }
+
+    public function test_reconstitute_rejects_negative_version(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('migration drift');
+
+        Cookie::reconstitute(
+            id: 1,
+            name: CookieName::fromString('Bad Row'),
+            description: null,
+            price: CookiePrice::fromString('1.00'),
+            stock: 1,
+            isActive: true,
+            createdAt: '2025-10-21 10:00:00',
+            updatedAt: '2025-10-21 10:00:00',
+            deletedAt: null,
+            version: -3
+        );
     }
 }

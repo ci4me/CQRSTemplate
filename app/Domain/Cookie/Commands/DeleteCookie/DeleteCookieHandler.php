@@ -7,6 +7,8 @@ namespace App\Domain\Cookie\Commands\DeleteCookie;
 use App\Domain\Cookie\ErrorCodes;
 use App\Domain\Cookie\Events\CookieDeleted\CookieDeletedEvent;
 use App\Domain\Cookie\Ports\CookieRepositoryInterface;
+use App\Domain\Shared\Events\AbstractDomainEvent;
+use App\Domain\Shared\Events\CookieChangeSet;
 use App\Domain\Shared\Events\EventDispatcherInterface;
 use App\Domain\Shared\Exceptions\DomainException;
 use Psr\Log\LoggerInterface;
@@ -69,14 +71,18 @@ final readonly class DeleteCookieHandler
 
             // B13: snapshot the cookie before persistence flips deleted_at,
             // so the event payload preserves the final state for audit.
-            $snapshot = [
+            // The CookieChangeSet VO enforces the whitelisted field set —
+            // see slice 05/F4 for the PII-leakage rationale.
+            $snapshot = CookieChangeSet::fromArray([
                 'id' => $cookie->getId(),
                 'name' => $cookieName,
                 'description' => $cookie->getDescription(),
-                'price' => $cookie->getPrice()->toDecimalString(),
+                'price_minor' => $cookie->getPrice()->getMinorUnits(),
+                'price_currency' => $cookie->getPrice()->getCurrency()->iso,
                 'stock' => $cookie->getStock(),
                 'is_active' => $cookie->getIsActive(),
-            ];
+                'version' => $cookie->getVersion(),
+            ]);
 
             $this->logger->info('Cookie found, performing soft delete', [
                 'domain' => 'Cookie',
@@ -88,11 +94,14 @@ final readonly class DeleteCookieHandler
             // Perform soft delete; stamps deleted_by audit column.
             $this->repository->delete($command->id, $command->deletedBy);
 
-            // Dispatch domain event
+            // Dispatch domain event with the AbstractDomainEvent envelope.
             $this->eventDispatcher->dispatch(new CookieDeletedEvent(
+                eventId: AbstractDomainEvent::newId(),
+                occurredAt: new \DateTimeImmutable('now', new \DateTimeZone('UTC')),
+                actorId: $command->deletedBy->isSystem() ? null : $command->deletedBy->id,
                 cookieId: $command->id,
                 cookieName: $cookieName,
-                snapshot: $snapshot
+                snapshot: $snapshot,
             ));
 
             $durationMs = (hrtime(true) - $startTime) / 1_000_000;
