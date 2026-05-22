@@ -60,6 +60,7 @@ final class CookieFactory
             'createdAt' => '2025-10-21 10:00:00',
             'updatedAt' => '2025-10-21 10:00:00',
             'deletedAt' => null,
+            'version' => 1,
         ];
 
         $data = array_merge($defaults, $overrides);
@@ -74,7 +75,7 @@ final class CookieFactory
             createdAt: $data['createdAt'],
             updatedAt: $data['updatedAt'],
             deletedAt: $data['deletedAt'],
-            version: 1
+            version: $data['version']
         );
     }
 
