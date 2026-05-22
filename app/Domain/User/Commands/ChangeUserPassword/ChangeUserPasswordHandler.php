@@ -7,9 +7,9 @@ namespace App\Domain\User\Commands\ChangeUserPassword;
 use App\Domain\Shared\Events\EventDispatcherInterface;
 use App\Domain\User\ErrorCodes;
 use App\Domain\User\Events\PasswordChanged\PasswordChangedEvent;
+use App\Domain\User\Ports\PasswordHistoryRepositoryInterface;
 use App\Domain\User\Ports\SessionManagerInterface;
 use App\Domain\User\Ports\UserRepositoryInterface;
-use App\Domain\User\Repositories\PasswordHistoryRepository;
 use App\Domain\User\ValueObjects\HashedPassword;
 use Psr\Log\LoggerInterface;
 
@@ -42,7 +42,7 @@ final readonly class ChangeUserPasswordHandler
      */
     public function __construct(
         private UserRepositoryInterface $repository,
-        private PasswordHistoryRepository $passwordHistory,
+        private PasswordHistoryRepositoryInterface $passwordHistory,
         private EventDispatcherInterface $eventDispatcher,
         private LoggerInterface $logger,
         private ?SessionManagerInterface $sessionManager = null

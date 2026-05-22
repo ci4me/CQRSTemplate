@@ -23,6 +23,9 @@ use App\Domain\User\Events\UserRegistered\UserRegisteredEvent;
 use App\Domain\User\Events\UserRegistered\UserRegisteredEventHandler;
 use App\Domain\User\Events\UserUpdated\UserUpdatedEvent;
 use App\Domain\User\Events\UserUpdated\UserUpdatedEventHandler;
+use App\Domain\User\Ports\PasswordHistoryRepositoryInterface;
+use App\Domain\User\Ports\SessionManagerInterface;
+use App\Domain\User\Ports\UserRepositoryInterface;
 use App\Domain\User\Queries\GetAllUsers\GetAllUsersHandler;
 use App\Domain\User\Queries\GetAllUsers\GetAllUsersQuery;
 use App\Domain\User\Queries\GetUserByEmail\GetUserByEmailHandler;
@@ -31,8 +34,6 @@ use App\Domain\User\Queries\GetUserById\GetUserByIdHandler;
 use App\Domain\User\Queries\GetUserById\GetUserByIdQuery;
 use App\Domain\User\Queries\SearchUsers\SearchUsersHandler;
 use App\Domain\User\Queries\SearchUsers\SearchUsersQuery;
-use App\Domain\User\Repositories\PasswordHistoryRepository;
-use App\Domain\User\Repositories\UserRepository;
 use App\Infrastructure\Attributes\DomainServiceProvider;
 use App\Infrastructure\Bus\CommandBus;
 use App\Infrastructure\Bus\EventDispatcher;
@@ -66,12 +67,14 @@ final class UserServiceProvider implements DomainServiceProviderInterface
         $passwordHistory = $this->getRepository('passwordHistoryRepository');
         $eventDispatcher = $this->getRepository('eventDispatcher');
         $logger = $this->getRepository('logger');
+        $sessionManager = $this->getRepository('sessionManagementService');
 
         if (
-            !$repository instanceof UserRepository
-            || !$passwordHistory instanceof PasswordHistoryRepository
+            !$repository instanceof UserRepositoryInterface
+            || !$passwordHistory instanceof PasswordHistoryRepositoryInterface
             || !$eventDispatcher instanceof EventDispatcher
             || !$logger instanceof LoggerInterface
+            || !$sessionManager instanceof SessionManagerInterface
         ) {
             throw new \RuntimeException('Invalid dependencies injected');
         }
@@ -98,7 +101,7 @@ final class UserServiceProvider implements DomainServiceProviderInterface
                 $passwordHistory,
                 $eventDispatcher,
                 $logger,
-                \Config\Services::sessionManagementService()
+                $sessionManager
             )
         );
 
@@ -120,7 +123,7 @@ final class UserServiceProvider implements DomainServiceProviderInterface
         $loggingConfig = $this->getRepository('loggingConfig');
         assert($loggingConfig instanceof LogConfigPort);
 
-        if (!$repository instanceof UserRepository || !$logger instanceof LoggerInterface) {
+        if (!$repository instanceof UserRepositoryInterface || !$logger instanceof LoggerInterface) {
             throw new \RuntimeException('Invalid repository or logger injected');
         }
 
@@ -233,6 +236,7 @@ final class UserServiceProvider implements DomainServiceProviderInterface
             'passwordHasher',
             'logger',
             'loggingConfig',
+            'sessionManagementService',
         ];
     }
 

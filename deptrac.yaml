@@ -29,12 +29,16 @@ deptrac:
           must_not:
             - type: attribute
               value: App\Infrastructure\Attributes\InfrastructureAdapter
+            - type: attribute
+              value: App\Infrastructure\Attributes\DomainServiceProvider
     - name: Infrastructure
       collectors:
         - type: directory
           value: app/Infrastructure/.*
         - type: attribute
           value: App\Infrastructure\Attributes\InfrastructureAdapter
+        - type: attribute
+          value: App\Infrastructure\Attributes\DomainServiceProvider
     - name: Controllers
       collectors:
         - type: directory
@@ -151,26 +155,6 @@ deptrac:
       - CodeIgniterFramework
       - Config
   skip_violations:
-    App\Domain\Cookie\CookieServiceProvider:
-      - App\Infrastructure\Attributes\DomainServiceProvider
-      - App\Infrastructure\Bus\CommandBus
-      - App\Infrastructure\Bus\EventDispatcher
-      - App\Infrastructure\Bus\QueryBus
-      - App\Infrastructure\Logging\LoggerFactory
-      - App\Infrastructure\ServiceProvider\DomainServiceProviderInterface
-      - CodeIgniter\Router\RouteCollection
-    App\Domain\User\Commands\ChangeUserPassword\ChangeUserPasswordHandler:
-      - App\Domain\User\Repositories\PasswordHistoryRepository
-    App\Domain\User\UserServiceProvider:
-      - App\Infrastructure\Attributes\DomainServiceProvider
-      - App\Infrastructure\Bus\CommandBus
-      - App\Infrastructure\Bus\EventDispatcher
-      - App\Infrastructure\Bus\QueryBus
-      - App\Domain\User\Repositories\PasswordHistoryRepository
-      - App\Domain\User\Repositories\UserRepository
-      - App\Infrastructure\ServiceProvider\DomainServiceProviderInterface
-      - CodeIgniter\Router\RouteCollection
-      - Config\Services
     # Helpers are infrastructure glue; these violations are permanent and intentional.
     can():
       - App\Domain\Shared\ValueObjects\Permission

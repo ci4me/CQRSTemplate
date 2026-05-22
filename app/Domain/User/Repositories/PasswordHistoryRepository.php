@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\User\Repositories;
 
+use App\Domain\User\Ports\PasswordHistoryRepositoryInterface;
 use App\Infrastructure\Attributes\AutoBind;
 use App\Infrastructure\Attributes\InfrastructureAdapter;
 use CodeIgniter\Database\BaseConnection;
@@ -24,7 +25,7 @@ use CodeIgniter\Database\BaseConnection;
  */
 #[InfrastructureAdapter]
 #[AutoBind]
-readonly class PasswordHistoryRepository
+readonly class PasswordHistoryRepository implements PasswordHistoryRepositoryInterface
 {
     private const int MAX_HISTORY_COUNT = 5;
 
