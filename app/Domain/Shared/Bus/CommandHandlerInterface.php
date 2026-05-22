@@ -28,12 +28,22 @@ namespace App\Domain\Shared\Bus;
  *
  *   final class CreateCookieHandler implements CommandHandlerInterface
  *   {
- *       public function handle(CreateCookieCommand $command): int { ... }
+ *       public function handle(object $command): int { ... }
  *   }
  *
- * Note: the native parameter type stays `object` so PHP's LSP rules accept
- * the narrowing (`CreateCookieCommand`) in subtypes. PHPStan still sees the
- * narrowed type via @param.
+ * Signature shape notes:
+ *
+ *  - The native PARAMETER type stays the bare `object` placeholder
+ *    (PHP rejects narrowing a typed parameter in subtypes). Subclasses
+ *    annotate `@param SpecificCommand $command` so PHPStan narrows the
+ *    body type without breaking PHP's LSP rules.
+ *
+ *  - The native RETURN type is intentionally OMITTED. Omitting it lets
+ *    concrete handlers preserve their own precise return type —
+ *    `int` (Create*), `void` (Update/Delete/Restore), or a value
+ *    object (LoginUser → AuthenticationResult) — without tripping
+ *    PHP's incompatibility rule between `void` and `mixed`. PHPStan
+ *    still infers the precise return through `@return TResult`.
  *
  * @template TCommand of object
  * @template TResult
@@ -44,12 +54,8 @@ interface CommandHandlerInterface
     /**
      * Execute the command and return the handler-specific result.
      *
-     * Concrete handlers narrow the parameter type to their specific
-     * command class — PHP's LSP allows the contravariant narrowing when
-     * the base parameter is the bare `object` placeholder.
-     *
      * @param TCommand $command The command DTO to execute.
      * @return TResult Handler-specific return value.
      */
-    public function handle(object $command): mixed;
+    public function handle(object $command);
 }

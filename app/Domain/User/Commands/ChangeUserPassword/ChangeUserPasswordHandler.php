@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\User\Commands\ChangeUserPassword;
 
+use App\Domain\Shared\Bus\CommandHandlerInterface;
 use App\Domain\Shared\Events\EventDispatcherInterface;
 use App\Domain\User\ErrorCodes;
 use App\Domain\User\Events\PasswordChanged\PasswordChangedEvent;
@@ -34,8 +35,9 @@ use Psr\Log\LoggerInterface;
  * - Consider invalidating existing sessions
  *
  * @package App\Domain\User\Commands\ChangeUserPassword
+ * @implements CommandHandlerInterface<ChangeUserPasswordCommand, void>
  */
-final readonly class ChangeUserPasswordHandler
+final readonly class ChangeUserPasswordHandler implements CommandHandlerInterface
 {
     /**
      * __construct.
@@ -52,10 +54,11 @@ final readonly class ChangeUserPasswordHandler
     /**
      * handle.
      *
+     * @param ChangeUserPasswordCommand $command
      * @throws \RuntimeException
      * @throws \InvalidArgumentException
      */
-    public function handle(ChangeUserPasswordCommand $command): void
+    public function handle(object $command): void
     {
 
         $this->logger->info('Changing user password', [

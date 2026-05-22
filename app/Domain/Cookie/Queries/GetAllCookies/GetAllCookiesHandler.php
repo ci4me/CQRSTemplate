@@ -6,6 +6,7 @@ namespace App\Domain\Cookie\Queries\GetAllCookies;
 
 use App\Domain\Cookie\DTOs\CookieDTO;
 use App\Domain\Cookie\Ports\CookieQueryRepositoryInterface;
+use App\Domain\Shared\Bus\QueryHandlerInterface;
 use App\Domain\Shared\Ports\LogConfigPort;
 use Psr\Log\LoggerInterface;
 
@@ -26,8 +27,9 @@ use Psr\Log\LoggerInterface;
  * - Slow queries always logged regardless of level
  *
  * @package App\Domain\Cookie\Queries\GetAllCookies
+ * @implements QueryHandlerInterface<GetAllCookiesQuery, array<int, CookieDTO>>
  */
-final readonly class GetAllCookiesHandler
+final readonly class GetAllCookiesHandler implements QueryHandlerInterface
 {
     /**
      * Create a new GetAllCookiesHandler.
@@ -49,7 +51,7 @@ final readonly class GetAllCookiesHandler
      * @param GetAllCookiesQuery $query The query
      * @return array<int, CookieDTO> Array of cookie DTOs
      */
-    public function handle(GetAllCookiesQuery $query): array
+    public function handle(object $query): array
     {
         $startTime = microtime(true);
 

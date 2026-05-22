@@ -4,14 +4,17 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Auth\Commands\LogoutUser;
 
+use App\Domain\Shared\Bus\CommandHandlerInterface;
 use App\Domain\User\Ports\TokenBlacklistInterface;
 use App\Infrastructure\Auth\Services\SessionManagementService;
 use Psr\Log\LoggerInterface;
 
 /**
  * LogoutUserHandler.
+ *
+ * @implements CommandHandlerInterface<LogoutUserCommand, void>
  */
-final readonly class LogoutUserHandler
+final readonly class LogoutUserHandler implements CommandHandlerInterface
 {
     /**
      * __construct.
@@ -33,7 +36,7 @@ final readonly class LogoutUserHandler
      * @param LogoutUserCommand $command
      * @return void
      */
-    public function handle(LogoutUserCommand $command): void
+    public function handle(object $command): void
     {
         // SECURITY: Blacklist access token (prevent immediate reuse)
         $this->blacklistService->blacklist($command->token);

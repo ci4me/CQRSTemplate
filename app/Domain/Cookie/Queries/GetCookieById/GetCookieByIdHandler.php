@@ -6,6 +6,7 @@ namespace App\Domain\Cookie\Queries\GetCookieById;
 
 use App\Domain\Cookie\DTOs\CookieDTO;
 use App\Domain\Cookie\Ports\CookieQueryRepositoryInterface;
+use App\Domain\Shared\Bus\QueryHandlerInterface;
 use App\Domain\Shared\Ports\LogConfigPort;
 use Psr\Log\LoggerInterface;
 
@@ -28,8 +29,9 @@ use Psr\Log\LoggerInterface;
  * The controller can decide how to handle not found cases.
  *
  * @package App\Domain\Cookie\Queries\GetCookieById
+ * @implements QueryHandlerInterface<GetCookieByIdQuery, CookieDTO|null>
  */
-final readonly class GetCookieByIdHandler
+final readonly class GetCookieByIdHandler implements QueryHandlerInterface
 {
     /**
      * Create a new GetCookieByIdHandler.
@@ -51,7 +53,7 @@ final readonly class GetCookieByIdHandler
      * @param GetCookieByIdQuery $query The query
      * @return CookieDTO|null The cookie DTO or null if not found
      */
-    public function handle(GetCookieByIdQuery $query): ?CookieDTO
+    public function handle(object $query): ?CookieDTO
     {
         $startTime = microtime(true);
 
