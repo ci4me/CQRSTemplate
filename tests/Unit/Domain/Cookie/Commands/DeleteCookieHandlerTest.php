@@ -5,13 +5,14 @@ declare(strict_types=1);
 namespace Tests\Unit\Domain\Cookie\Commands;
 
 use App\Domain\Cookie\Commands\DeleteCookie\DeleteCookieCommand;
-use App\Domain\Shared\ValueObjects\Actor;
 use App\Domain\Cookie\Commands\DeleteCookie\DeleteCookieHandler;
 use App\Domain\Cookie\Events\CookieDeleted\CookieDeletedEvent;
 use App\Domain\Cookie\Ports\CookieRepositoryInterface;
-use App\Domain\Shared\Exceptions\DomainException;
 use App\Domain\Shared\Events\EventDispatcherInterface;
-use App\Infrastructure\Logging\LoggerFactory;
+use App\Domain\Shared\Exceptions\DomainException;
+use App\Domain\Shared\ValueObjects\Actor;
+use Monolog\Handler\TestHandler;
+use Monolog\Logger;
 use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 use Tests\Support\Factories\CookieFactory;
 use Tests\Support\UnitTestCase;
@@ -28,7 +29,7 @@ final class DeleteCookieHandlerTest extends UnitTestCase
         parent::setUp();
         $this->repository = $this->createMock(CookieRepositoryInterface::class);
         $this->eventDispatcher = $this->createMock(EventDispatcherInterface::class);
-        $logger = LoggerFactory::create('test.cookie.commands');
+        $logger = new Logger('test.cookie.commands', [new TestHandler()]);
         $this->handler = new DeleteCookieHandler($this->repository, $this->eventDispatcher, $logger);
     }
 

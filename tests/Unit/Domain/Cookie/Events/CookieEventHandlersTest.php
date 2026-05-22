@@ -16,7 +16,8 @@ use App\Domain\Cookie\Events\CookieUpdated\CookieUpdatedEvent;
 use App\Domain\Cookie\Events\CookieUpdated\CookieUpdatedEventHandler;
 use App\Domain\Cookie\ValueObjects\StockChangeReason;
 use App\Domain\Shared\Events\CookieChangeSet;
-use App\Infrastructure\Logging\LoggerFactory;
+use Monolog\Handler\TestHandler;
+use Monolog\Logger;
 use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 use Psr\Log\LoggerInterface;
 use Tests\Support\UnitTestCase;
@@ -38,7 +39,7 @@ final class CookieEventHandlersTest extends UnitTestCase
 
     public function test_cookie_created_handler_can_be_instantiated(): void
     {
-        $logger = LoggerFactory::create('test.cookie.events');
+        $logger = new Logger('test.cookie.events', [new TestHandler()]);
         $handler = new CookieCreatedEventHandler($logger);
 
         $this->assertInstanceOf(CookieCreatedEventHandler::class, $handler);
@@ -46,7 +47,7 @@ final class CookieEventHandlersTest extends UnitTestCase
 
     public function test_cookie_created_handler_handles_event_without_error(): void
     {
-        $logger = LoggerFactory::create('test.cookie.events');
+        $logger = new Logger('test.cookie.events', [new TestHandler()]);
         $handler = new CookieCreatedEventHandler($logger);
         $event = new CookieCreatedEvent(
             eventId: 'evt-created-1',
@@ -66,7 +67,7 @@ final class CookieEventHandlersTest extends UnitTestCase
 
     public function test_cookie_created_handler_handles_zero_stock(): void
     {
-        $logger = LoggerFactory::create('test.cookie.events');
+        $logger = new Logger('test.cookie.events', [new TestHandler()]);
         $handler = new CookieCreatedEventHandler($logger);
         $event = new CookieCreatedEvent(
             eventId: 'evt-created-2',
@@ -85,7 +86,7 @@ final class CookieEventHandlersTest extends UnitTestCase
 
     public function test_cookie_created_handler_handles_special_characters_in_name(): void
     {
-        $logger = LoggerFactory::create('test.cookie.events');
+        $logger = new Logger('test.cookie.events', [new TestHandler()]);
         $handler = new CookieCreatedEventHandler($logger);
         $event = new CookieCreatedEvent(
             eventId: 'evt-created-3',
@@ -108,7 +109,7 @@ final class CookieEventHandlersTest extends UnitTestCase
 
     public function test_cookie_updated_handler_can_be_instantiated(): void
     {
-        $logger = LoggerFactory::create('test.cookie.events');
+        $logger = new Logger('test.cookie.events', [new TestHandler()]);
         $handler = new CookieUpdatedEventHandler($logger);
 
         $this->assertInstanceOf(CookieUpdatedEventHandler::class, $handler);
@@ -116,7 +117,7 @@ final class CookieEventHandlersTest extends UnitTestCase
 
     public function test_cookie_updated_handler_handles_event_without_error(): void
     {
-        $logger = LoggerFactory::create('test.cookie.events');
+        $logger = new Logger('test.cookie.events', [new TestHandler()]);
         $handler = new CookieUpdatedEventHandler($logger);
         $event = $this->makeUpdatedEvent(cookieId: 1, name: 'Updated Cookie', price: '3.99');
 
@@ -127,7 +128,7 @@ final class CookieEventHandlersTest extends UnitTestCase
 
     public function test_cookie_updated_handler_handles_price_change(): void
     {
-        $logger = LoggerFactory::create('test.cookie.events');
+        $logger = new Logger('test.cookie.events', [new TestHandler()]);
         $handler = new CookieUpdatedEventHandler($logger);
         $event = $this->makeUpdatedEvent(cookieId: 5, name: 'Premium Cookie', price: '9.99');
 
@@ -138,7 +139,7 @@ final class CookieEventHandlersTest extends UnitTestCase
 
     public function test_cookie_updated_handler_handles_special_characters(): void
     {
-        $logger = LoggerFactory::create('test.cookie.events');
+        $logger = new Logger('test.cookie.events', [new TestHandler()]);
         $handler = new CookieUpdatedEventHandler($logger);
         $event = $this->makeUpdatedEvent(cookieId: 1, name: 'Renamed "Cookie" & More!', price: '2.99');
 
@@ -153,7 +154,7 @@ final class CookieEventHandlersTest extends UnitTestCase
 
     public function test_cookie_deleted_handler_can_be_instantiated(): void
     {
-        $logger = LoggerFactory::create('test.cookie.events');
+        $logger = new Logger('test.cookie.events', [new TestHandler()]);
         $handler = new CookieDeletedEventHandler($logger);
 
         $this->assertInstanceOf(CookieDeletedEventHandler::class, $handler);
@@ -161,7 +162,7 @@ final class CookieEventHandlersTest extends UnitTestCase
 
     public function test_cookie_deleted_handler_handles_event_without_error(): void
     {
-        $logger = LoggerFactory::create('test.cookie.events');
+        $logger = new Logger('test.cookie.events', [new TestHandler()]);
         $handler = new CookieDeletedEventHandler($logger);
         $event = $this->makeDeletedEvent(cookieId: 1, name: 'Deleted Cookie');
 
@@ -172,7 +173,7 @@ final class CookieEventHandlersTest extends UnitTestCase
 
     public function test_cookie_deleted_handler_handles_special_characters(): void
     {
-        $logger = LoggerFactory::create('test.cookie.events');
+        $logger = new Logger('test.cookie.events', [new TestHandler()]);
         $handler = new CookieDeletedEventHandler($logger);
         $event = $this->makeDeletedEvent(cookieId: 999, name: 'Cookie with "Quotes" & Symbols!');
 
@@ -183,7 +184,7 @@ final class CookieEventHandlersTest extends UnitTestCase
 
     public function test_cookie_deleted_handler_handles_long_name(): void
     {
-        $logger = LoggerFactory::create('test.cookie.events');
+        $logger = new Logger('test.cookie.events', [new TestHandler()]);
         $handler = new CookieDeletedEventHandler($logger);
         $longName = str_repeat('A', 255);
         $event = $this->makeDeletedEvent(cookieId: 1, name: $longName);
@@ -223,7 +224,7 @@ final class CookieEventHandlersTest extends UnitTestCase
 
     public function test_cookie_restored_handler_does_not_throw_with_real_logger(): void
     {
-        $logger = LoggerFactory::create('test.cookie.events');
+        $logger = new Logger('test.cookie.events', [new TestHandler()]);
         $handler = new CookieRestoredEventHandler($logger);
 
         $handler(new CookieRestoredEvent(
@@ -271,7 +272,7 @@ final class CookieEventHandlersTest extends UnitTestCase
         // Round-3 audit 05/F2: cookieId is now non-nullable. Stock cannot
         // move on an unpersisted aggregate, so the previous nullable type
         // was a lie. This test pins the new contract.
-        $logger = LoggerFactory::create('test.cookie.events');
+        $logger = new Logger('test.cookie.events', [new TestHandler()]);
         $handler = new CookieStockChangedEventHandler($logger);
 
         $handler(new CookieStockChangedEvent(

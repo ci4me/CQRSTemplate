@@ -8,7 +8,8 @@ use App\Domain\Cookie\Events\CookieActivated\CookieActivatedEvent;
 use App\Domain\Cookie\Events\CookieActivated\CookieActivatedEventHandler;
 use App\Domain\Shared\Events\AbstractDomainEvent;
 use App\Domain\Shared\Events\DomainEventInterface;
-use App\Infrastructure\Logging\LoggerFactory;
+use Monolog\Handler\TestHandler;
+use Monolog\Logger;
 use Psr\Log\LoggerInterface;
 use Tests\Support\UnitTestCase;
 
@@ -85,7 +86,7 @@ final class CookieActivatedEventTest extends UnitTestCase
 
     public function test_handler_does_not_throw_with_real_logger(): void
     {
-        $logger = LoggerFactory::create('test.cookie.events');
+        $logger = new Logger('test.cookie.events', [new TestHandler()]);
         $handler = new CookieActivatedEventHandler($logger);
 
         $handler($this->makeEvent());

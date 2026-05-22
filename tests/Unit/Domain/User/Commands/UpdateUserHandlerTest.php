@@ -4,14 +4,15 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Domain\User\Commands;
 
+use App\Domain\Shared\Events\EventDispatcherInterface;
 use App\Domain\Shared\ValueObjects\Actor;
 use App\Domain\User\Commands\UpdateUser\UpdateUserCommand;
 use App\Domain\User\Commands\UpdateUser\UpdateUserHandler;
 use App\Domain\User\ErrorCodes;
 use App\Domain\User\Events\UserUpdated\UserUpdatedEvent;
-use App\Domain\Shared\Events\EventDispatcherInterface;
-use App\Infrastructure\Logging\LoggerFactory;
 use App\Domain\User\Ports\UserRepositoryInterface;
+use Monolog\Handler\TestHandler;
+use Monolog\Logger;
 use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 use Tests\Support\Factories\UserFactory;
 use Tests\Support\UnitTestCase;
@@ -39,7 +40,7 @@ final class UpdateUserHandlerTest extends UnitTestCase
 
         $this->repository = $this->createMock(UserRepositoryInterface::class);
         $this->eventDispatcher = $this->createMock(EventDispatcherInterface::class);
-        $logger = LoggerFactory::create('test.user.commands');
+        $logger = new Logger('test.user.commands', [new TestHandler()]);
         $this->handler = new UpdateUserHandler($this->repository, $this->eventDispatcher, $logger);
     }
 
@@ -433,7 +434,7 @@ final class UpdateUserHandlerTest extends UnitTestCase
         $handler = new UpdateUserHandler(
             $this->repository,
             $this->eventDispatcher,
-            LoggerFactory::create('test.user.commands'),
+            new Logger('test.user.commands', [new TestHandler()]),
             $permissions
         );
 
@@ -471,7 +472,7 @@ final class UpdateUserHandlerTest extends UnitTestCase
         $handler = new UpdateUserHandler(
             $this->repository,
             $this->eventDispatcher,
-            LoggerFactory::create('test.user.commands'),
+            new Logger('test.user.commands', [new TestHandler()]),
             $permissions
         );
 
@@ -509,7 +510,7 @@ final class UpdateUserHandlerTest extends UnitTestCase
         $handler = new UpdateUserHandler(
             $this->repository,
             $this->eventDispatcher,
-            LoggerFactory::create('test.user.commands'),
+            new Logger('test.user.commands', [new TestHandler()]),
             $permissions
         );
 
