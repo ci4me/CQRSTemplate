@@ -8,6 +8,7 @@ use App\Domain\Cookie\Entities\Cookie;
 use App\Domain\Cookie\Repositories\CookieQueryRepository;
 use App\Domain\Cookie\ValueObjects\CookieName;
 use App\Domain\Cookie\ValueObjects\CookiePrice;
+use App\Infrastructure\Tenancy\TenantContext;
 use Tests\Support\IntegrationTestCase;
 
 /**
@@ -84,6 +85,113 @@ final class CookieQueryRepositoryTest extends IntegrationTestCase
         $names = array_map(static fn($dto) => $dto->name, $aResults['data']);
         $this->assertContains('Apple Pie', $names);
         $this->assertContains('Apricot Bar', $names);
+    }
+
+    public function test_find_by_id_returns_null_for_missing_id(): void
+    {
+        $this->assertNull($this->readRepo->findById(99999));
+    }
+
+    public function test_find_all_returns_empty_array_when_no_rows(): void
+    {
+        $this->assertSame([], $this->readRepo->findAll());
+    }
+
+    public function test_find_paginated_clamps_page_below_one(): void
+    {
+        $this->saveCookie('Single', '1.00', 1, true);
+
+        $result = $this->readRepo->findPaginated(page: 0, perPage: 10);
+
+        // page=0 is clamped to 1 by the read repo.
+        $this->assertSame(1, $result['page']);
+        $this->assertCount(1, $result['data']);
+    }
+
+    public function test_find_paginated_clamps_per_page_to_one_when_zero(): void
+    {
+        $this->saveCookie('Solo', '1.00', 1, true);
+
+        $result = $this->readRepo->findPaginated(page: 1, perPage: 0);
+
+        // perPage=0 is clamped to 1.
+        $this->assertSame(1, $result['perPage']);
+    }
+
+    public function test_find_paginated_clamps_per_page_to_one_hundred(): void
+    {
+        $result = $this->readRepo->findPaginated(page: 1, perPage: 9999);
+
+        $this->assertSame(100, $result['perPage']);
+    }
+
+    public function test_find_paginated_last_page_is_at_least_one_for_empty_result(): void
+    {
+        $result = $this->readRepo->findPaginated(page: 1, perPage: 10);
+
+        $this->assertSame(0, $result['total']);
+        $this->assertSame(1, $result['lastPage']);
+    }
+
+    public function test_format_price_falls_back_to_raw_for_malformed_value(): void
+    {
+        // Insert a row with an obviously invalid price directly via the
+        // db so CookiePrice::fromString() throws inside formatPrice() and
+        // the catch returns the raw decimal string.
+        \Config\Database::connect('tests')
+            ->table('cookies')
+            ->insert([
+                'name' => 'Broken Price',
+                'price' => 'NOT_A_NUMBER',
+                'stock' => 1,
+                'is_active' => 1,
+                'version' => 1,
+            ]);
+
+        $rows = $this->readRepo->findAll();
+        $broken = array_values(array_filter($rows, static fn($dto) => $dto->name === 'Broken Price'));
+
+        $this->assertCount(1, $broken);
+        $this->assertSame('NOT_A_NUMBER', $broken[0]->formattedPrice);
+    }
+
+    public function test_apply_tenant_filter_is_active_when_context_injected(): void
+    {
+        // Insert two rows with explicit tenant_id so the filter can be
+        // observed. The write-repo path uses null tenant context by
+        // default, so we go direct-to-DB here.
+        $db = \Config\Database::connect('tests');
+        $db->table('cookies')->insert([
+            'tenant_id' => 1,
+            'name' => 'Tenant 1 Cookie',
+            'price' => '1.00',
+            'stock' => 1,
+            'is_active' => 1,
+            'version' => 1,
+        ]);
+        $db->table('cookies')->insert([
+            'tenant_id' => 999,
+            'name' => 'Tenant 999 Cookie',
+            'price' => '1.00',
+            'stock' => 1,
+            'is_active' => 1,
+            'version' => 1,
+        ]);
+
+        $tenantA = new TenantContext();
+        $tenantA->set(1);
+        $repoA = new CookieQueryRepository(null, $tenantA);
+        $tenantB = new TenantContext();
+        $tenantB->set(999);
+        $repoB = new CookieQueryRepository(null, $tenantB);
+
+        $aRows = $repoA->findAll();
+        $bRows = $repoB->findAll();
+
+        $this->assertCount(1, $aRows);
+        $this->assertSame('Tenant 1 Cookie', $aRows[0]->name);
+        $this->assertCount(1, $bRows);
+        $this->assertSame('Tenant 999 Cookie', $bRows[0]->name);
     }
 
     private function saveCookie(string $name, string $price, int $stock, bool $active): Cookie
