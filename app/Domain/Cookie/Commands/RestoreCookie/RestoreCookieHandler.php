@@ -12,12 +12,32 @@ use App\Domain\Shared\Exceptions\DomainException;
 use Psr\Log\LoggerInterface;
 
 /**
- * RestoreCookieHandler.
+ * Handler that brings a soft-deleted cookie back from the trash.
+ *
+ * This is the only Cookie handler that:
+ *  - calls {@see CookieRepositoryInterface::findByIdWithTrashed()} instead of
+ *    {@see CookieRepositoryInterface::findById()}, so it can see rows whose
+ *    `deleted_at` is set;
+ *  - performs the restore via the repository's dedicated `restore()` builder
+ *    UPDATE rather than the standard `save()` path (save() assumes a live row);
+ *  - dispatches {@see CookieRestoredEvent} manually because the entity does
+ *    not yet expose a `restore()` lifecycle method.
+ *
+ * Throws {@see DomainException::notFound()} when the id has no row at all;
+ * {@see DomainException::businessRuleViolation()} when the row exists but is
+ * still alive (so "restore" is meaningless); and \RuntimeException when the
+ * builder UPDATE returns false (would indicate a torn DB and is intentionally
+ * NOT a domain exception). Slice 03 tracks the eventual conversion of that
+ * \RuntimeException to a domain-level exception.
  */
 final readonly class RestoreCookieHandler
 {
     /**
-     * __construct.
+     * Inject the write repository, event dispatcher, and PSR-3 logger.
+     *
+     * @param CookieRepositoryInterface $repository      Write-side port; used for findByIdWithTrashed + restore.
+     * @param EventDispatcherInterface  $eventDispatcher Dispatches CookieRestoredEvent on success (manual dispatch — see class docblock).
+     * @param LoggerInterface           $logger          Structured audit log for restore success / failure.
      */
     public function __construct(
         private CookieRepositoryInterface $repository,
@@ -27,10 +47,14 @@ final readonly class RestoreCookieHandler
     }
 
     /**
-     * handle.
+     * Bring a soft-deleted cookie back to life and dispatch CookieRestoredEvent.
      *
-     * @throws DomainException
-     * @throws \RuntimeException
+     * Validates the target row exists AND is currently soft-deleted, performs
+     * the restore via the repository, then dispatches the event. See the
+     * class docblock for the failure modes.
+     *
+     * @throws DomainException   When the id is unknown (notFound) or the row is not deleted (businessRuleViolation).
+     * @throws \RuntimeException When the UPDATE returns false; indicates a torn DB write.
      */
     public function handle(RestoreCookieCommand $command): void
     {

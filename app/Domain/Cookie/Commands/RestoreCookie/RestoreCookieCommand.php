@@ -15,7 +15,10 @@ use App\Domain\Shared\ValueObjects\Actor;
 final readonly class RestoreCookieCommand
 {
     /**
-     * __construct.
+     * Construct a new RestoreCookieCommand.
+     *
+     * @param int   $cookieId   Target cookie id; must point to a CURRENTLY soft-deleted row.
+     * @param Actor $restoredBy Audit-trail actor that initiated the restore; logged alongside the event.
      */
     public function __construct(
         public int $cookieId,

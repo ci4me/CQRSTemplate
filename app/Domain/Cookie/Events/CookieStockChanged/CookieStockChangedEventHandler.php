@@ -14,14 +14,20 @@ use Psr\Log\LoggerInterface;
 final readonly class CookieStockChangedEventHandler
 {
     /**
-     * __construct.
+     * Inject the PSR-3 logger used for the always-on stock-movement audit line.
+     *
+     * @param LoggerInterface $logger PSR-3 destination; one structured record per stock change.
      */
     public function __construct(private LoggerInterface $logger)
     {
     }
 
     /**
-     * __invoke.
+     * Write a structured "stock changed" audit log entry.
+     *
+     * Business reactions (low-stock alerts, replenishment jobs, inventory
+     * dashboards) should subscribe to the event directly; this default
+     * handler is the always-on audit trail and never short-circuits.
      */
     public function __invoke(CookieStockChangedEvent $event): void
     {

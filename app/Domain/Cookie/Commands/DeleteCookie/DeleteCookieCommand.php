@@ -18,7 +18,10 @@ use App\Domain\Shared\ValueObjects\Actor;
 final readonly class DeleteCookieCommand
 {
     /**
-     * __construct.
+     * Construct a new DeleteCookieCommand.
+     *
+     * @param int   $id        Target cookie id; must exist and not already be soft-deleted.
+     * @param Actor $deletedBy Audit-trail actor that initiated the delete; stamps `deleted_by`.
      */
     public function __construct(
         public int $id,

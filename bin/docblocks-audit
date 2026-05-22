@@ -4,27 +4,69 @@
 declare(strict_types=1);
 
 /**
- * docblocks:audit — flag every docblock the generator marked as auto-generated.
+ * docblocks:audit — fail the build on placeholder / stub docblocks.
  *
- * The companion generator (`bin/docblocks-generate`, run automatically by the
- * composer `docblocks:generate` script or by AI agents per CLAUDE.md) inserts a
- * stable marker line whenever it CREATES a brand-new docblock that nobody has
- * reviewed yet. This script greps the codebase for that marker and reports
- * every occurrence so developers (or the next agent) know which classes /
- * methods still need a human-written description.
+ * Detects two kinds of unreviewed docblock content shipped by the
+ * companion generator (bin/docblocks-generate):
+ *
+ *   1. STUB (placeholder) — a docblock whose first prose line is a
+ *      single word ending with a period that just restates the
+ *      symbol name. Example emitted by bin/docblocks-generate:
+ *
+ *          /\**
+ *           * __construct.
+ *           *\/
+ *          public function __construct(...) { ... }
+ *
+ *      Multi-line variant (also detected):
+ *
+ *          /\**
+ *           * raiseConcurrentModification.
+ *           *
+ *           * @throws DomainException
+ *           *\/
+ *          private function raiseConcurrentModification(...): never
+ *
+ *      These satisfy Squiz.Commenting.{Function,Class}Comment ("a
+ *      docblock exists") but carry zero information: they restate
+ *      the symbol name and tell a reader nothing about the
+ *      contract, behaviour, or invariants. The audit brief at
+ *      .audit/round3/16-documentation-docblocks.md (F1) enumerated
+ *      26 such stubs across the Cookie surface; this rule prevents
+ *      them from being reintroduced.
+ *
+ *   2. LEGACY MARKER — the explicit "@todo Auto-generated docblock
+ *      — review and replace this description." line that the
+ *      generator emits to mark a brand-new placeholder. Catching
+ *      it here is the explicit re-arming of the marker contract
+ *      called out by REVIEW-slevomat.md req. #3.
  *
  * Exit codes:
- *   0  — no unreviewed auto-generated docblocks found (clean tree).
- *   1  — one or more occurrences exist. Prints the file:line list and a
- *         reminder to update them before committing.
+ *   0  — no stubs and no legacy markers found in the supplied scope.
+ *   1  — one or more occurrences exist. Prints a "file:line / kind /
+ *         symbol" table and a reminder to replace each with real prose.
  *
  * Usage:
- *   php bin/docblocks-audit                    # walks app/ by default
- *   php bin/docblocks-audit path/to/dir        # explicit path
- *   php bin/docblocks-audit --quiet            # exit code only, no output
+ *   php bin/docblocks-audit                      # walks app/ by default
+ *   php bin/docblocks-audit path/to/dir [...]    # explicit path(s)
+ *   php bin/docblocks-audit --quiet              # exit code only
+ *
+ * The `composer docblocks:audit` wrapper scopes the script to the area
+ * the project has actively cleaned (today: app/Domain/Cookie); later
+ * epics widen the scope domain-by-domain.
+ *
+ * Why this exists as a custom script (and not a PHPCS sniff):
+ *   PHPCS Squiz.Commenting sniffs check that a docblock EXISTS but
+ *   cannot evaluate whether the prose is meaningful. Slevomat's
+ *   Commenting.UselessFunctionDocComment is close but flags
+ *   docblocks-that-only-repeat-the-signature, which is not what we
+ *   want (we keep @param/@return tags); it does not catch the
+ *   "single word that restates the method name" pattern that the
+ *   generator emits. A short PHP script catches the exact pattern
+ *   with zero false positives.
  */
 
-const MARKER = '@todo Auto-generated docblock — review and replace this description.';
+const LEGACY_MARKER = '@todo Auto-generated docblock — review and replace this description.';
 
 $quiet = false;
 $paths = [];
@@ -40,6 +82,8 @@ if ($paths === []) {
 }
 
 $root = dirname(__DIR__);
+
+/** @var list<array{file: string, line: int, kind: string, symbol: string}> $hits */
 $hits = [];
 
 foreach ($paths as $path) {
@@ -62,7 +106,7 @@ foreach ($paths as $path) {
 
 if ($hits === []) {
     if (!$quiet) {
-        echo "✓ docblocks:audit — no auto-generated docblock markers found.\n";
+        echo "✓ docblocks:audit — no placeholder docblocks or legacy markers found.\n";
     }
     exit(0);
 }
@@ -71,21 +115,36 @@ if ($quiet) {
     exit(1);
 }
 
-printf("⚠ docblocks:audit — %d auto-generated docblock(s) need a human description:\n\n", count($hits));
+printf(
+    "⚠ docblocks:audit — %d placeholder docblock(s) need a real description:\n\n",
+    count($hits)
+);
+printf("  %-60s  %-10s  %s\n", 'file:line', 'kind', 'symbol');
+printf("  %s\n", str_repeat('-', 90));
 foreach ($hits as $hit) {
-    printf("  %s:%d\n", $hit['file'], $hit['line']);
+    printf(
+        "  %-60s  %-10s  %s\n",
+        $hit['file'] . ':' . $hit['line'],
+        $hit['kind'],
+        $hit['symbol']
+    );
 }
-echo "\nReview each location and replace the placeholder line:\n";
-echo "  '" . MARKER . "'\n";
-echo "with a real description of the class / method / property purpose.\n";
+
+echo "\nWhat to do:\n";
+echo "  - STUB:   replace the single-word docblock prose with a one-line\n";
+echo "            description of what the method/class/constructor does and\n";
+echo "            (where relevant) its invariants. Examples in\n";
+echo "            .audit/round3/16-documentation-docblocks.md / F1.\n";
+echo "  - LEGACY: remove the '@todo Auto-generated docblock — review and\n";
+echo "            replace this description.' line and replace it with prose.\n";
 exit(1);
 
 /**
- * Scan one file for the marker line; append any hits to the running list.
+ * Scan one file for both stub and legacy-marker hits.
  *
- * @param string $path Absolute path of the file to scan.
- * @param list<array{file: string, line: int}> $hits Accumulator passed by reference.
- * @param string $root Project root, stripped from paths so the report stays compact.
+ * @param string                                                             $path Absolute path of the file to scan.
+ * @param list<array{file: string, line: int, kind: string, symbol: string}> $hits Accumulator passed by reference.
+ * @param string                                                             $root Project root, stripped from paths for compact output.
  */
 function scanFile(string $path, array &$hits, string $root): void
 {
@@ -93,15 +152,54 @@ function scanFile(string $path, array &$hits, string $root): void
     if ($contents === false) {
         return;
     }
-    if (!str_contains($contents, MARKER)) {
-        return;
-    }
-    foreach (explode("\n", $contents) as $i => $line) {
-        if (str_contains($line, MARKER)) {
-            $rel = str_starts_with($path, $root . DIRECTORY_SEPARATOR)
-                ? substr($path, strlen($root) + 1)
-                : $path;
-            $hits[] = ['file' => $rel, 'line' => $i + 1];
+    $rel = str_starts_with($path, $root . DIRECTORY_SEPARATOR)
+        ? substr($path, strlen($root) + 1)
+        : $path;
+
+    $lines = explode("\n", $contents);
+
+    // 1. Legacy "@todo Auto-generated docblock" markers.
+    foreach ($lines as $i => $line) {
+        if (str_contains($line, LEGACY_MARKER)) {
+            $hits[] = [
+                'file' => $rel,
+                'line' => $i + 1,
+                'kind' => 'LEGACY',
+                'symbol' => '(@todo marker)',
+            ];
         }
     }
+
+    // 2. STUB detection — placeholder docblock whose FIRST prose line is a
+    // single word ending with a period (just restating the symbol name).
+    // Matches both the single-line shape and the multi-line shape where
+    // @param/@return/@throws tags follow. The line BEFORE the prose must be
+    // a bare `/**` opener so inline-comment false positives are impossible.
+    $count = count($lines);
+    for ($i = 1; $i < $count; $i++) {
+        $prev = $lines[$i - 1];
+        $curr = $lines[$i];
+
+        if (!isPlaceholderOpen($prev)) {
+            continue;
+        }
+        if (preg_match('#^\s*\*\s*(\w+)\.\s*$#', $curr, $m) !== 1) {
+            continue;
+        }
+        $hits[] = [
+            'file' => $rel,
+            'line' => $i + 1,
+            'kind' => 'STUB',
+            'symbol' => $m[1],
+        ];
+    }
+}
+
+/**
+ * @param string $line Line to inspect.
+ * @return bool        True when the line is a bare docblock opener (`/**` plus optional trailing whitespace).
+ */
+function isPlaceholderOpen(string $line): bool
+{
+    return preg_match('#^\s*/\*\*\s*$#', $line) === 1;
 }

@@ -14,7 +14,9 @@ use Psr\Log\LoggerInterface;
 final readonly class CookieRestoredEventHandler
 {
     /**
-     * __construct.
+     * Inject the PSR-3 logger used for the audit-trail emission.
+     *
+     * @param LoggerInterface $logger PSR-3 destination; structured records land here.
      */
     public function __construct(
         private LoggerInterface $logger,
@@ -22,7 +24,11 @@ final readonly class CookieRestoredEventHandler
     }
 
     /**
-     * __invoke.
+     * Write a structured audit log line for the restore.
+     *
+     * Subscribers should use the event itself for business reactions
+     * (e.g. read-model rehydration); this default handler is the always-on
+     * audit signal so a restored cookie always shows up in the operations log.
      */
     public function __invoke(CookieRestoredEvent $event): void
     {

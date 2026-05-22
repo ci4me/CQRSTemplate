@@ -55,7 +55,12 @@ final class CookieQueryRepository implements CookieQueryRepositoryInterface
     }
 
     /**
-     * findById.
+     * Read-side findById; returns the DTO or null.
+     *
+     * Soft-deleted rows are excluded via an explicit `deleted_at IS NULL`
+     * filter (the read path does not use CI4's `useSoftDeletes` model
+     * behaviour — see class docblock). Applies the tenant filter so a query
+     * issued under tenant A cannot leak tenant B's rows.
      */
     public function findById(int $cookieId): ?CookieDTO
     {

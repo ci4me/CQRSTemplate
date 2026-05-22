@@ -14,9 +14,11 @@ declare(strict_types=1);
  *
  * What this script does NOT do:
  *   - Invent prose descriptions. Class/method docblocks get a one-line
- *     placeholder ("ClassName.") — the type information is the real
- *     documentation. A human editor can fill in the prose later; the
- *     IDE autocomplete only cares about the structured tags.
+ *     symbol-name placeholder PLUS an explicit @todo marker line. The
+ *     audit gate (bin/docblocks-audit) fails until a human replaces
+ *     the placeholder with real prose. The IDE autocomplete only
+ *     cares about the structured @param/@return tags this script
+ *     emits alongside the placeholder.
  *   - Touch existing docblocks. If a node already has a Doc, it's left alone.
  *   - Reformat the file. We do byte-precise insertions via the AST's
  *     start file positions; everything else stays exactly as the user wrote it.
@@ -28,12 +30,17 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../vendor/autoload.php';
 
-// NOTE: the AUTO_GENERATED_MARKER constant was removed. The generator no
-// longer emits a "@todo Auto-generated docblock" TODO line because the
-// native PHP signature plus the structured @param/@return tags emitted
-// below are sufficient documentation for IDE autocomplete and PHPCS.
-// `composer docblocks:audit` still scans for any stale markers left in
-// the tree from older runs of this script.
+// AUTO_GENERATED_MARKER is the line bin/docblocks-audit greps for. By
+// emitting it on every brand-new docblock we re-arm the audit: a clone
+// that runs `composer docblocks:generate` will then fail
+// `composer docblocks:audit` until a human replaces each marker with
+// real prose. Without this marker (the prior behaviour) the generator
+// shipped single-word "* MethodName." stubs that ALSO trip the audit's
+// stub detector — but emitting the marker too is the explicit "this
+// docblock has never been reviewed" signal. See REVIEW-slevomat.md
+// req. #3: "patching only the auditor leaves the generator emitting the
+// same placeholders any future contributor would reintroduce".
+const AUTO_GENERATED_MARKER = '@todo Auto-generated docblock — review and replace this description.';
 
 use PhpParser\Node;
 use PhpParser\Node\Stmt;
@@ -525,10 +532,15 @@ function buildDocblock(string $marker, string $indent): string
     [$kind, $payload] = explode("\x1f", $marker, 2);
 
     if ($kind === 'class') {
+        // Emit the symbol-name placeholder + the auto-generated marker.
+        // The audit will fail until a human replaces both with real prose.
         return sprintf(
-            "/**\n%s * %s.\n%s */\n%s",
+            "/**\n%s * %s.\n%s *\n%s * %s\n%s */\n%s",
             $indent,
             $payload,
+            $indent,
+            $indent,
+            AUTO_GENERATED_MARKER,
             $indent,
             $indent
         );
@@ -546,11 +558,16 @@ function buildDocblock(string $marker, string $indent): string
     $tagLines = array_map(static fn(string $l): string => ' * ' . $l, $parts);
 
     if ($tagLines === []) {
-        // No params and void/no return. Emit a minimal one-line block.
+        // No params and void/no return. Emit a minimal block plus the
+        // auto-generated marker so the audit holds the placeholder
+        // accountable until prose lands.
         return sprintf(
-            "/**\n%s * %s.\n%s */\n%s",
+            "/**\n%s * %s.\n%s *\n%s * %s\n%s */\n%s",
             $indent,
             $name,
+            $indent,
+            $indent,
+            AUTO_GENERATED_MARKER,
             $indent,
             $indent
         );
@@ -558,9 +575,12 @@ function buildDocblock(string $marker, string $indent): string
 
     $body = implode("\n" . $indent, $tagLines);
     return sprintf(
-        "/**\n%s * %s.\n%s *\n%s%s\n%s */\n%s",
+        "/**\n%s * %s.\n%s *\n%s * %s\n%s *\n%s%s\n%s */\n%s",
         $indent,
         $name,
+        $indent,
+        $indent,
+        AUTO_GENERATED_MARKER,
         $indent,
         $indent,
         $body,

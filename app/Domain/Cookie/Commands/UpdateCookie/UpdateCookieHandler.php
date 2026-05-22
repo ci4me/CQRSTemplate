@@ -149,7 +149,12 @@ final readonly class UpdateCookieHandler
     }
 
     /**
-     * determineErrorCode.
+     * Pick the most specific ErrorCodes constant for a failed update.
+     *
+     * Prefers the exception's own getErrorCode() when present (validation
+     * + domain exceptions carry it); falls back to COOKIE_REPOSITORY_SAVE_FAILED
+     * for raw infrastructure errors so the structured log line always carries
+     * a numeric error_code field.
      */
     private function determineErrorCode(\Throwable $e): int
     {

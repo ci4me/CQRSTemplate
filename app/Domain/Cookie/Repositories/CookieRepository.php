@@ -43,7 +43,7 @@ use Psr\Log\LoggerInterface;
  * - Centralizes data access logic
  * - Makes testing easier (can mock repository)
  *
- * @package App\Models\Cookie
+ * @package App\Domain\Cookie\Repositories
  */
 #[InfrastructureAdapter]
 #[AutoBind]
@@ -146,7 +146,13 @@ final class CookieRepository implements CookieRepositoryInterface
     }
 
     /**
-     * isDuplicateKey.
+     * Classify a throwable as a duplicate-key violation.
+     *
+     * MySQL's drivers expose the duplicate-key signal in several different
+     * shapes depending on PDO vs MySQLi vs CodeIgniter wrappers (error code
+     * 1062, the word "duplicate", or "unique constraint" in the message).
+     * We grep all three because the surrounding catch translates this into
+     * a domain-level validation error.
      */
     private function isDuplicateKey(\Throwable $e): bool
     {
@@ -157,7 +163,13 @@ final class CookieRepository implements CookieRepositoryInterface
     }
 
     /**
-     * dispatchPendingEvents.
+     * Flush the aggregate's event bag through the outbox-first dispatch chain.
+     *
+     * Writes each event to the outbox table FIRST (best-effort; only when the
+     * writer is configured), then synchronously dispatches via the in-process
+     * event dispatcher. The outbox precedes dispatch so that even if a
+     * synchronous handler crashes, a downstream relay still drains the row
+     * out-of-band. No-op when the aggregate has no pending events.
      */
     private function dispatchPendingEvents(Cookie $cookie): void
     {
@@ -482,9 +494,14 @@ final class CookieRepository implements CookieRepositoryInterface
     }
 
     /**
-     * raiseConcurrentModification.
+     * Translate a zero-row UPDATE result into a domain concurrent-modification.
      *
-     * @throws DomainException
+     * Reloads the row to discover the row's actual version (or -1 when the row
+     * has vanished entirely — soft-deleted by a parallel actor), then throws
+     * the canonical {@see DomainException} carrying expected vs actual versions
+     * so callers can show a useful conflict message to the user.
+     *
+     * @throws DomainException Always; this method never returns (its `never` return type).
      */
     private function raiseConcurrentModification(Cookie $cookie, int $expectedVersion): never
     {
