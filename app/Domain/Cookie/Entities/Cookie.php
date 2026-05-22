@@ -133,7 +133,7 @@ final class Cookie implements AggregateRootInterface
     }
     public function getStock(): int
     {
-        return $this->stock->value;
+        return $this->stock->value();
     }
     public function getIsActive(): bool
     {
@@ -319,7 +319,7 @@ final class Cookie implements AggregateRootInterface
             'description' => $this->description,
             'price_minor' => $this->price->getMinorUnits(),
             'price_currency' => $this->price->getCurrency()->iso,
-            'stock' => $this->stock->value,
+            'stock' => $this->stock->value(),
             'is_active' => $this->isActive,
             'version' => $this->version,
             'deleted_at' => $this->deletedAt,
@@ -328,7 +328,7 @@ final class Cookie implements AggregateRootInterface
 
     private function changeStock(CookieStock $newStock, StockChangeReason $reason): void
     {
-        $previous = $this->stock->value;
+        $previous = $this->stock->value();
         $this->stock = $newStock;
         \assert($this->id !== null, 'changeStock is gated by ensurePersisted()');
         $this->raiseEvent(new CookieStockChangedEvent(
@@ -337,7 +337,7 @@ final class Cookie implements AggregateRootInterface
             actorId: null, // E08 will thread the acting user through commands.
             cookieId: $this->id,
             previousStock: $previous,
-            newStock: $newStock->value,
+            newStock: $newStock->value(),
             reason: $reason,
         ));
     }

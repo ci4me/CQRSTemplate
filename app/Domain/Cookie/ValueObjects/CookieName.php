@@ -34,10 +34,10 @@ use App\Domain\Shared\Exceptions\ValidationException;
  *
  * @package App\Domain\Cookie\ValueObjects
  */
-final readonly class CookieName
+final readonly class CookieName implements \Stringable
 {
-    private const MIN_LENGTH = 3;
-    private const MAX_LENGTH = 100;
+    private const int MIN_LENGTH = 3;
+    private const int MAX_LENGTH = 100;
 
     /**
      * The validated and normalized cookie name.
@@ -129,6 +129,7 @@ final readonly class CookieName
     /**
      * Convert to string automatically.
      */
+    #[\Override]
     public function __toString(): string
     {
         return $this->value;
