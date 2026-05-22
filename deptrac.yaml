@@ -162,8 +162,6 @@ deptrac:
     App\Domain\User\Commands\ChangeUserPassword\ChangeUserPasswordHandler:
       - App\Infrastructure\Auth\Services\SessionManagementService
       - App\Domain\User\Repositories\PasswordHistoryRepository
-    App\Domain\User\Commands\UpdateUser\UpdateUserHandler:
-      - App\Infrastructure\Auth\Services\PermissionService
     App\Domain\User\UserServiceProvider:
       - App\Infrastructure\Attributes\DomainServiceProvider
       - App\Infrastructure\Bus\CommandBus

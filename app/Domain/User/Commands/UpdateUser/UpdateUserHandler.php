@@ -8,12 +8,12 @@ use App\Domain\Shared\Events\EventDispatcherInterface;
 use App\Domain\Shared\Exceptions\DomainException;
 use App\Domain\User\ErrorCodes;
 use App\Domain\User\Events\UserUpdated\UserUpdatedEvent;
+use App\Domain\User\Ports\PermissionCheckerInterface;
 use App\Domain\User\Ports\UserRepositoryInterface;
 use App\Domain\User\ValueObjects\Email;
 use App\Domain\User\ValueObjects\UserName;
 use App\Domain\User\ValueObjects\UserRole;
 use App\Domain\User\ValueObjects\UserStatus;
-use App\Infrastructure\Auth\Services\PermissionService;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -44,7 +44,7 @@ final readonly class UpdateUserHandler
         private UserRepositoryInterface $repository,
         private EventDispatcherInterface $eventDispatcher,
         private LoggerInterface $logger,
-        private ?PermissionService $permissions = null
+        private ?PermissionCheckerInterface $permissions = null
     ) {
     }
 

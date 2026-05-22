@@ -6,6 +6,9 @@ namespace App\Infrastructure\Auth\Services;
 
 use App\Domain\Shared\ValueObjects\Actor;
 use App\Domain\Shared\ValueObjects\Permission;
+use App\Domain\User\Ports\PermissionCheckerInterface;
+use App\Infrastructure\Attributes\AutoBind;
+use App\Infrastructure\Attributes\InfrastructureAdapter;
 use CodeIgniter\Database\BaseConnection;
 use Config\Database;
 
@@ -28,7 +31,9 @@ use Config\Database;
  * several handlers depend on this service. Extending in production code
  * is still discouraged — prefer composition.
  */
-readonly class PermissionService
+#[InfrastructureAdapter]
+#[AutoBind]
+readonly class PermissionService implements PermissionCheckerInterface
 {
     /**
      * @param BaseConnection<object|resource|false, object|resource|false>|null $db
