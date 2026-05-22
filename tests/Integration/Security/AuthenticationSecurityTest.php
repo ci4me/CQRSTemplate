@@ -489,40 +489,45 @@ final class AuthenticationSecurityTest extends IntegrationTestCase
      *
      * Expected: Tokens signed with JWT_SECRET_KEY_OLD are accepted.
      *
-     * Note: This test requires JWT_SECRET_KEY_OLD to be set in environment.
-     * If not set, test will be skipped (rotation not active).
+     * The test simulates a rotation by injecting a synthetic "old" secret
+     * into the environment, instantiating a fresh JwtService so it picks
+     * up both secrets, then restoring the env in finally.
      */
     public function test_token_validates_with_old_secret_during_rotation(): void
     {
-        $oldSecret = getenv('JWT_SECRET_KEY_OLD');
+        $oldSecret = bin2hex(random_bytes(32)); // synthetic 64-char hex secret
+        $previous = getenv('JWT_SECRET_KEY_OLD');
+        putenv('JWT_SECRET_KEY_OLD=' . $oldSecret);
 
-        if ($oldSecret === false || $oldSecret === '') {
-            $this->markTestSkipped('JWT_SECRET_KEY_OLD not set - rotation not active');
+        try {
+            $rotationAwareJwt = new JwtService();
+            $user = $this->createTestUser('oldsecret@test.com', 'ValidPass123!@#');
+
+            // Create token with old secret (simulating token issued before rotation)
+            $payload = [
+                'iss' => 'cqrs-auth',
+                'iat' => time() - 3600, // Issued 1 hour ago
+                'exp' => time() + 3600,
+                'jti' => bin2hex(random_bytes(16)),
+                'user_id' => $user->getId(),
+                'role' => $user->getRole()->value,
+                'type' => 'access',
+            ];
+
+            $tokenWithOldSecret = \Firebase\JWT\JWT::encode($payload, $oldSecret, 'HS256');
+
+            // Validate token (should fallback to old secret)
+            $validatedPayload = $rotationAwareJwt->validateToken($tokenWithOldSecret);
+
+            $this->assertEquals($user->getId(), $validatedPayload['user_id']);
+            $this->assertEquals($user->getRole()->value, $validatedPayload['role']);
+        } finally {
+            if ($previous === false) {
+                putenv('JWT_SECRET_KEY_OLD');
+            } else {
+                putenv('JWT_SECRET_KEY_OLD=' . $previous);
+            }
         }
-
-        $user = $this->createTestUser('oldsecret@test.com', 'ValidPass123!@#');
-
-        // Create token with old secret (simulating token issued before rotation)
-        $payload = [
-            'iss' => 'cqrs-auth',
-            'iat' => time() - 3600, // Issued 1 hour ago
-            'exp' => time() + 3600,
-            'jti' => bin2hex(random_bytes(16)),
-            'user_id' => $user->getId(),
-            'role' => $user->getRole()->value,
-            'type' => 'access',
-        ];
-
-        $tokenWithOldSecret = \Firebase\JWT\JWT::encode($payload, $oldSecret, 'HS256');
-
-        // Validate token (should fallback to old secret)
-        $validatedPayload = $this->jwtService->validateToken($tokenWithOldSecret);
-
-        $this->assertEquals($user->getId(), $validatedPayload['user_id']);
-        $this->assertEquals($user->getRole()->value, $validatedPayload['role']);
-
-        // Verify warning was logged (check logs in writable/logs/)
-        // Note: Automated log checking would require additional setup
     }
 
     /**
@@ -568,32 +573,41 @@ final class AuthenticationSecurityTest extends IntegrationTestCase
      */
     public function test_new_tokens_always_use_current_secret(): void
     {
-        $oldSecret = getenv('JWT_SECRET_KEY_OLD');
+        // Same self-setup approach as test_token_validates_with_old_secret_during_rotation:
+        // inject a synthetic old secret, build a rotation-aware JwtService, restore env in finally.
+        $oldSecret = bin2hex(random_bytes(32));
+        $previous = getenv('JWT_SECRET_KEY_OLD');
+        putenv('JWT_SECRET_KEY_OLD=' . $oldSecret);
 
-        if ($oldSecret === false || $oldSecret === '') {
-            $this->markTestSkipped('JWT_SECRET_KEY_OLD not set - rotation not active');
-        }
-
-        $user = $this->createTestUser('newsecret@test.com', 'ValidPass123!@#');
-
-        // Generate new token (should use current secret)
-        $newToken = $this->jwtService->generateAccessToken($user);
-
-        // Verify token validates with current secret
-        $payload = $this->jwtService->validateToken($newToken);
-        $this->assertEquals($user->getId(), $payload['user_id']);
-
-        // Verify token does NOT validate with old secret alone
-        // (This proves it was signed with current secret)
         try {
-            \Firebase\JWT\JWT::decode($newToken, new \Firebase\JWT\Key($oldSecret, 'HS256'));
-            $this->fail('Token should not validate with old secret alone');
-        } catch (\Exception $e) {
-            $this->assertStringContainsString(
-                'Signature verification failed',
-                $e->getMessage(),
-                'Token should fail validation with old secret'
-            );
+            $rotationAwareJwt = new JwtService();
+            $user = $this->createTestUser('newsecret@test.com', 'ValidPass123!@#');
+
+            // Generate new token (should use current secret, NOT the old one we injected)
+            $newToken = $rotationAwareJwt->generateAccessToken($user);
+
+            // Verify token validates with current secret
+            $payload = $rotationAwareJwt->validateToken($newToken);
+            $this->assertEquals($user->getId(), $payload['user_id']);
+
+            // Verify token does NOT validate with the synthetic old secret alone.
+            // (This proves the new token was signed with the CURRENT secret.)
+            try {
+                \Firebase\JWT\JWT::decode($newToken, new \Firebase\JWT\Key($oldSecret, 'HS256'));
+                $this->fail('Token should not validate with old secret alone');
+            } catch (\Exception $e) {
+                $this->assertStringContainsString(
+                    'Signature verification failed',
+                    $e->getMessage(),
+                    'Token should fail validation with old secret'
+                );
+            }
+        } finally {
+            if ($previous === false) {
+                putenv('JWT_SECRET_KEY_OLD');
+            } else {
+                putenv('JWT_SECRET_KEY_OLD=' . $previous);
+            }
         }
     }
 
