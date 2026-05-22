@@ -160,7 +160,6 @@ deptrac:
       - App\Infrastructure\ServiceProvider\DomainServiceProviderInterface
       - CodeIgniter\Router\RouteCollection
     App\Domain\User\Commands\ChangeUserPassword\ChangeUserPasswordHandler:
-      - App\Infrastructure\Auth\Services\SessionManagementService
       - App\Domain\User\Repositories\PasswordHistoryRepository
     App\Domain\User\UserServiceProvider:
       - App\Infrastructure\Attributes\DomainServiceProvider

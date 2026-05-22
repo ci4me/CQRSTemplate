@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Auth\Services;
 
+use App\Domain\User\Ports\SessionManagerInterface;
+use App\Infrastructure\Attributes\AutoBind;
+use App\Infrastructure\Attributes\InfrastructureAdapter;
 use App\Infrastructure\Logging\LoggerFactory;
 use Psr\Log\LoggerInterface;
 
@@ -21,7 +24,9 @@ use Psr\Log\LoggerInterface;
  *
  * @package App\Infrastructure\Auth\Services
  */
-final class SessionManagementService
+#[InfrastructureAdapter]
+#[AutoBind]
+final class SessionManagementService implements SessionManagerInterface
 {
     private const int DEFAULT_MAX_SESSIONS = 5;
     /** @var LoggerInterface */
