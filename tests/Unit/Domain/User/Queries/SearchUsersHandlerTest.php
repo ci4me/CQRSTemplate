@@ -4,12 +4,15 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Domain\User\Queries;
 
+use App\Domain\Shared\Ports\LogConfigPort;
+use App\Domain\User\Ports\UserRepositoryInterface;
 use App\Domain\User\Queries\SearchUsers\SearchUsersHandler;
 use App\Domain\User\Queries\SearchUsers\SearchUsersQuery;
-use App\Domain\User\Ports\UserRepositoryInterface;
 use App\Infrastructure\Logging\CodeIgniterLogConfig;
 use App\Infrastructure\Logging\LoggerFactory;
 use Config\Logging;
+use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
+use Psr\Log\LoggerInterface;
 use Tests\Support\Factories\UserFactory;
 use Tests\Support\UnitTestCase;
 
@@ -20,6 +23,7 @@ use Tests\Support\UnitTestCase;
  *
  * @package Tests\Unit\Domain\User\Queries
  */
+#[AllowMockObjectsWithoutExpectations]
 final class SearchUsersHandlerTest extends UnitTestCase
 {
     private UserRepositoryInterface $repository;
@@ -442,5 +446,27 @@ final class SearchUsersHandlerTest extends UnitTestCase
             ]);
 
         $this->handler->handle($query);
+    }
+
+    public function test_slow_search_branch_emits_warning(): void
+    {
+        $logger = $this->createMock(LoggerInterface::class);
+        $cfg = $this->createMock(LogConfigPort::class);
+        $cfg->method('slowQueryThresholdMs')->willReturn(0);
+
+        $this->repository->method('findPaginated')->willReturn([
+            'data' => [UserFactory::createPersistedUser()],
+            'total' => 1,
+            'page' => 1,
+            'perPage' => 20,
+            'totalPages' => 1,
+        ]);
+
+        $logger->expects($this->atLeastOnce())
+            ->method('warning')
+            ->with('Slow search query detected', $this->anything());
+
+        $handler = new SearchUsersHandler($this->repository, $logger, $cfg);
+        $handler->handle(new SearchUsersQuery(email: 'slow@example.com', page: 1, perPage: 20));
     }
 }

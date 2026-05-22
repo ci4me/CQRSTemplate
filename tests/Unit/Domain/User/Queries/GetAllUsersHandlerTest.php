@@ -4,12 +4,15 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Domain\User\Queries;
 
+use App\Domain\Shared\Ports\LogConfigPort;
 use App\Domain\User\Queries\GetAllUsers\GetAllUsersHandler;
 use App\Domain\User\Queries\GetAllUsers\GetAllUsersQuery;
 use App\Domain\User\Repositories\UserRepository;
 use App\Infrastructure\Logging\CodeIgniterLogConfig;
 use App\Infrastructure\Logging\LoggerFactory;
 use Config\Logging;
+use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
+use Psr\Log\LoggerInterface;
 use Tests\Support\Factories\UserFactory;
 use Tests\Support\UnitTestCase;
 
@@ -20,6 +23,7 @@ use Tests\Support\UnitTestCase;
  *
  * @package Tests\Unit\Domain\User\Queries
  */
+#[AllowMockObjectsWithoutExpectations]
 final class GetAllUsersHandlerTest extends UnitTestCase
 {
     private UserRepository $repository;
@@ -262,6 +266,28 @@ final class GetAllUsersHandlerTest extends UnitTestCase
         $this->expectExceptionMessage('Database connection failed');
 
         $this->handler->handle($query);
+    }
+
+    public function test_slow_query_branch_emits_warning(): void
+    {
+        $logger = $this->createMock(LoggerInterface::class);
+        $cfg = $this->createMock(LogConfigPort::class);
+        $cfg->method('slowQueryThresholdMs')->willReturn(0);
+
+        $this->repository->method('findPaginated')->willReturn([
+            'data' => [UserFactory::createPersistedUser()],
+            'total' => 1,
+            'page' => 1,
+            'perPage' => 20,
+            'totalPages' => 1,
+        ]);
+
+        $logger->expects($this->atLeastOnce())
+            ->method('warning')
+            ->with('Slow query detected', $this->anything());
+
+        $handler = new GetAllUsersHandler($this->repository, $logger, $cfg);
+        $handler->handle(new GetAllUsersQuery(page: 1, perPage: 20));
     }
 
     public function test_handles_combined_search_and_include_inactive(): void

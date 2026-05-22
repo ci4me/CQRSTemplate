@@ -4,14 +4,16 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Domain\User\Commands;
 
+use App\Domain\Shared\Events\EventDispatcherInterface;
 use App\Domain\Shared\ValueObjects\Actor;
 use App\Domain\User\Commands\ChangeUserPassword\ChangeUserPasswordCommand;
 use App\Domain\User\Commands\ChangeUserPassword\ChangeUserPasswordHandler;
 use App\Domain\User\ErrorCodes;
 use App\Domain\User\Events\PasswordChanged\PasswordChangedEvent;
-use App\Domain\Shared\Events\EventDispatcherInterface;
-use App\Infrastructure\Logging\LoggerFactory;
+use App\Domain\User\Ports\PasswordHistoryRepositoryInterface;
+use App\Domain\User\Ports\SessionManagerInterface;
 use App\Domain\User\Ports\UserRepositoryInterface;
+use App\Infrastructure\Logging\LoggerFactory;
 use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 use Tests\Support\Factories\UserFactory;
 use Tests\Support\UnitTestCase;
@@ -32,16 +34,22 @@ final class ChangeUserPasswordHandlerTest extends UnitTestCase
     private UserRepositoryInterface $repository;
     private EventDispatcherInterface $eventDispatcher;
     private ChangeUserPasswordHandler $handler;
+    private PasswordHistoryRepositoryInterface $passwordHistory;
 
     protected function setUp(): void
     {
         parent::setUp();
 
         $this->repository = $this->createMock(UserRepositoryInterface::class);
-        $passwordHistory = $this->createMock(\App\Domain\User\Repositories\PasswordHistoryRepository::class);
+        $this->passwordHistory = $this->createMock(PasswordHistoryRepositoryInterface::class);
         $this->eventDispatcher = $this->createMock(EventDispatcherInterface::class);
         $logger = LoggerFactory::create('test.user.commands');
-        $this->handler = new ChangeUserPasswordHandler($this->repository, $passwordHistory, $this->eventDispatcher, $logger);
+        $this->handler = new ChangeUserPasswordHandler(
+            $this->repository,
+            $this->passwordHistory,
+            $this->eventDispatcher,
+            $logger,
+        );
     }
 
     public function test_changes_password_successfully(): void
@@ -357,5 +365,58 @@ final class ChangeUserPasswordHandlerTest extends UnitTestCase
             ->method('dispatch');
 
         $this->handler->handle($command);
+    }
+
+    public function test_throws_when_password_was_used_recently(): void
+    {
+        $command = new ChangeUserPasswordCommand(
+            userId: 1,
+            newPassword: 'ReusedP@ssw0rd123!',
+            changedBy: Actor::user(999),
+        );
+
+        $this->repository->method('findById')->willReturn(UserFactory::createPersistedUser(['id' => 1]));
+
+        $this->passwordHistory
+            ->expects($this->once())
+            ->method('containsPassword')
+            ->with(1, 'ReusedP@ssw0rd123!')
+            ->willReturn(true);
+
+        $this->repository->expects($this->never())->method('update');
+        $this->eventDispatcher->expects($this->never())->method('dispatch');
+
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('used recently');
+
+        $this->handler->handle($command);
+    }
+
+    public function test_revokes_all_user_sessions_when_session_manager_provided(): void
+    {
+        $command = new ChangeUserPasswordCommand(
+            userId: 7,
+            newPassword: 'NewSecureP@ssw0rd123!',
+            changedBy: Actor::user(999),
+        );
+
+        $this->repository->method('findById')->willReturn(UserFactory::createPersistedUser(['id' => 7]));
+        $this->passwordHistory->method('containsPassword')->willReturn(false);
+
+        $sessionManager = $this->createMock(SessionManagerInterface::class);
+        $sessionManager
+            ->expects($this->once())
+            ->method('revokeAllUserSessions')
+            ->with(7);
+
+        $handler = new ChangeUserPasswordHandler(
+            $this->repository,
+            $this->passwordHistory,
+            $this->eventDispatcher,
+            LoggerFactory::create('test.user.commands'),
+            $sessionManager,
+        );
+
+        $handler->handle($command);
     }
 }
