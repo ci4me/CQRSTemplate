@@ -33,7 +33,7 @@ final readonly class CookieStockChangedEventHandler
             'cookie_id' => $event->cookieId,
             'previous_stock' => $event->previousStock,
             'new_stock' => $event->newStock,
-            'reason' => $event->reason,
+            'reason' => $event->reason->value,
         ]);
     }
 }

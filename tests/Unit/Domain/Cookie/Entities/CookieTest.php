@@ -5,9 +5,14 @@ declare(strict_types=1);
 namespace Tests\Unit\Domain\Cookie\Entities;
 
 use App\Domain\Cookie\Entities\Cookie;
+use App\Domain\Cookie\Events\CookieActivated\CookieActivatedEvent;
+use App\Domain\Cookie\Events\CookieDeactivated\CookieDeactivatedEvent;
+use App\Domain\Cookie\Events\CookieDeleted\CookieDeletedEvent;
+use App\Domain\Cookie\Events\CookieRestored\CookieRestoredEvent;
 use App\Domain\Cookie\Events\CookieStockChanged\CookieStockChangedEvent;
 use App\Domain\Cookie\ValueObjects\CookieName;
 use App\Domain\Cookie\ValueObjects\CookiePrice;
+use App\Domain\Cookie\ValueObjects\StockChangeReason;
 use App\Domain\Shared\Aggregate\AggregateHydrator;
 use App\Domain\Shared\Aggregate\AggregateRootInterface;
 use App\Domain\Shared\Exceptions\DomainException;
@@ -281,7 +286,7 @@ final class CookieTest extends UnitTestCase
         $this->assertInstanceOf(CookieStockChangedEvent::class, $events[0]);
         $this->assertEquals(10, $events[0]->previousStock);
         $this->assertEquals(7, $events[0]->newStock);
-        $this->assertEquals('decreaseStock', $events[0]->reason);
+        $this->assertSame(StockChangeReason::Sale, $events[0]->reason);
 
         $this->assertFalse($cookie->hasPendingEvents(), 'pull drains the buffer');
     }
@@ -305,7 +310,26 @@ final class CookieTest extends UnitTestCase
         $this->assertInstanceOf(CookieStockChangedEvent::class, $events[0]);
         $this->assertEquals(5, $events[0]->previousStock);
         $this->assertEquals(13, $events[0]->newStock);
-        $this->assertEquals('increaseStock', $events[0]->reason);
+        $this->assertSame(StockChangeReason::Restock, $events[0]->reason);
+    }
+
+    public function test_decrease_stock_carries_custom_reason_when_provided(): void
+    {
+        $cookie = Cookie::create(
+            name: CookieName::fromString('Custom Reason'),
+            description: null,
+            price: CookiePrice::fromString('1.00'),
+            stock: 10,
+            isActive: true,
+        );
+        $cookie->assignId(1, AggregateHydrator::key());
+
+        $cookie->decreaseStock(2, StockChangeReason::Adjustment);
+
+        $events = $cookie->pullEvents();
+        $this->assertCount(1, $events);
+        $this->assertInstanceOf(CookieStockChangedEvent::class, $events[0]);
+        $this->assertSame(StockChangeReason::Adjustment, $events[0]->reason);
     }
 
     public function test_has_stock_returns_true_when_available(): void
@@ -604,5 +628,213 @@ final class CookieTest extends UnitTestCase
             deletedAt: null,
             version: -3
         );
+    }
+
+    // ==================== LIFECYCLE TESTS (E07) ====================
+
+    public function test_soft_delete_marks_deleted_at_and_raises_event(): void
+    {
+        $cookie = $this->persistedCookie();
+
+        $cookie->softDelete(actorId: 42);
+
+        $this->assertTrue($cookie->isDeleted());
+        $this->assertNotNull($cookie->getDeletedAt());
+        $events = $cookie->pullEvents();
+        $this->assertCount(1, $events);
+        $this->assertInstanceOf(CookieDeletedEvent::class, $events[0]);
+        $this->assertSame(1, $events[0]->cookieId);
+        $this->assertSame(42, $events[0]->actorId);
+    }
+
+    public function test_soft_delete_refuses_already_deleted_cookie(): void
+    {
+        $cookie = Cookie::reconstitute(
+            id: 1,
+            name: CookieName::fromString('Already gone'),
+            description: null,
+            price: CookiePrice::fromString('1.00'),
+            stock: 0,
+            isActive: false,
+            createdAt: '2025-10-21 10:00:00',
+            updatedAt: '2025-10-21 10:00:00',
+            deletedAt: '2025-10-21 11:00:00',
+            version: 1,
+        );
+
+        $this->expectException(DomainException::class);
+        $this->expectExceptionMessage('cannot mutate a soft-deleted cookie');
+
+        $cookie->softDelete();
+    }
+
+    public function test_soft_delete_refuses_unpersisted_cookie(): void
+    {
+        $cookie = Cookie::create(
+            name: CookieName::fromString('Transient'),
+            description: null,
+            price: CookiePrice::fromString('1.00'),
+            stock: 1,
+            isActive: true,
+        );
+
+        $this->expectException(DomainException::class);
+        $this->expectExceptionMessage('requires a persisted entity');
+
+        $cookie->softDelete();
+    }
+
+    public function test_restore_clears_deleted_at_and_raises_event(): void
+    {
+        $cookie = Cookie::reconstitute(
+            id: 5,
+            name: CookieName::fromString('Restore me'),
+            description: null,
+            price: CookiePrice::fromString('1.00'),
+            stock: 0,
+            isActive: false,
+            createdAt: '2025-10-21 10:00:00',
+            updatedAt: '2025-10-21 10:00:00',
+            deletedAt: '2025-10-21 11:00:00',
+            version: 2,
+        );
+
+        $cookie->restore(actorId: 99);
+
+        $this->assertFalse($cookie->isDeleted());
+        $this->assertNull($cookie->getDeletedAt());
+        $events = $cookie->pullEvents();
+        $this->assertCount(1, $events);
+        $this->assertInstanceOf(CookieRestoredEvent::class, $events[0]);
+        $this->assertSame(5, $events[0]->cookieId);
+        $this->assertSame(99, $events[0]->actorId);
+    }
+
+    public function test_restore_refuses_cookie_that_is_not_deleted(): void
+    {
+        $cookie = $this->persistedCookie();
+
+        $this->expectException(DomainException::class);
+        $this->expectExceptionMessage('cannot restore a cookie that is not deleted');
+
+        $cookie->restore();
+    }
+
+    public function test_activate_raises_event_when_transitioning_from_inactive(): void
+    {
+        $cookie = Cookie::reconstitute(
+            id: 3,
+            name: CookieName::fromString('Was off'),
+            description: null,
+            price: CookiePrice::fromString('1.00'),
+            stock: 5,
+            isActive: false,
+            createdAt: '2025-10-21 10:00:00',
+            updatedAt: null,
+            deletedAt: null,
+            version: 1,
+        );
+
+        $cookie->activate(actorId: 7);
+
+        $this->assertTrue($cookie->getIsActive());
+        $events = $cookie->pullEvents();
+        $this->assertCount(1, $events);
+        $this->assertInstanceOf(CookieActivatedEvent::class, $events[0]);
+        $this->assertSame(3, $events[0]->cookieId);
+        $this->assertSame(7, $events[0]->actorId);
+    }
+
+    public function test_activate_is_idempotent_no_event_when_already_active(): void
+    {
+        $cookie = $this->persistedCookie(); // already active
+
+        $cookie->activate();
+
+        $this->assertTrue($cookie->getIsActive());
+        $this->assertSame([], $cookie->pullEvents(), 'idempotent: no event raised');
+    }
+
+    public function test_activate_refuses_unpersisted_cookie(): void
+    {
+        $cookie = Cookie::create(
+            name: CookieName::fromString('Ghost'),
+            description: null,
+            price: CookiePrice::fromString('1.00'),
+            stock: 1,
+            isActive: false,
+        );
+
+        $this->expectException(DomainException::class);
+        $this->expectExceptionMessage('requires a persisted entity');
+
+        $cookie->activate();
+    }
+
+    public function test_deactivate_raises_event_when_transitioning_from_active(): void
+    {
+        $cookie = $this->persistedCookie();
+
+        $cookie->deactivate(actorId: 11);
+
+        $this->assertFalse($cookie->getIsActive());
+        $events = $cookie->pullEvents();
+        $this->assertCount(1, $events);
+        $this->assertInstanceOf(CookieDeactivatedEvent::class, $events[0]);
+        $this->assertSame(1, $events[0]->cookieId);
+        $this->assertSame(11, $events[0]->actorId);
+    }
+
+    public function test_deactivate_is_idempotent_no_event_when_already_inactive(): void
+    {
+        $cookie = Cookie::reconstitute(
+            id: 1,
+            name: CookieName::fromString('Sleeping'),
+            description: null,
+            price: CookiePrice::fromString('1.00'),
+            stock: 1,
+            isActive: false,
+            createdAt: '2025-10-21 10:00:00',
+            updatedAt: null,
+            deletedAt: null,
+            version: 1,
+        );
+
+        $cookie->deactivate();
+
+        $this->assertFalse($cookie->getIsActive());
+        $this->assertSame([], $cookie->pullEvents());
+    }
+
+    public function test_deactivate_refuses_soft_deleted_cookie(): void
+    {
+        $cookie = Cookie::reconstitute(
+            id: 1,
+            name: CookieName::fromString('Trashed'),
+            description: null,
+            price: CookiePrice::fromString('1.00'),
+            stock: 0,
+            isActive: true,
+            createdAt: '2025-10-21 10:00:00',
+            updatedAt: '2025-10-21 10:00:00',
+            deletedAt: '2025-10-21 11:00:00',
+            version: 1,
+        );
+
+        $this->expectException(DomainException::class);
+        $cookie->deactivate();
+    }
+
+    private function persistedCookie(): Cookie
+    {
+        $cookie = Cookie::create(
+            name: CookieName::fromString('Persisted'),
+            description: null,
+            price: CookiePrice::fromString('1.00'),
+            stock: 5,
+            isActive: true,
+        );
+        $cookie->assignId(1, AggregateHydrator::key());
+        return $cookie;
     }
 }

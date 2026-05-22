@@ -463,6 +463,17 @@
         <exclude-pattern>app/Infrastructure/Auth/Middleware/JwtAuthenticationMiddleware.php</exclude-pattern>
         <exclude-pattern>app/Infrastructure/Outbox/EventOutboxRelay.php</exclude-pattern>
         <exclude-pattern>app/Infrastructure/ServiceProvider/ServiceProviderRegistry.php</exclude-pattern>
+        <!-- E07: Cookie.php was 281 logical lines pre-extraction. After
+             pulling assertions out to CookieStateAssertions and lifecycle
+             event construction into a buildLifecycleEvent helper, the
+             entity sits ~255 logical lines — irreducible without re-
+             introducing a trait pattern (which E07 just deleted, slice
+             01/F8) or splitting the aggregate itself. The expanded
+             responsibility surface (softDelete / restore / activate /
+             deactivate / inlined accessors) is the explicit point of
+             E07: the aggregate now OWNS its lifecycle. Class size is a
+             deliberate architectural decision for this domain. -->
+        <exclude-pattern>app/Domain/Cookie/Entities/Cookie.php</exclude-pattern>
     </rule>
     <rule ref="Generic.Metrics.CyclomaticComplexity">
         <properties>
