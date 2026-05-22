@@ -67,4 +67,20 @@ final class EmailTest extends CIUnitTestCase
         $email = Email::fromString('user@example.com');
         $this->assertSame('user', $email->getLocalPart());
     }
+
+    public function testEqualsStringMatchesCaseInsensitively(): void
+    {
+        $email = Email::fromString('user@example.com');
+
+        $this->assertTrue($email->equalsString('USER@example.com'));
+        $this->assertTrue($email->equalsString('  user@example.com  '));
+        $this->assertFalse($email->equalsString('other@example.com'));
+    }
+
+    public function testToStringReturnsEmailValue(): void
+    {
+        $email = Email::fromString('cast@example.com');
+
+        $this->assertSame('cast@example.com', (string) $email);
+    }
 }

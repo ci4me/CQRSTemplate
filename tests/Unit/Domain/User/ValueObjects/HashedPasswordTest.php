@@ -69,4 +69,11 @@ final class HashedPasswordTest extends CIUnitTestCase
         // Times should be similar (within 50% margin)
         $this->assertLessThan($time1 * 1.5, $time2);
     }
+
+    public function testNeedsRehashReturnsFalseForCurrentAlgorithm(): void
+    {
+        $password = HashedPassword::fromPlaintext('SecureP@ssw0rd!');
+
+        $this->assertFalse($password->needsRehash());
+    }
 }
