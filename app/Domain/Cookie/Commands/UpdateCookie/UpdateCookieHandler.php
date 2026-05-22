@@ -97,9 +97,11 @@ final readonly class UpdateCookieHandler implements CommandHandlerInterface
             $name = CookieName::fromString($command->name);
             $price = CookiePrice::fromString($command->price);
 
-            // Check business rule: if name changed, new name must be unique
+            // Check business rule: if name changed, new name must be unique.
+            // Port takes the VO so the validation invariants travel with the
+            // value instead of being recreated in the adapter.
             if (!$cookie->getName()->equals($name)) {
-                if ($this->repository->existsByNameExcludingId($name->getValue(), $command->id)) {
+                if ($this->repository->existsByNameExcludingId($name, $command->id)) {
                     throw DomainException::businessRuleViolation(
                         'Cookie name must be unique',
                         sprintf('A cookie with name "%s" already exists', $name->getValue()),

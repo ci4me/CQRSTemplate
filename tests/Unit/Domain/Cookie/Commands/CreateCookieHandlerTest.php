@@ -50,7 +50,9 @@ final class CreateCookieHandlerTest extends UnitTestCase
         $this->repository
             ->expects($this->once())
             ->method('existsByName')
-            ->with('Chocolate Chip')
+            ->with($this->callback(static fn($name): bool =>
+                $name instanceof \App\Domain\Cookie\ValueObjects\CookieName
+                && $name->getValue() === 'Chocolate Chip'))
             ->willReturn(false);
 
         $this->repository
@@ -82,7 +84,9 @@ final class CreateCookieHandlerTest extends UnitTestCase
         $this->repository
             ->expects($this->once())
             ->method('existsByName')
-            ->with('Existing Cookie')
+            ->with($this->callback(static fn($name): bool =>
+                $name instanceof \App\Domain\Cookie\ValueObjects\CookieName
+                && $name->getValue() === 'Existing Cookie'))
             ->willReturn(true);
 
         $this->repository

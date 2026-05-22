@@ -83,8 +83,10 @@ final readonly class CreateCookieHandler implements CommandHandlerInterface
             $name = CookieName::fromString($command->name);
             $price = CookiePrice::fromString($command->price);
 
-            // Check business rule: name must be unique
-            if ($this->repository->existsByName($name->getValue())) {
+            // Check business rule: name must be unique.
+            // The port now takes the VO so the input-boundary validation
+            // is enforced by the type system, not by convention.
+            if ($this->repository->existsByName($name)) {
                 throw DomainException::businessRuleViolation(
                     'Cookie name must be unique',
                     sprintf('A cookie with name "%s" already exists', $name->getValue()),
