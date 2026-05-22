@@ -109,6 +109,84 @@ final class JwtMiddlewareTest extends FeatureTestCase
         $this->assertContains($body['error'], ['user_not_found', 'user_inactive']);
     }
 
+    public function test_token_for_blacklisted_session_returns_blacklisted_error(): void
+    {
+        $email = 'jwt-mw-blacklisted@test.local';
+        $this->createUser($email, self::TEST_PASSWORD);
+        $token = $this->loginAndExtractAccessToken($email, self::TEST_PASSWORD);
+
+        // Logout invalidates the token via the blacklist service.
+        $logout = $this->withHeaders(['Authorization' => 'Bearer ' . $token])
+            ->withBodyFormat('json')
+            ->call('POST', '/api/v1/auth/logout', []);
+        $logout->assertStatus(200);
+
+        $response = $this->withHeaders(['Authorization' => 'Bearer ' . $token])
+            ->call('GET', '/api/v1/auth/me');
+
+        $response->assertStatus(401);
+        $body = json_decode((string) $response->getJSON(), true);
+        $this->assertIsArray($body);
+        $this->assertSame('token_blacklisted', $body['error']);
+    }
+
+    public function test_token_after_session_idle_timeout_is_revoked(): void
+    {
+        // Force a very short idle window so the next request lands past it.
+        putenv('AUTH_IDLE_TIMEOUT_SECONDS=1');
+
+        try {
+            $email = 'jwt-mw-idle@test.local';
+            $this->createUser($email, self::TEST_PASSWORD);
+            $token = $this->loginAndExtractAccessToken($email, self::TEST_PASSWORD);
+
+            // Force the session row's last_activity_at into the past.
+            \Config\Database::connect()
+                ->table('sessions')
+                ->update(['last_activity_at' => '2000-01-01 00:00:00']);
+
+            $response = $this->withHeaders(['Authorization' => 'Bearer ' . $token])
+                ->call('GET', '/api/v1/auth/me');
+
+            $response->assertStatus(401);
+            $body = json_decode((string) $response->getJSON(), true);
+            $this->assertIsArray($body);
+            $this->assertSame('idle_timeout_exceeded', $body['error']);
+        } finally {
+            putenv('AUTH_IDLE_TIMEOUT_SECONDS');
+        }
+    }
+
+    public function test_token_with_device_fingerprint_mismatch_is_rejected(): void
+    {
+        // Disable the grace period so any UA change is rejected immediately.
+        putenv('AUTH_DEVICE_FINGERPRINT_GRACE_PERIOD=0');
+
+        try {
+            $email = 'jwt-mw-fp@test.local';
+            $this->createUser($email, self::TEST_PASSWORD);
+            $token = $this->loginAndExtractAccessToken($email, self::TEST_PASSWORD);
+
+            // Forcibly overwrite the device_fingerprint so the next request's
+            // UA hash will not match.
+            \Config\Database::connect()
+                ->table('sessions')
+                ->update(['device_fingerprint' => 'definitely-not-the-real-fingerprint']);
+
+            $response = $this->withHeaders([
+                'Authorization' => 'Bearer ' . $token,
+                'User-Agent' => 'TotallyDifferentBrowser/9.99',
+            ])->call('GET', '/api/v1/auth/me');
+
+            $response->assertStatus(401);
+            $body = json_decode((string) $response->getJSON(), true);
+            $this->assertIsArray($body);
+            $this->assertSame('device_fingerprint_mismatch', $body['error']);
+        } finally {
+            putenv('AUTH_DEVICE_FINGERPRINT_GRACE_PERIOD');
+        }
+    }
+
     private function createUser(string $email, string $password, UserRole $role = UserRole::Customer): User
     {
         $user = User::create(
