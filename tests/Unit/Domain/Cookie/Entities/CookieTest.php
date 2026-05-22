@@ -471,4 +471,37 @@ final class CookieTest extends UnitTestCase
 
         $cookie->decreaseStock(1);
     }
+
+    public function test_assign_id_refuses_to_overwrite_existing_id(): void
+    {
+        $cookie = Cookie::create(
+            name: CookieName::fromString('Reassign me'),
+            description: null,
+            price: CookiePrice::fromString('1.00'),
+            stock: 10,
+            isActive: true
+        );
+        $cookie->assignId(7);
+
+        $this->expectException(\LogicException::class);
+        $this->expectExceptionMessage('refusing to reassign');
+
+        $cookie->assignId(99);
+    }
+
+    public function test_assign_id_is_idempotent_for_same_id(): void
+    {
+        $cookie = Cookie::create(
+            name: CookieName::fromString('Idempotent'),
+            description: null,
+            price: CookiePrice::fromString('1.00'),
+            stock: 10,
+            isActive: true
+        );
+
+        $cookie->assignId(42);
+        $cookie->assignId(42);
+
+        $this->assertSame(42, $cookie->getId());
+    }
 }

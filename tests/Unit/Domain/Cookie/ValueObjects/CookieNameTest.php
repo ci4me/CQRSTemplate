@@ -263,4 +263,20 @@ final class CookieNameTest extends UnitTestCase
         // Assert
         $this->assertEquals("Multi\nLine\nCookie", $cookieName->getValue());
     }
+
+    public function test_equals_ignore_case_matches_regardless_of_casing(): void
+    {
+        $name = CookieName::fromString('Chocolate Chip');
+
+        $this->assertTrue($name->equalsIgnoreCase('chocolate chip'));
+        $this->assertTrue($name->equalsIgnoreCase('CHOCOLATE CHIP'));
+        $this->assertTrue($name->equalsIgnoreCase('  Chocolate Chip  '));
+    }
+
+    public function test_equals_ignore_case_returns_false_for_different_names(): void
+    {
+        $name = CookieName::fromString('Chocolate Chip');
+
+        $this->assertFalse($name->equalsIgnoreCase('Oatmeal Raisin'));
+    }
 }

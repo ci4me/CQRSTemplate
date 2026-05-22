@@ -249,4 +249,24 @@ final class CookiePriceTest extends UnitTestCase
         $this->assertSame(100, $money->amountMinor());
         $this->assertSame('USD', $money->currency->iso);
     }
+
+    public function test_rejects_prices_above_catalogue_maximum(): void
+    {
+        // MAX_MINOR_UNITS = 999_999 (i.e. 9999.99 in 2-decimal currencies).
+        // Anything above triggers assertPositiveAndInRange's outOfRange path.
+        $this->expectException(ValidationException::class);
+        $this->expectExceptionMessage('must be between');
+
+        CookiePrice::fromString('10000.00');
+    }
+
+    public function test_apply_discount_rejects_negative_percentage(): void
+    {
+        $price = CookiePrice::fromString('10.00');
+
+        $this->expectException(ValidationException::class);
+        $this->expectExceptionMessage('must be between');
+
+        $price->applyDiscount(-1);
+    }
 }
