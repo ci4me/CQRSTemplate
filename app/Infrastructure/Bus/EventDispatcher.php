@@ -63,6 +63,20 @@ class EventDispatcher implements EventDispatcherInterface
     private bool $rethrowOnListenerFailure = false;
 
     /**
+     * When true, dispatching an event with zero listeners emits a `debug`
+     * log line. Off by default — production hot paths shouldn't pay for an
+     * always-on diagnostic, and the legitimate no-listener case (events the
+     * outbox relay handles asynchronously) would flood the log.
+     *
+     * Intended for use in dev/test environments where a forgotten
+     * subscription is the difference between a wired event and a silent
+     * drop. See round-3 audit slice 05/F8.
+     *
+     * @var bool
+     */
+    private bool $warnOnNoListeners = false;
+
+    /**
      * __construct.
      *
      * @param LoggerInterface|null $logger
@@ -91,6 +105,26 @@ class EventDispatcher implements EventDispatcherInterface
     {
         $previous = $this->rethrowOnListenerFailure;
         $this->rethrowOnListenerFailure = $rethrow;
+        return $previous;
+    }
+
+    /**
+     * Toggle "log a debug line on zero-listener dispatches" mode and
+     * return the previous value.
+     *
+     * Off by default. Dev/test environments can flip it on to surface
+     * events that nobody subscribed to (typically the symptom of a
+     * forgotten {@see \App\Infrastructure\ServiceProvider\DomainServiceProvider::registerEvents()}
+     * entry on a new event). The previous value is returned so callers
+     * can restore state in a `finally` block.
+     *
+     * @param bool $warn
+     * @return bool
+     */
+    public function setWarnOnNoListeners(bool $warn): bool
+    {
+        $previous = $this->warnOnNoListeners;
+        $this->warnOnNoListeners = $warn;
         return $previous;
     }
 
@@ -127,6 +161,18 @@ class EventDispatcher implements EventDispatcherInterface
         $eventClass = $event::class;
 
         if (!isset($this->listeners[$eventClass])) {
+            if ($this->warnOnNoListeners) {
+                // `debug` (not `warning`) — production may legitimately
+                // dispatch an event whose subscribers live on the async
+                // outbox side. The hook is for dev/test diagnostics, not
+                // a production alarm.
+                $this->logger->debug('Event dispatched with no listeners', [
+                    'domain' => 'Infrastructure',
+                    'component' => 'EventDispatcher',
+                    'event_class' => $eventClass,
+                    'correlation_id' => CorrelationIdService::get(),
+                ]);
+            }
             return;
         }
 

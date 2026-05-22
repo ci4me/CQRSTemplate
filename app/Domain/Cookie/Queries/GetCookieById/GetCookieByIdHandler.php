@@ -6,6 +6,8 @@ namespace App\Domain\Cookie\Queries\GetCookieById;
 
 use App\Domain\Cookie\DTOs\CookieDTO;
 use App\Domain\Cookie\Ports\CookieQueryRepositoryInterface;
+use App\Domain\Shared\Bus\LogSampler;
+use App\Domain\Shared\Bus\QueryHandlerInterface;
 use App\Domain\Shared\Ports\LogConfigPort;
 use Psr\Log\LoggerInterface;
 
@@ -28,8 +30,9 @@ use Psr\Log\LoggerInterface;
  * The controller can decide how to handle not found cases.
  *
  * @package App\Domain\Cookie\Queries\GetCookieById
+ * @implements QueryHandlerInterface<GetCookieByIdQuery, CookieDTO|null>
  */
-final readonly class GetCookieByIdHandler
+final readonly class GetCookieByIdHandler implements QueryHandlerInterface
 {
     /**
      * Create a new GetCookieByIdHandler.
@@ -51,7 +54,8 @@ final readonly class GetCookieByIdHandler
      * @param GetCookieByIdQuery $query The query
      * @return CookieDTO|null The cookie DTO or null if not found
      */
-    public function handle(GetCookieByIdQuery $query): ?CookieDTO
+    #[\Override]
+    public function handle(object $query): ?CookieDTO
     {
         $startTime = microtime(true);
 
@@ -123,10 +127,16 @@ final readonly class GetCookieByIdHandler
     /**
      * Determine if query should be sampled for logging.
      *
+     * Delegates to the shared {@see LogSampler}, which uses random_int
+     * (CSPRNG) instead of the biased Mersenne Twister the previous
+     * implementation called (closes 04/F12, 14/F20, 17/F2). Constructing
+     * the sampler per-call is cheap (single integer cast); E08 lifts
+     * this to constructor injection when migrating onto AbstractQueryHandler.
+     *
      * @return bool True if query should be logged based on sampling rate
      */
     private function shouldSample(): bool
     {
-        return mt_rand() / mt_getrandmax() < $this->loggingConfig->samplingRate();
+        return (new LogSampler($this->loggingConfig->samplingRate()))->shouldSample();
     }
 }

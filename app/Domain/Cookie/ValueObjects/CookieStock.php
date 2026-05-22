@@ -29,7 +29,7 @@ use App\Domain\Shared\Exceptions\ValidationException;
  */
 final readonly class CookieStock
 {
-    private function __construct(public int $value)
+    private function __construct(private int $value)
     {
     }
 
@@ -43,6 +43,18 @@ final readonly class CookieStock
         }
 
         return new self($value);
+    }
+
+    /**
+     * Current stock level.
+     *
+     * Encapsulated accessor (slice 02/F8): the underlying `$value`
+     * property is private — symmetric with {@see CookieName} and
+     * {@see CookiePrice} — so the only way out is through this method.
+     */
+    public function value(): int
+    {
+        return $this->value;
     }
 
     /**

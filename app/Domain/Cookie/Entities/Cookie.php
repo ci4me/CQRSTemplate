@@ -5,45 +5,46 @@ declare(strict_types=1);
 namespace App\Domain\Cookie\Entities;
 
 use App\Domain\Cookie\ErrorCodes;
+use App\Domain\Cookie\Events\CookieActivated\CookieActivatedEvent;
+use App\Domain\Cookie\Events\CookieDeactivated\CookieDeactivatedEvent;
+use App\Domain\Cookie\Events\CookieDeleted\CookieDeletedEvent;
+use App\Domain\Cookie\Events\CookieRestored\CookieRestoredEvent;
 use App\Domain\Cookie\Events\CookieStockChanged\CookieStockChangedEvent;
 use App\Domain\Cookie\Events\CookieUpdated\CookieUpdatedEvent;
 use App\Domain\Cookie\ValueObjects\CookieName;
 use App\Domain\Cookie\ValueObjects\CookiePrice;
+use App\Domain\Cookie\ValueObjects\CookieSnapshot;
 use App\Domain\Cookie\ValueObjects\CookieStock;
+use App\Domain\Cookie\ValueObjects\StockChangeReason;
+use App\Domain\Shared\Aggregate\AggregateHydrator;
+use App\Domain\Shared\Aggregate\AggregateRootInterface;
 use App\Domain\Shared\AggregateRoot;
+use App\Domain\Shared\Events\AbstractDomainEvent;
 use App\Domain\Shared\Exceptions\DomainException;
 use App\Domain\Shared\Exceptions\ValidationException;
 
 /**
  * Cookie Domain Entity (Aggregate Root).
  *
- * This entity represents a cookie product and orchestrates the cookie
- * lifecycle (create, update, delete, restore, stock movement) while
- * delegating the granular invariants to dedicated value objects:
- *  - {@see CookieName}   - name validation
- *  - {@see CookiePrice}  - price + currency + minor-unit math
- *  - {@see CookieStock}  - non-negative stock + increment/decrement rules
+ * Owns the Cookie lifecycle: create, update, soft-delete, restore,
+ * activate, deactivate, stock movement. Invariants delegate to value
+ * objects ({@see CookieName}, {@see CookiePrice}, {@see CookieStock});
+ * preconditions live in {@see CookieStateAssertions}.
  *
- * Business Rules Enforced (directly or via VOs):
- * 1. Cookie name must be unique (enforced by repository)
- * 2. Price must be greater than zero (CookiePrice)
- * 3. Stock cannot be negative (CookieStock)
- * 4. Inactive cookies cannot be displayed to customers
- * 5. Deleted cookies are soft-deleted (deleted_at field)
+ * Event-emission convention (E07): every public mutator raises ≥ 1
+ * event through the AggregateRoot bag. The repository drains the bag
+ * post-persist. CookieCreatedEvent stays handler-side because it needs
+ * the freshly-allocated id; E08 unifies the remaining handlers.
  *
- * Event-emission convention:
- * - The entity raises CookieStockChangedEvent / CookieUpdatedEvent
- *   through the AggregateRoot trait; the repository drains them after
- *   a successful save.
- * - CookieCreatedEvent is dispatched by the create handler (not the
- *   entity) because the event payload needs the freshly-allocated id.
+ * Hydration contract (E06): {@see assignId()} and {@see bumpVersion()}
+ * require an {@see AggregateHydrator} key; {@see reconstitute()}
+ * rejects `version < 1` (slice 01/F4).
  *
  * @package App\Domain\Cookie\Entities
  */
-final class Cookie
+final class Cookie implements AggregateRootInterface
 {
     use AggregateRoot;
-    use CookieAccessors;
 
     private ?int $id = null;
     private CookieName $name;
@@ -70,11 +71,7 @@ final class Cookie
         $this->isActive = $isActive;
     }
 
-    /**
-     * Create a new Cookie (factory method for new cookies).
-     *
-     * @throws ValidationException
-     */
+    /** @throws ValidationException */
     public static function create(
         CookieName $name,
         ?string $description,
@@ -86,8 +83,7 @@ final class Cookie
     }
 
     /**
-     * Reconstitute a Cookie from persistence.
-     *
+     * @throws \InvalidArgumentException When `$version < 1`.
      * @throws ValidationException
      */
     public static function reconstitute(
@@ -102,33 +98,86 @@ final class Cookie
         ?string $deletedAt,
         int $version
     ): self {
+        if ($version < 1) {
+            throw new \InvalidArgumentException(sprintf(
+                'Persisted Cookie must have version >= 1; got %d — likely a malformed DB row or migration drift.',
+                $version
+            ));
+        }
         $cookie = new self($name, $description, $price, CookieStock::fromInt($stock), $isActive);
         $cookie->id = $id;
         $cookie->createdAt = $createdAt;
         $cookie->updatedAt = $updatedAt;
         $cookie->deletedAt = $deletedAt;
         $cookie->version = $version;
-
         return $cookie;
     }
 
-    /**
-     * Bump the optimistic-locking version after a successful persist.
-     *
-     * @internal
-     */
-    public function bumpVersion(): void
+    // Accessors (inlined from former CookieAccessors trait, slice 01/F8).
+    #[\Override]
+    public function getId(): ?int
+    {
+        return $this->id;
+    }
+    public function getName(): CookieName
+    {
+        return $this->name;
+    }
+    public function getDescription(): ?string
+    {
+        return $this->description;
+    }
+    public function getPrice(): CookiePrice
+    {
+        return $this->price;
+    }
+    public function getStock(): int
+    {
+        return $this->stock->value();
+    }
+    public function getIsActive(): bool
+    {
+        return $this->isActive;
+    }
+    public function getCreatedAt(): ?string
+    {
+        return $this->createdAt;
+    }
+    public function getUpdatedAt(): ?string
+    {
+        return $this->updatedAt;
+    }
+    public function getDeletedAt(): ?string
+    {
+        return $this->deletedAt;
+    }
+    public function getVersion(): int
+    {
+        return $this->version;
+    }
+    public function isAvailable(): bool
+    {
+        return $this->isActive && $this->deletedAt === null && ! $this->stock->isOutOfStock();
+    }
+    public function isOutOfStock(): bool
+    {
+        return $this->stock->isOutOfStock();
+    }
+    public function isDeleted(): bool
+    {
+        return $this->deletedAt !== null;
+    }
+
+    // Hydration contract (E06): $key is the security parameter.
+    // phpcs:ignore SlevomatCodingStandard.Functions.UnusedParameter.UnusedParameter -- $key is the security contract
+    public function bumpVersion(AggregateHydrator $key): void
     {
         $this->version++;
     }
 
-    /**
-     * Hydrate the entity with its database id after a successful insert.
-     *
-     * @internal
-     * @throws \LogicException
-     */
-    public function assignId(int $id): void
+    /** @throws \LogicException When the entity already has a different id. */
+    // phpcs:ignore SlevomatCodingStandard.Functions.UnusedParameter.UnusedParameter -- $key is the security contract
+    public function assignId(int $id, AggregateHydrator $key): void
     {
         if ($this->id !== null && $this->id !== $id) {
             throw new \LogicException(
@@ -138,16 +187,9 @@ final class Cookie
         $this->id = $id;
     }
 
-    public function getVersion(): int
-    {
-        return $this->version;
-    }
-
     /**
-     * Update cookie information.
-     *
-     * @throws DomainException If the cookie is soft-deleted
-     * @throws ValidationException If stock is negative
+     * @throws DomainException     If the cookie is soft-deleted.
+     * @throws ValidationException If stock is negative.
      */
     public function update(
         CookieName $name,
@@ -156,133 +198,152 @@ final class Cookie
         int $stock,
         bool $isActive
     ): void {
-        $this->assertNotDeleted();
-
+        CookieStateAssertions::ensureNotDeleted($this->deletedAt);
         $previousState = $this->snapshot();
         $this->name = $name;
         $this->description = $description;
         $this->price = $price;
         $this->stock = CookieStock::fromInt($stock);
         $this->isActive = $isActive;
-
         if ($this->id === null) {
             return;
         }
-
         $this->raiseEvent(new CookieUpdatedEvent(
+            eventId: AbstractDomainEvent::newId(),
+            occurredAt: $this->nowUtc(),
+            actorId: null, // E08 will thread the acting user through commands.
             cookieId: $this->id,
             cookieName: $name->getValue(),
             cookiePrice: $price->toDecimalString(),
-            previousState: $previousState,
-            newState: $this->snapshot()
+            previousState: $previousState->toChangeSet(),
+            newState: $this->snapshot()->toChangeSet(),
         ));
     }
 
-    /**
-     * @return array<string, scalar|null>
-     */
-    private function snapshot(): array
+    /** @throws DomainException When already deleted or pre-persist. */
+    public function softDelete(?int $actorId = null): void
     {
-        return [
+        CookieStateAssertions::ensureNotDeleted($this->deletedAt);
+        $id = CookieStateAssertions::ensurePersisted($this->id, 'softDelete');
+        $snapshot = $this->snapshot();
+        $this->deletedAt = $this->nowUtc()->format('Y-m-d H:i:s');
+        $this->raiseEvent(new CookieDeletedEvent(
+            eventId: AbstractDomainEvent::newId(),
+            occurredAt: $this->nowUtc(),
+            actorId: $actorId,
+            cookieId: $id,
+            cookieName: $this->name->getValue(),
+            snapshot: $snapshot->toChangeSet(),
+        ));
+    }
+
+    /** @throws DomainException When not deleted or pre-persist. */
+    public function restore(?int $actorId = null): void
+    {
+        $id = CookieStateAssertions::ensurePersisted($this->id, 'restore');
+        if ($this->deletedAt === null) {
+            throw DomainException::invalidState(
+                'Cookie',
+                'cannot restore a cookie that is not deleted',
+                ErrorCodes::COOKIE_STATE_NOT_DELETED
+            );
+        }
+        $this->deletedAt = null;
+        $this->raiseEvent($this->buildLifecycleEvent(CookieRestoredEvent::class, $id, $actorId));
+    }
+
+    /** Idempotent: a no-op if already active. @throws DomainException */
+    public function activate(?int $actorId = null): void
+    {
+        $this->setActive(true, CookieActivatedEvent::class, 'activate', $actorId);
+    }
+
+    /** Idempotent: a no-op if already inactive. @throws DomainException */
+    public function deactivate(?int $actorId = null): void
+    {
+        $this->setActive(false, CookieDeactivatedEvent::class, 'deactivate', $actorId);
+    }
+
+    /**
+     * @param class-string<CookieActivatedEvent|CookieDeactivatedEvent> $eventClass
+     * @throws DomainException
+     */
+    private function setActive(bool $next, string $eventClass, string $operation, ?int $actorId): void
+    {
+        CookieStateAssertions::ensureNotDeleted($this->deletedAt);
+        $id = CookieStateAssertions::ensurePersisted($this->id, $operation);
+        if ($this->isActive === $next) {
+            return;
+        }
+        $this->isActive = $next;
+        $this->raiseEvent($this->buildLifecycleEvent($eventClass, $id, $actorId));
+    }
+
+    /**
+     * @param class-string<CookieActivatedEvent|CookieDeactivatedEvent|CookieRestoredEvent> $eventClass
+     */
+    private function buildLifecycleEvent(
+        string $eventClass,
+        int $cookieId,
+        ?int $actorId
+    ): CookieActivatedEvent|CookieDeactivatedEvent|CookieRestoredEvent {
+        return new $eventClass(
+            eventId: AbstractDomainEvent::newId(),
+            occurredAt: $this->nowUtc(),
+            actorId: $actorId,
+            cookieId: $cookieId,
+        );
+    }
+
+    /** @throws ValidationException @throws DomainException */
+    public function decreaseStock(int $quantity, StockChangeReason $reason = StockChangeReason::Sale): void
+    {
+        CookieStateAssertions::ensureNotDeleted($this->deletedAt);
+        CookieStateAssertions::ensurePersisted($this->id, 'decreaseStock');
+        $this->changeStock($this->stock->decrementBy($quantity), $reason);
+    }
+
+    /** @throws ValidationException @throws DomainException */
+    public function increaseStock(int $quantity, StockChangeReason $reason = StockChangeReason::Restock): void
+    {
+        CookieStateAssertions::ensureNotDeleted($this->deletedAt);
+        CookieStateAssertions::ensurePersisted($this->id, 'increaseStock');
+        $this->changeStock($this->stock->incrementBy($quantity), $reason);
+    }
+
+    private function snapshot(): CookieSnapshot
+    {
+        return CookieSnapshot::fromArray([
             'id' => $this->id,
             'name' => $this->name->getValue(),
             'description' => $this->description,
-            'price' => $this->price->toDecimalString(),
-            'stock' => $this->stock->value,
+            'price_minor' => $this->price->getMinorUnits(),
+            'price_currency' => $this->price->getCurrency()->iso,
+            'stock' => $this->stock->value(),
             'is_active' => $this->isActive,
-        ];
+            'version' => $this->version,
+            'deleted_at' => $this->deletedAt,
+        ]);
     }
 
-    /**
-     * @throws DomainException
-     */
-    private function assertNotDeleted(): void
+    private function changeStock(CookieStock $newStock, StockChangeReason $reason): void
     {
-        if ($this->deletedAt !== null) {
-            throw DomainException::invalidState(
-                'Cookie',
-                'cannot mutate a soft-deleted cookie; restore it first',
-                ErrorCodes::COOKIE_STATE_DELETED
-            );
-        }
-    }
-
-    /**
-     * @throws DomainException
-     */
-    private function assertPersisted(string $operation): void
-    {
-        if ($this->id === null) {
-            throw DomainException::invalidState(
-                'Cookie',
-                sprintf('%s requires a persisted entity (id is null)', $operation),
-                ErrorCodes::COOKIE_STATE_DELETED
-            );
-        }
-    }
-
-    /**
-     * Decrease stock by a given quantity.
-     *
-     * @throws ValidationException
-     * @throws DomainException If resulting stock would be negative
-     */
-    public function decreaseStock(int $quantity): void
-    {
-        $this->assertNotDeleted();
-        $this->assertPersisted('decreaseStock');
-        $this->changeStock($this->stock->decrementBy($quantity), 'decreaseStock');
-    }
-
-    /**
-     * Increase stock by a given quantity.
-     *
-     * @throws ValidationException If quantity is not positive
-     */
-    public function increaseStock(int $quantity): void
-    {
-        $this->assertNotDeleted();
-        $this->assertPersisted('increaseStock');
-        $this->changeStock($this->stock->incrementBy($quantity), 'increaseStock');
-    }
-
-    private function changeStock(CookieStock $newStock, string $reason): void
-    {
-        $previous = $this->stock->value;
+        $previous = $this->stock->value();
         $this->stock = $newStock;
-
+        \assert($this->id !== null, 'changeStock is gated by ensurePersisted()');
         $this->raiseEvent(new CookieStockChangedEvent(
-            cookieId: (int) $this->id,
+            eventId: AbstractDomainEvent::newId(),
+            occurredAt: $this->nowUtc(),
+            actorId: null, // E08 will thread the acting user through commands.
+            cookieId: $this->id,
             previousStock: $previous,
-            newStock: $newStock->value,
-            reason: $reason
+            newStock: $newStock->value(),
+            reason: $reason,
         ));
     }
 
-    public function activate(): void
+    private function nowUtc(): \DateTimeImmutable
     {
-        $this->assertNotDeleted();
-        $this->isActive = true;
-    }
-
-    public function deactivate(): void
-    {
-        $this->assertNotDeleted();
-        $this->isActive = false;
-    }
-
-    public function isAvailable(): bool
-    {
-        return $this->isActive && $this->deletedAt === null && ! $this->stock->isOutOfStock();
-    }
-
-    public function isOutOfStock(): bool
-    {
-        return $this->stock->isOutOfStock();
-    }
-
-    public function isDeleted(): bool
-    {
-        return $this->deletedAt !== null;
+        return new \DateTimeImmutable('now', new \DateTimeZone('UTC'));
     }
 }

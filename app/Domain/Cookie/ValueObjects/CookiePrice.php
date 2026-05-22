@@ -17,7 +17,7 @@ use App\Domain\Shared\ValueObjects\Money;
  * pins the currency choice at the boundary. Presentation formatting is
  * delegated to {@see \App\Domain\Cookie\Services\PriceFormatter}.
  */
-final readonly class CookiePrice
+final readonly class CookiePrice implements \Stringable
 {
     private const int MIN_MINOR_UNITS = 1;
     private const int MAX_MINOR_UNITS = 999_999; // 9,999.99 in 2-decimal currencies
@@ -184,6 +184,7 @@ final readonly class CookiePrice
         return new self(Money::fromMinorUnits($discountedMinor, $this->money->currency));
     }
 
+    #[\Override]
     public function __toString(): string
     {
         return $this->toDecimalString();

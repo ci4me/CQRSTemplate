@@ -37,7 +37,7 @@ use Config\Services;
  *
  * @package App\Controllers\Domain\Cookie
  */
-class CookieController extends BaseController
+final class CookieController extends BaseController
 {
     /**
      * Display paginated list of cookies.
