@@ -17,8 +17,20 @@
 deptrac:
   paths:
     - ./app
+    - ./tests/Unit
   exclude_files:
-    - '#.*test.*#i'
+    # Production source still excludes the framework's case-folded test
+    # scaffolding (`tests/_*`, lowercase `tests/database`,
+    # `tests/session`, `tests/unit`). Note the regex is
+    # CASE-SENSITIVE: our PascalCase `tests/Unit/...` participates so
+    # the LoggerFactory-in-unit-tests rule below can be enforced. The
+    # framework's lowercase `tests/unit/` shipped with CodeIgniter
+    # template still does not.
+    - '#tests/(_skipped|_support|database|session|unit)/#'
+    # tests/Integration and tests/Feature also stay out of deptrac —
+    # they legitimately depend on the real Infrastructure layer
+    # (Database connections, JWT services, etc.).
+    - '#tests/(Integration|Feature)/#'
   layers:
     - name: Domain
       collectors:
@@ -33,8 +45,19 @@ deptrac:
               value: App\Infrastructure\Attributes\DomainServiceProvider
     - name: Infrastructure
       collectors:
-        - type: directory
-          value: app/Infrastructure/.*
+        # All app/Infrastructure code EXCEPT LoggerFactory itself, which
+        # moves into its own ForbiddenInUnitTests layer so a single
+        # deptrac rule can forbid tests/Unit from importing it without
+        # exempting all of Infrastructure. The 16 production-side
+        # consumers stay legal via the Infrastructure ruleset's explicit
+        # `ForbiddenInUnitTests` entry below.
+        - type: bool
+          must:
+            - type: directory
+              value: app/Infrastructure/.*
+          must_not:
+            - type: classLike
+              value: ^App\\Infrastructure\\Logging\\LoggerFactory$
         - type: attribute
           value: App\Infrastructure\Attributes\InfrastructureAdapter
         - type: attribute
@@ -71,6 +94,21 @@ deptrac:
       collectors:
         - type: directory
           value: app/Helpers/.*
+    # Tests under tests/Unit. They are unit-test ONLY and must not
+    # touch the real filesystem; in particular, importing
+    # App\Infrastructure\Logging\LoggerFactory pushes a
+    # RotatingFileHandler onto a real `writable/logs/app.json` and
+    # turns every test into an integration test. The ruleset block
+    # below makes that a deptrac violation. Closes audit slice 12/F1
+    # (the "no filesystem dependency in unit tests" rule).
+    - name: TestsUnit
+      collectors:
+        - type: directory
+          value: tests/Unit/.*
+    - name: ForbiddenInUnitTests
+      collectors:
+        - type: classLike
+          value: ^App\\Infrastructure\\Logging\\LoggerFactory$
     - name: Views
       collectors:
         - type: directory
@@ -86,12 +124,18 @@ deptrac:
     Domain: []
 
     # Infrastructure implements domain ports + uses framework primitives.
+    # `ForbiddenInUnitTests` is added here so the 16 legitimate
+    # production consumers of LoggerFactory (handlers, services, the
+    # event dispatcher) compile. The ban is enforced one layer up at
+    # TestsUnit, which does NOT include ForbiddenInUnitTests in its
+    # allow-list.
     Infrastructure:
       - Domain
       - CodeIgniterFramework
       - Models
       - Libraries
       - Config
+      - ForbiddenInUnitTests
 
     # Controllers orchestrate: they call infrastructure adapters with
     # domain values to fulfil HTTP requests.
@@ -121,6 +165,7 @@ deptrac:
       - CodeIgniterFramework
       - Models
       - Config
+      - ForbiddenInUnitTests
 
     # Filters intercept HTTP requests before they hit controllers.
     Filters:
@@ -134,6 +179,7 @@ deptrac:
       - CodeIgniterFramework
       - Domain
       - Infrastructure
+      - ForbiddenInUnitTests
 
     # Database migrations + seeds. Framework-bound.
     Database:
@@ -154,6 +200,29 @@ deptrac:
     Views:
       - CodeIgniterFramework
       - Config
+    # Unit tests are explicitly forbidden from importing
+    # LoggerFactory — see the TestsUnit / ForbiddenInUnitTests
+    # collectors above. Use a Monolog Logger + TestHandler instead
+    # (memory-only, no filesystem). Direct domain/infrastructure
+    # mocks and PHPUnit's built-ins remain allowed.
+    TestsUnit:
+      - Domain
+      - Infrastructure
+      - CodeIgniterFramework
+      - Models
+      - Libraries
+      - Config
+      - Helpers
+    # LoggerFactory itself sits in this layer (see collector). It
+    # must still be allowed to depend on its sibling Infrastructure
+    # classes (RedactingProcessor, CorrelationIdService) — those are
+    # implementation details of the factory. The ban is enforced
+    # downstream: no TestsUnit module may depend on ForbiddenInUnitTests
+    # (see the TestsUnit allow-list above, which intentionally omits
+    # this layer).
+    ForbiddenInUnitTests:
+      - Infrastructure
+      - CodeIgniterFramework
   skip_violations:
     # Helpers are infrastructure glue; these violations are permanent and intentional.
     can():
@@ -162,3 +231,10 @@ deptrac:
     current_actor():
       - App\Domain\Shared\ValueObjects\Actor
       - App\Infrastructure\Auth\Services\ActorResolver
+    # LoggerFactoryTest is the ONE unit test that legitimately
+    # imports LoggerFactory — its raison d'etre is to pin the
+    # factory's public contract (handler shape, processors order,
+    # JSON formatting). All OTHER unit tests under tests/Unit are
+    # caught by the ForbiddenInUnitTests rule.
+    Tests\Unit\Infrastructure\Logging\LoggerFactoryTest:
+      - App\Infrastructure\Logging\LoggerFactory
