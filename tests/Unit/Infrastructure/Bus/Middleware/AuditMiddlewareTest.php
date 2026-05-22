@@ -113,4 +113,98 @@ final class AuditMiddlewareTest extends CIUnitTestCase
         $this->assertCount(2, $rows);
         $this->assertSame($rows[0]['payload_digest'], $rows[1]['payload_digest']);
     }
+
+    public function test_digest_normalises_objects_arrays_and_value_objects(): void
+    {
+        // Cover normaliseForJson branches: object with public id, object with
+        // __toString, plain object, and recursive array handling.
+        $command = new AuditCommandWithMixedTypes();
+
+        $mw = new AuditMiddleware(new NullLogger(), new ActorResolver());
+        $mw->handle($command, static fn(): bool => true);
+
+        $rows = Database::connect()
+            ->table('audit_log')
+            ->select('payload_digest, status')
+            ->get()
+            ->getResultArray();
+
+        $this->assertCount(1, $rows);
+        $this->assertSame('success', $rows[0]['status']);
+        $this->assertNotEmpty($rows[0]['payload_digest']);
+    }
+
+    public function test_audit_write_failure_is_logged_and_does_not_break_command(): void
+    {
+        // Force the audit row to fail by closing the db connection after the
+        // command runs but before the audit insert. Simpler: subclass to
+        // simulate the failure path via a custom logger that captures writes.
+        $captured = [];
+        $logger = new class ($captured) extends NullLogger {
+            /**
+             * @param array<int, array{level: string, message: string, context: array<string, mixed>}> $captured
+             */
+            public function __construct(private array &$captured)
+            {
+            }
+            public function error(string|\Stringable $message, array $context = []): void
+            {
+                $this->captured[] = ['level' => 'error', 'message' => (string) $message, 'context' => $context];
+            }
+        };
+        $mw = new AuditMiddleware($logger, new ActorResolver());
+
+        // Run a command first, then DROP the audit_log table so the next
+        // insert fails. The middleware MUST swallow the error.
+        $mw->handle(new class {
+            public string $name = 'first';
+        }, static fn(): bool => true);
+
+        Database::connect()->query('DROP TABLE audit_log');
+
+        $result = $mw->handle(new class {
+            public string $name = 'second';
+        }, static fn(): string => 'ok');
+
+        $this->assertSame('ok', $result);
+        $this->assertNotEmpty($captured, 'expected audit write failure to be logged');
+        $this->assertSame('Audit log write failed', $captured[0]['message']);
+    }
+}
+
+/**
+ * Test fixture exercising normaliseForJson's object/array branches.
+ */
+final class AuditCommandWithMixedTypes
+{
+    public int $cookieId = 5;
+    /** @var array{nested: array{a: int}} */
+    public array $nested = ['nested' => ['a' => 1]];
+    public AuditObjectWithId $entity;
+    public AuditObjectStringable $stringable;
+    public AuditObjectPlain $plain;
+
+    public function __construct()
+    {
+        $this->entity = new AuditObjectWithId();
+        $this->stringable = new AuditObjectStringable();
+        $this->plain = new AuditObjectPlain();
+    }
+}
+
+final class AuditObjectWithId
+{
+    public int $id = 123;
+}
+
+final class AuditObjectStringable
+{
+    public function __toString(): string
+    {
+        return 'stringified';
+    }
+}
+
+final class AuditObjectPlain
+{
 }
