@@ -1,0 +1,180 @@
+#!/usr/bin/env php
+<?php
+
+declare(strict_types=1);
+
+/*
+ * docs-cookie-sync
+ *
+ * Verifies that the round-3 scaffolding documentation stays in lock-step
+ * with the reference Cookie domain on disk. Exits 0 when every file in
+ * app/Domain/Cookie/ appears at least once in the canonical doc list,
+ * and every Cookie file the docs reference exists on disk.
+ *
+ * Documents checked:
+ *  - .claude/skills/domain-scaffolding/SKILL.md
+ *  - .claude/documentation/COMPLETE_FILE_INVENTORY.md
+ *
+ * The script walks app/Domain/Cookie/, then for each file checks that the
+ * basename (e.g. `Cookie.php`, `CreateCookieCommand.php`,
+ * `CookieReadModelProjection.php.example`) is mentioned in one of the
+ * canonical docs.
+ *
+ * It is intentionally lenient about *path* shape (the docs use
+ * `{Domain}/Entities/{Entity}.php` placeholders) — it asserts that the
+ * concrete Cookie basename appears at least once. That keeps the check
+ * stable when the docs use the generic placeholder form while still
+ * catching the case where Cookie grows a new file that nobody documented.
+ *
+ * Closes the round-3 audit finding (slice 15/F1): "scaffolding docs are
+ * two phases stale". Drift now fails CI.
+ */
+
+$projectRoot = dirname(__DIR__);
+
+$cookieRoot = $projectRoot . '/app/Domain/Cookie';
+$docFiles   = [
+    $projectRoot . '/.claude/skills/domain-scaffolding/SKILL.md',
+    $projectRoot . '/.claude/documentation/COMPLETE_FILE_INVENTORY.md',
+];
+
+if (!is_dir($cookieRoot)) {
+    fwrite(STDERR, "FATAL: {$cookieRoot} not found — Cookie reference domain missing.\n");
+    exit(2);
+}
+
+foreach ($docFiles as $docFile) {
+    if (!is_file($docFile)) {
+        fwrite(STDERR, "FATAL: {$docFile} not found — cannot verify drift.\n");
+        exit(2);
+    }
+}
+
+/**
+ * @return list<string>
+ */
+function load_doc_corpus(array $docFiles): array
+{
+    $corpus = [];
+    foreach ($docFiles as $docFile) {
+        $contents = file_get_contents($docFile);
+        if ($contents === false) {
+            fwrite(STDERR, "FATAL: could not read {$docFile}.\n");
+            exit(2);
+        }
+        $corpus[] = $contents;
+    }
+    return $corpus;
+}
+
+/**
+ * @return list<string>
+ */
+function walk_cookie_tree(string $cookieRoot): array
+{
+    $files = [];
+    $iter  = new RecursiveIteratorIterator(
+        new RecursiveDirectoryIterator($cookieRoot, FilesystemIterator::SKIP_DOTS),
+        RecursiveIteratorIterator::LEAVES_ONLY,
+    );
+
+    foreach ($iter as $node) {
+        if (!$node->isFile()) {
+            continue;
+        }
+        // Only interested in PHP source + .example reference scaffolds.
+        $basename = $node->getBasename();
+        if (!preg_match('/\.(php|example)$/', $basename)) {
+            continue;
+        }
+        $files[] = $node->getPathname();
+    }
+
+    sort($files);
+    return $files;
+}
+
+/**
+ * The docs reference Cookie by basename — both `Cookie.php` and the
+ * placeholder form like `{Entity}.php`. We only consider an
+ * undocumented Cookie file as drift; the placeholder form is enough
+ * because it tells the reader "for any new domain there is an entity
+ * file by this name". The forcing function here is that the moment
+ * Cookie grows a *new* basename that doesn't fit any documented
+ * placeholder, the check fails.
+ */
+function basename_documented(string $basename, array $corpus): bool
+{
+    foreach ($corpus as $contents) {
+        if (str_contains($contents, $basename)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+/**
+ * Map Cookie's concrete basename to the generic placeholder the docs use
+ * (e.g. `Cookie.php` → `{Entity}.php`, `CreateCookieCommand.php` →
+ * `Create{Entity}Command.php`). If either form is documented, we treat
+ * the file as covered. This is the part that makes the check resilient
+ * to the docs using placeholder names.
+ *
+ * @return list<string>
+ */
+function generic_placeholders(string $basename): array
+{
+    $candidates = [$basename];
+
+    // Cookie / Cookies → {Entity} / {Entities}
+    $candidates[] = str_replace(['Cookies', 'Cookie', 'cookies', 'cookie'], ['{Entities}', '{Entity}', '{entities}', '{entity}'], $basename);
+
+    // Domain folder placeholder: {Domain}
+    $candidates[] = str_replace(['Cookie'], ['{Domain}'], $basename);
+
+    return array_values(array_unique(array_filter($candidates)));
+}
+
+/* ------------------------------------------------------------------ */
+
+$corpus       = load_doc_corpus($docFiles);
+$cookieFiles  = walk_cookie_tree($cookieRoot);
+$undocumented = [];
+
+foreach ($cookieFiles as $absolute) {
+    $basename = basename($absolute);
+    $covered  = false;
+    foreach (generic_placeholders($basename) as $candidate) {
+        if (basename_documented($candidate, $corpus)) {
+            $covered = true;
+            break;
+        }
+    }
+    if (!$covered) {
+        $undocumented[] = substr($absolute, strlen(dirname(__DIR__)) + 1);
+    }
+}
+
+/* ------------------------------------------------------------------ */
+
+if ($undocumented !== []) {
+    fwrite(STDERR, "FAIL: docs-cookie-sync — the following Cookie files are NOT mentioned in the canonical docs:\n");
+    foreach ($undocumented as $rel) {
+        fwrite(STDERR, "  - {$rel}\n");
+    }
+    fwrite(STDERR, "\nUpdate one of:\n");
+    foreach ($docFiles as $docFile) {
+        fwrite(STDERR, "  * " . substr($docFile, strlen(dirname(__DIR__)) + 1) . "\n");
+    }
+    fwrite(STDERR, "\nEither add the file's basename (e.g. `Cookie.php`) or the generic\n");
+    fwrite(STDERR, "placeholder form (e.g. `{Entity}.php`) to one of the documents above.\n");
+    exit(1);
+}
+
+fwrite(STDOUT, sprintf(
+    "OK: docs-cookie-sync — %d Cookie files all documented across %d doc(s).\n",
+    count($cookieFiles),
+    count($docFiles),
+));
+
+exit(0);

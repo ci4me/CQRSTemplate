@@ -55,6 +55,9 @@ jobs:
           find app tests -name '*.php' -print0 \
             | xargs -0 -n1 -P4 php -l > /dev/null
 
+      - name: Docs ↔ Cookie sync (forcing function for slice 15/F1)
+        run: composer docs:cookie-sync
+
       - name: Cache PHPCS
         uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830  # v4
         with:
