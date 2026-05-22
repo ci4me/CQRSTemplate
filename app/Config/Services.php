@@ -24,6 +24,8 @@ use App\Infrastructure\Bus\Middleware\AuditMiddleware;
 use App\Infrastructure\Bus\Middleware\LoggingMiddleware;
 use App\Infrastructure\Bus\Middleware\TransactionMiddleware;
 use App\Infrastructure\Bus\QueryBus;
+use App\Infrastructure\Events\DatabaseProcessedEventStore;
+use App\Domain\Shared\Events\ProcessedEventStoreInterface;
 use App\Infrastructure\Projections\ProjectionRegistry;
 use App\Infrastructure\Email\EmailService;
 use App\Infrastructure\I18n\LocaleResolver;
@@ -156,6 +158,38 @@ class Services extends BaseService
         }
 
         return new EventDispatcher(self::logger());
+    }
+
+    /**
+     * Handler-side at-most-once dedup store (epic E12.5).
+     *
+     * Returns the shared {@see DatabaseProcessedEventStore} adapter that
+     * backs {@see ProcessedEventStoreInterface}. Callers that want the
+     * EventDispatcher to enforce at-most-once on side-effect listeners
+     * opt in explicitly by writing:
+     *
+     * ```
+     * \Config\Services::eventDispatcher()->setProcessedEventStore(
+     *     \Config\Services::processedEventStore()
+     * );
+     * ```
+     *
+     * The wiring is NOT done automatically inside {@see self::eventDispatcher()}
+     * because epic E12 (outbox `event_uuid` UNIQUE) hasn't landed yet
+     * and the half-built dedup path would add a SELECT + INSERT per
+     * listener with no payoff. Once E12 ships the two epics pair into
+     * end-to-end at-most-once and the auto-bind moves here.
+     *
+     * @param bool $getShared Whether to return the shared instance.
+     * @return ProcessedEventStoreInterface
+     */
+    public static function processedEventStore(bool $getShared = true): ProcessedEventStoreInterface
+    {
+        if ($getShared) {
+            return static::getSharedInstance('processedEventStore');
+        }
+
+        return new DatabaseProcessedEventStore();
     }
 
     /**
