@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Cookie\Events\CookieStockChanged;
 
+use App\Domain\Cookie\ValueObjects\StockChangeReason;
 use App\Domain\Shared\Events\AbstractDomainEvent;
 
 /**
@@ -20,6 +21,12 @@ use App\Domain\Shared\Events\AbstractDomainEvent;
  * aggregate, so the previous `?int` type was a lie (slice 05/F2). The
  * entity guards this via `assertPersisted()` before raising.
  *
+ * `reason` is the {@see StockChangeReason} enum (E07, slice 01/F9):
+ * a typed taxonomy of *why* the stock moved (SALE / RESTOCK / RETURN /
+ * ADJUSTMENT / INITIAL_STOCK) rather than the method name verbatim. The
+ * wire format serialises the enum's backing string value, so existing
+ * outbox consumers see a stable label.
+ *
  * @package App\Domain\Cookie\Events\CookieStockChanged
  */
 final readonly class CookieStockChangedEvent extends AbstractDomainEvent
@@ -31,7 +38,7 @@ final readonly class CookieStockChangedEvent extends AbstractDomainEvent
      * @param int                $cookieId      Persisted cookie id (non-nullable: cannot move stock on a transient aggregate).
      * @param int                $previousStock Stock level before this movement.
      * @param int                $newStock      Stock level after this movement.
-     * @param string             $reason        Free-form reason label (e.g. "decreaseStock", "increaseStock").
+     * @param StockChangeReason  $reason        Domain-meaningful cause of the movement (E07 / slice 01/F9).
      */
     public function __construct(
         string $eventId,
@@ -40,7 +47,7 @@ final readonly class CookieStockChangedEvent extends AbstractDomainEvent
         public int $cookieId,
         public int $previousStock,
         public int $newStock,
-        public string $reason,
+        public StockChangeReason $reason,
     ) {
         parent::__construct(
             eventId: $eventId,
@@ -60,7 +67,7 @@ final readonly class CookieStockChangedEvent extends AbstractDomainEvent
             'cookieId' => $this->cookieId,
             'previousStock' => $this->previousStock,
             'newStock' => $this->newStock,
-            'reason' => $this->reason,
+            'reason' => $this->reason->value,
         ]);
     }
 }

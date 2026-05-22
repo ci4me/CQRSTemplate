@@ -9,6 +9,7 @@ use App\Domain\Cookie\Events\CookieDeleted\CookieDeletedEvent;
 use App\Domain\Cookie\Events\CookieRestored\CookieRestoredEvent;
 use App\Domain\Cookie\Events\CookieStockChanged\CookieStockChangedEvent;
 use App\Domain\Cookie\Events\CookieUpdated\CookieUpdatedEvent;
+use App\Domain\Cookie\ValueObjects\StockChangeReason;
 use App\Domain\Shared\Events\AbstractDomainEvent;
 use App\Domain\Shared\Events\CookieChangeSet;
 use App\Domain\Shared\Events\DomainEventInterface;
@@ -238,13 +239,14 @@ final class CookieEventsTest extends UnitTestCase
             cookieId: 5,
             previousStock: 100,
             newStock: 99,
-            reason: 'sale',
+            reason: StockChangeReason::Sale,
         );
 
         $this->assertSame(5, $event->cookieId);
         $this->assertSame(100, $event->previousStock);
         $this->assertSame(99, $event->newStock);
-        $this->assertSame('sale', $event->reason);
+        $this->assertSame(StockChangeReason::Sale, $event->reason);
+        $this->assertSame('SALE', $event->jsonSerialize()['reason'], 'wire payload uses enum backing value');
     }
 
     // ==========================================
@@ -309,7 +311,7 @@ final class CookieEventsTest extends UnitTestCase
             cookieId: 1,
             previousStock: 10,
             newStock: 9,
-            reason: 'sale',
+            reason: StockChangeReason::Sale,
         );
     }
 }

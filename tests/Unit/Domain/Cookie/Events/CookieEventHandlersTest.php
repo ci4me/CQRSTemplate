@@ -14,6 +14,7 @@ use App\Domain\Cookie\Events\CookieStockChanged\CookieStockChangedEvent;
 use App\Domain\Cookie\Events\CookieStockChanged\CookieStockChangedEventHandler;
 use App\Domain\Cookie\Events\CookieUpdated\CookieUpdatedEvent;
 use App\Domain\Cookie\Events\CookieUpdated\CookieUpdatedEventHandler;
+use App\Domain\Cookie\ValueObjects\StockChangeReason;
 use App\Domain\Shared\Events\CookieChangeSet;
 use App\Infrastructure\Logging\LoggerFactory;
 use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
@@ -251,7 +252,7 @@ final class CookieEventHandlersTest extends UnitTestCase
                     && $ctx['cookie_id'] === 5
                     && $ctx['previous_stock'] === 100
                     && $ctx['new_stock'] === 99
-                    && $ctx['reason'] === 'sale';
+                    && $ctx['reason'] === 'SALE';
             }));
 
         (new CookieStockChangedEventHandler($logger))(new CookieStockChangedEvent(
@@ -261,7 +262,7 @@ final class CookieEventHandlersTest extends UnitTestCase
             cookieId: 5,
             previousStock: 100,
             newStock: 99,
-            reason: 'sale',
+            reason: StockChangeReason::Sale,
         ));
     }
 
@@ -280,7 +281,7 @@ final class CookieEventHandlersTest extends UnitTestCase
             cookieId: 1,
             previousStock: 0,
             newStock: 50,
-            reason: 'initial_load',
+            reason: StockChangeReason::InitialStock,
         ));
 
         $this->assertTrue(true);
