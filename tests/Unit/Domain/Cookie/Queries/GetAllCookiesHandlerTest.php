@@ -8,27 +8,29 @@ use App\Domain\Cookie\DTOs\CookieDTO;
 use App\Domain\Cookie\Ports\CookieQueryRepositoryInterface;
 use App\Domain\Cookie\Queries\GetAllCookies\GetAllCookiesHandler;
 use App\Domain\Cookie\Queries\GetAllCookies\GetAllCookiesQuery;
-use App\Infrastructure\Logging\CodeIgniterLogConfig;
-use App\Infrastructure\Logging\LoggerFactory;
-use Config\Logging;
+use App\Domain\Shared\Ports\LogConfigPort;
+use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
+use Psr\Log\LoggerInterface;
 use Tests\Support\UnitTestCase;
 
+#[AllowMockObjectsWithoutExpectations]
 final class GetAllCookiesHandlerTest extends UnitTestCase
 {
     private CookieQueryRepositoryInterface $repository;
-    private GetAllCookiesHandler $handler;
+    private LoggerInterface $logger;
+    private LogConfigPort $loggingConfig;
 
     protected function setUp(): void
     {
         parent::setUp();
         $this->repository = $this->createMock(CookieQueryRepositoryInterface::class);
-        $logger = LoggerFactory::create('test.cookie.queries');
-        $loggingConfig = new CodeIgniterLogConfig(new Logging());
-        $this->handler = new GetAllCookiesHandler($this->repository, $logger, $loggingConfig);
+        $this->logger = $this->createMock(LoggerInterface::class);
+        $this->loggingConfig = $this->createMock(LogConfigPort::class);
     }
 
     public function test_returns_all_active_cookies_by_default(): void
     {
+        $this->stubConfig(level: 'errors');
         $query = new GetAllCookiesQuery();
         $dtos = $this->makeDtos(3);
 
@@ -37,7 +39,7 @@ final class GetAllCookiesHandlerTest extends UnitTestCase
             ->with(false)
             ->willReturn($dtos);
 
-        $result = $this->handler->handle($query);
+        $result = $this->makeHandler()->handle($query);
 
         $this->assertCount(3, $result);
         $this->assertContainsOnlyInstancesOf(CookieDTO::class, $result);
@@ -45,31 +47,128 @@ final class GetAllCookiesHandlerTest extends UnitTestCase
 
     public function test_returns_all_cookies_including_inactive(): void
     {
+        $this->stubConfig(level: 'errors');
         $query = new GetAllCookiesQuery(includeInactive: true);
-        $dtos = $this->makeDtos(5);
 
         $this->repository->expects($this->once())
             ->method('findAll')
             ->with(true)
-            ->willReturn($dtos);
+            ->willReturn($this->makeDtos(5));
 
-        $result = $this->handler->handle($query);
+        $result = $this->makeHandler()->handle($query);
 
         $this->assertCount(5, $result);
     }
 
     public function test_returns_empty_array_when_no_cookies(): void
     {
-        $query = new GetAllCookiesQuery();
+        $this->stubConfig(level: 'errors');
 
         $this->repository->expects($this->once())
             ->method('findAll')
             ->willReturn([]);
 
-        $result = $this->handler->handle($query);
+        $result = $this->makeHandler()->handle(new GetAllCookiesQuery());
 
-        $this->assertIsArray($result);
-        $this->assertEmpty($result);
+        $this->assertSame([], $result);
+    }
+
+    public function test_logs_every_call_when_level_is_all(): void
+    {
+        $this->stubConfig(level: 'all');
+        $this->repository->method('findAll')->willReturn($this->makeDtos(2));
+
+        $this->logger->expects($this->once())
+            ->method('info')
+            ->with('Query executed', $this->callback(function (array $ctx): bool {
+                return $ctx['domain'] === 'Cookie'
+                    && $ctx['query'] === 'GetAllCookiesQuery'
+                    && $ctx['result_count'] === 2
+                    && !isset($ctx['slow_query']);
+            }));
+
+        $this->makeHandler()->handle(new GetAllCookiesQuery());
+    }
+
+    public function test_does_not_log_when_level_is_errors_and_not_slow(): void
+    {
+        $this->stubConfig(level: 'errors');
+        $this->repository->method('findAll')->willReturn($this->makeDtos(1));
+
+        $this->logger->expects($this->never())->method('info');
+
+        $this->makeHandler()->handle(new GetAllCookiesQuery());
+    }
+
+    public function test_does_not_log_when_level_is_slow_and_query_is_fast(): void
+    {
+        $this->stubConfig(level: 'slow');
+        $this->repository->method('findAll')->willReturn($this->makeDtos(1));
+
+        $this->logger->expects($this->never())->method('info');
+
+        $this->makeHandler()->handle(new GetAllCookiesQuery());
+    }
+
+    public function test_logs_slow_query_regardless_of_level(): void
+    {
+        // threshold=0 forces ANY measured duration > 0ms to count as slow.
+        $this->stubConfig(level: 'errors', slowMs: 0);
+        $this->repository->method('findAll')->willReturn($this->makeDtos(1));
+
+        $this->logger->expects($this->once())
+            ->method('info')
+            ->with('Query executed', $this->callback(function (array $ctx): bool {
+                return ($ctx['slow_query'] ?? false) === true;
+            }));
+
+        $this->makeHandler()->handle(new GetAllCookiesQuery());
+    }
+
+    public function test_logs_when_sampling_rate_is_one(): void
+    {
+        $this->stubConfig(level: 'sampling', samplingRate: 1.0);
+        $this->repository->method('findAll')->willReturn($this->makeDtos(1));
+
+        $this->logger->expects($this->once())->method('info');
+
+        $this->makeHandler()->handle(new GetAllCookiesQuery());
+    }
+
+    public function test_does_not_log_when_sampling_rate_is_zero(): void
+    {
+        $this->stubConfig(level: 'sampling', samplingRate: 0.0);
+        $this->repository->method('findAll')->willReturn($this->makeDtos(1));
+
+        $this->logger->expects($this->never())->method('info');
+
+        $this->makeHandler()->handle(new GetAllCookiesQuery());
+    }
+
+    public function test_unknown_logging_level_falls_back_to_silent(): void
+    {
+        // Default match arm must yield false (no log).
+        $this->stubConfig(level: 'unrecognized');
+        $this->repository->method('findAll')->willReturn($this->makeDtos(1));
+
+        $this->logger->expects($this->never())->method('info');
+
+        $this->makeHandler()->handle(new GetAllCookiesQuery());
+    }
+
+    private function makeHandler(): GetAllCookiesHandler
+    {
+        return new GetAllCookiesHandler($this->repository, $this->logger, $this->loggingConfig);
+    }
+
+    private function stubConfig(
+        string $level,
+        int $slowMs = 1_000_000,
+        float $samplingRate = 0.0,
+    ): void {
+        $this->loggingConfig->method('queryLoggingLevel')->willReturn($level);
+        $this->loggingConfig->method('slowQueryThresholdMs')->willReturn($slowMs);
+        $this->loggingConfig->method('samplingRate')->willReturn($samplingRate);
     }
 
     /**
