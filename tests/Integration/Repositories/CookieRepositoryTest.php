@@ -685,6 +685,105 @@ final class CookieRepositoryTest extends IntegrationTestCase
         $repo->save(CookieFactory::createCookie(['name' => 'Connection Test']));
     }
 
+    public function test_find_all_logs_and_rethrows_when_builder_throws(): void
+    {
+        // executeFindAll calls $this->model->builder() — mock the model so
+        // builder() throws and the outer catch in findAll() is exercised.
+        $model = $this->createMock(\App\Models\Cookie\CookieModel::class);
+        $model->method('builder')->willThrowException(new \RuntimeException('builder unavailable'));
+
+        $logger = LoggerFactory::create('test.cookie.repository.findall-error');
+        /** @var \Config\Logging $loggingConfig */
+        $loggingConfig = config('Logging');
+        $repo = new CookieRepository($logger, $loggingConfig, $model);
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('builder unavailable');
+
+        $repo->findAll();
+    }
+
+    public function test_find_paginated_logs_and_rethrows_when_builder_throws(): void
+    {
+        $model = $this->createMock(\App\Models\Cookie\CookieModel::class);
+        $model->method('builder')->willThrowException(new \RuntimeException('paginator broken'));
+
+        $logger = LoggerFactory::create('test.cookie.repository.findpaginated-error');
+        /** @var \Config\Logging $loggingConfig */
+        $loggingConfig = config('Logging');
+        $repo = new CookieRepository($logger, $loggingConfig, $model);
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('paginator broken');
+
+        $repo->findPaginated();
+    }
+
+    public function test_restore_logs_and_rethrows_when_model_throws(): void
+    {
+        // findByIdWithTrashed inside restore() succeeds with a soft-deleted
+        // row, but the builder->update() chain throws.
+        $model = $this->createMock(\App\Models\Cookie\CookieModel::class);
+        $model->method('withDeleted')->willReturnSelf();
+        $model->method('find')->willReturn([
+            'id' => 1, 'name' => 'Trashed', 'description' => null,
+            'price' => '1.00', 'stock' => 1, 'is_active' => 0,
+            'created_at' => '2026-05-22 00:00:00', 'updated_at' => null,
+            'deleted_at' => '2026-05-22 12:00:00', 'version' => 1,
+        ]);
+        $model->method('builder')->willThrowException(new \RuntimeException('restore failed'));
+
+        $logger = LoggerFactory::create('test.cookie.repository.restore-error');
+        /** @var \Config\Logging $loggingConfig */
+        $loggingConfig = config('Logging');
+        $repo = new CookieRepository($logger, $loggingConfig, $model);
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('restore failed');
+
+        $repo->restore(1);
+    }
+
+    public function test_find_by_id_logs_and_rethrows_when_model_throws(): void
+    {
+        $model = $this->createMock(\App\Models\Cookie\CookieModel::class);
+        $model->method('find')->willThrowException(new \RuntimeException('storage layer down'));
+
+        $logger = LoggerFactory::create('test.cookie.repository.findbyid-error');
+        /** @var \Config\Logging $loggingConfig */
+        $loggingConfig = config('Logging');
+        $repo = new CookieRepository($logger, $loggingConfig, $model);
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('storage layer down');
+
+        $repo->findById(42);
+    }
+
+    public function test_delete_logs_and_rethrows_when_model_throws(): void
+    {
+        $model = $this->createMock(\App\Models\Cookie\CookieModel::class);
+        // findById inside delete() returns a cookie row, but then the
+        // builder->update() chain throws.
+        $model->method('find')->willReturn([
+            'id' => 1, 'name' => 'Doomed', 'description' => null,
+            'price' => '1.00', 'stock' => 1, 'is_active' => 1,
+            'created_at' => '2026-05-22 00:00:00', 'updated_at' => null,
+            'deleted_at' => null, 'version' => 1,
+        ]);
+        $model->method('delete')->willThrowException(new \RuntimeException('write barrier failed'));
+
+        $logger = LoggerFactory::create('test.cookie.repository.delete-error');
+        /** @var \Config\Logging $loggingConfig */
+        $loggingConfig = config('Logging');
+        $repo = new CookieRepository($logger, $loggingConfig, $model);
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('write barrier failed');
+
+        $repo->delete(1);
+    }
+
     public function test_save_rethrows_unknown_throwable_from_model(): void
     {
         // A generic Throwable (not DatabaseException) must propagate
