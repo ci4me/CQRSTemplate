@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Infrastructure\Bus;
 
+use App\Domain\Shared\Events\AbstractDomainEvent;
+use App\Domain\Shared\Events\ProcessedEventStoreInterface;
 use App\Infrastructure\Bus\EventDispatcher;
 use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 use Psr\Log\LoggerInterface;
@@ -231,6 +233,92 @@ final class EventDispatcherTest extends UnitTestCase
         });
         $dispatcher->dispatch(new \stdClass());
     }
+
+    public function test_processed_event_store_skips_already_processed_listeners(): void
+    {
+        // Pre-populate the store as if a previous worker had completed
+        // listener A but died before ACKing. On replay the dispatcher
+        // MUST skip A (its describe-string is recorded) and still
+        // invoke any sibling listener whose pair is unrecorded.
+        // The two listeners are DIFFERENT classes so describeListener()
+        // returns distinct labels — that's the actual key the dispatcher
+        // uses, not an instance tag.
+        $store = new InMemoryProcessedEventStore();
+        $event = new FakeDomainEvent('019000a0-0000-7000-8000-aaaaaaaaaaaa');
+
+        $store->markProcessed($event->eventId, RecordingListenerA::class . '::onEvent');
+
+        $a = new RecordingListenerA();
+        $b = new RecordingListenerB();
+
+        $dispatcher = new EventDispatcher();
+        $dispatcher->setProcessedEventStore($store);
+        $dispatcher->subscribe(FakeDomainEvent::class, [$a, 'onEvent']);
+        $dispatcher->subscribe(FakeDomainEvent::class, [$b, 'onEvent']);
+
+        $dispatcher->dispatch($event);
+
+        $this->assertSame(0, $a->called, 'Listener A was already processed — must be skipped.');
+        $this->assertSame(1, $b->called, 'Listener B was not yet processed — must run.');
+        $this->assertTrue(
+            $store->isProcessed($event->eventId, RecordingListenerB::class . '::onEvent'),
+            'A successful invocation MUST be recorded.'
+        );
+    }
+
+    public function test_listener_failure_leaves_event_unmarked(): void
+    {
+        // Failure path of the at-most-once contract: a thrown listener
+        // must NOT be marked, so the retry succeeds on the next attempt.
+        $store = new InMemoryProcessedEventStore();
+        $event = new FakeDomainEvent('019000a0-0000-7000-8000-bbbbbbbbbbbb');
+
+        $logger = $this->createMock(LoggerInterface::class);
+        $logger->expects($this->once())->method('error');
+
+        $dispatcher = new EventDispatcher($logger);
+        $dispatcher->setProcessedEventStore($store);
+        $dispatcher->subscribe(FakeDomainEvent::class, static function (): void {
+            throw new \RuntimeException('listener boom');
+        });
+
+        $dispatcher->dispatch($event);
+
+        $this->assertFalse(
+            $store->isProcessed($event->eventId, 'Closure'),
+            'A thrown listener must NOT be marked — the retry must run again.'
+        );
+    }
+
+    public function test_processed_event_store_setter_returns_previous_value(): void
+    {
+        // Same finally-block restore pattern as setRethrowOnListenerFailure.
+        $dispatcher = new EventDispatcher();
+        $store = new InMemoryProcessedEventStore();
+
+        $this->assertNull($dispatcher->setProcessedEventStore($store));
+        $this->assertSame($store, $dispatcher->setProcessedEventStore(null));
+        $this->assertNull($dispatcher->setProcessedEventStore(null));
+    }
+
+    public function test_processed_event_store_is_bypassed_for_events_without_event_id(): void
+    {
+        // Events not extending AbstractDomainEvent legitimately exist
+        // (e.g. legacy events pre-E04, framework-internal signals). The
+        // dispatcher must silently skip the dedup bracket so those flows
+        // still work — the alternative would crash on `$event->eventId`.
+        $store = new InMemoryProcessedEventStore();
+        $listener = new RecordingListenerA();
+
+        $dispatcher = new EventDispatcher();
+        $dispatcher->setProcessedEventStore($store);
+        $dispatcher->subscribe(\stdClass::class, [$listener, 'onEvent']);
+
+        $dispatcher->dispatch(new \stdClass());
+
+        $this->assertSame(1, $listener->called);
+        $this->assertSame([], $store->dump(), 'No envelope id means no row should be recorded.');
+    }
 }
 
 /**
@@ -251,5 +339,86 @@ final class FailingListenerObject
     public function onEvent(object $event): void
     {
         throw new \RuntimeException('method boom');
+    }
+}
+
+/**
+ * Concrete AbstractDomainEvent subclass for the E12.5 dispatcher tests.
+ * Lives in this file because it exists only to prove the dispatcher's
+ * isProcessed/markProcessed bracket honours the `eventId` envelope.
+ */
+final readonly class FakeDomainEvent extends AbstractDomainEvent
+{
+    public function __construct(string $eventId)
+    {
+        parent::__construct(
+            eventId: $eventId,
+            occurredAt: new \DateTimeImmutable('2026-05-22T00:00:00+00:00'),
+            actorId: null,
+            aggregateType: 'Fake',
+            aggregateId: 'fake-1',
+        );
+    }
+}
+
+/**
+ * Recording listeners A + B — two distinct classes so describeListener()
+ * yields distinct labels for the at-most-once tests. Using a single class
+ * with an instance tag would not work: the dispatcher's dedup key is
+ * `(eventId, describeListener(callable))`, and the describe-string for
+ * `[obj, 'onEvent']` is the class FQCN, not the instance.
+ */
+final class RecordingListenerA
+{
+    public int $called = 0;
+
+    public function onEvent(object $event): void
+    {
+        $this->called++;
+    }
+}
+
+final class RecordingListenerB
+{
+    public int $called = 0;
+
+    public function onEvent(object $event): void
+    {
+        $this->called++;
+    }
+}
+
+/**
+ * In-memory ProcessedEventStore for the dispatcher unit tests. The
+ * adapter-level INSERT IGNORE / SELECT path is exercised by the
+ * integration suite (see Tests\Integration\Events\DatabaseProcessedEventStoreTest);
+ * this fake exists so the dispatcher tests stay in the unit tier.
+ */
+final class InMemoryProcessedEventStore implements ProcessedEventStoreInterface
+{
+    /** @var array<string, true> */
+    private array $marks = [];
+
+    public function isProcessed(string $eventId, string $listenerClass): bool
+    {
+        return isset($this->marks[$this->key($eventId, $listenerClass)]);
+    }
+
+    public function markProcessed(string $eventId, string $listenerClass): void
+    {
+        $this->marks[$this->key($eventId, $listenerClass)] = true;
+    }
+
+    /**
+     * @return array<string, true>
+     */
+    public function dump(): array
+    {
+        return $this->marks;
+    }
+
+    private function key(string $eventId, string $listenerClass): string
+    {
+        return $eventId . '|' . $listenerClass;
     }
 }
