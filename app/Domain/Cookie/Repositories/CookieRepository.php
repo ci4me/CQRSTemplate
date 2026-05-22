@@ -9,6 +9,7 @@ use App\Domain\Cookie\ErrorCodes;
 use App\Domain\Cookie\Ports\CookieRepositoryInterface;
 use App\Domain\Cookie\ValueObjects\CookieName;
 use App\Domain\Cookie\ValueObjects\CookiePrice;
+use App\Domain\Shared\Aggregate\AggregateHydrator;
 use App\Domain\Shared\Exceptions\DomainException;
 use App\Domain\Shared\ValueObjects\Actor;
 use App\Infrastructure\Attributes\AutoBind;
@@ -422,14 +423,14 @@ final class CookieRepository implements CookieRepositoryInterface
         $id = $cookie->getId();
         if ($id !== null) {
             $this->updateWithOptimisticLock($cookie, $data, $actor);
-            $cookie->bumpVersion();
+            $cookie->bumpVersion(AggregateHydrator::key());
 
             return $id;
         }
 
         // First insert: row and entity start at version 1. Subsequent updates
         // bump in lock-step so DB and in-memory version always agree.
-        $cookie->bumpVersion();
+        $cookie->bumpVersion(AggregateHydrator::key());
         $data['version'] = $cookie->getVersion();
         if ($actor !== null) {
             // Audit trail (B10): stamp the creator on first insert. Without
@@ -449,7 +450,7 @@ final class CookieRepository implements CookieRepositoryInterface
         $newId = (int) $this->model->insert($data);
         // Hydrate the entity so subsequent saves take the UPDATE path and
         // optimistic locking applies.
-        $cookie->assignId($newId);
+        $cookie->assignId($newId, AggregateHydrator::key());
 
         return $newId;
     }

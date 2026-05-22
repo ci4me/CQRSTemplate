@@ -2,27 +2,29 @@
 
 declare(strict_types=1);
 
-namespace App\Domain\Cookie\Events\CookieRestored;
+namespace App\Domain\Cookie\Events\CookieActivated;
 
 use App\Domain\Shared\Events\AbstractDomainEvent;
 
 /**
- * Dispatched after a soft-deleted cookie is brought back from the trash.
+ * Dispatched when a previously-inactive cookie is flipped back to active.
  *
- * Inherits the standard envelope from {@see AbstractDomainEvent}; the
- * envelope's UTC `occurredAt` is the canonical restore timestamp, so
- * downstream consumers read a single time field across every domain
- * event (round-3 audit slice 05/F3).
+ * Active/inactive transitions are exactly the kind of business state
+ * change downstream consumers (catalog, search index, low-stock alerts)
+ * need to react to. Pre-E07 the entity flipped `$isActive` silently —
+ * round-3 audit slice 01/F2 flagged the gap. The event carries only the
+ * envelope (id / timestamp / actor / aggregate type+id); the new state
+ * is implicit in the event class.
  *
- * @package App\Domain\Cookie\Events\CookieRestored
+ * @package App\Domain\Cookie\Events\CookieActivated
  */
-final readonly class CookieRestoredEvent extends AbstractDomainEvent
+final readonly class CookieActivatedEvent extends AbstractDomainEvent
 {
     /**
      * @param string             $eventId    UUIDv7 envelope id.
      * @param \DateTimeImmutable $occurredAt UTC occurrence timestamp.
-     * @param int|null           $actorId    Restoring user id, or null for system events.
-     * @param int                $cookieId   ID of the cookie that was restored.
+     * @param int|null           $actorId    Activating user id, or null for system events.
+     * @param int                $cookieId   ID of the activated cookie.
      */
     public function __construct(
         string $eventId,
