@@ -279,4 +279,50 @@ final class CookieNameTest extends UnitTestCase
 
         $this->assertFalse($name->equalsIgnoreCase('Oatmeal Raisin'));
     }
+
+    // ==================== fromTrusted() — REPOSITORY REHYDRATION PATH ====================
+
+    public function test_from_trusted_skips_min_length_validation(): void
+    {
+        // A legacy / migrated row whose value is now shorter than the
+        // current MIN_LENGTH invariant must still be readable so a single
+        // bad row does not poison every list query (closes 06/F7). The
+        // exact same input passed to fromString() would throw.
+        $name = CookieName::fromTrusted('AB');
+
+        $this->assertSame('AB', $name->getValue());
+        $this->assertSame(2, $name->getLength());
+    }
+
+    public function test_from_trusted_skips_max_length_validation(): void
+    {
+        $oversize = str_repeat('A', 250);
+
+        $name = CookieName::fromTrusted($oversize);
+
+        $this->assertSame($oversize, $name->getValue());
+        $this->assertSame(250, $name->getLength());
+    }
+
+    public function test_from_trusted_normalises_whitespace_consistently_with_from_string(): void
+    {
+        // Trim is the only normalization fromString applies, and fromTrusted
+        // must mirror it so equality (and the case-insensitive variant)
+        // stay consistent across rehydration / input boundaries.
+        $trusted = CookieName::fromTrusted('  Snickerdoodle  ');
+        $boundary = CookieName::fromString('Snickerdoodle');
+
+        $this->assertSame('Snickerdoodle', $trusted->getValue());
+        $this->assertTrue($trusted->equals($boundary));
+    }
+
+    public function test_from_string_still_rejects_short_names(): void
+    {
+        // Regression guard: fromTrusted's skip-validation behaviour must
+        // not bleed into fromString. The input boundary keeps the
+        // original invariants.
+        $this->expectException(ValidationException::class);
+
+        CookieName::fromString('AB');
+    }
 }

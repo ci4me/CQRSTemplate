@@ -41,12 +41,14 @@ final class CookieQueryRepository implements CookieQueryRepositoryInterface
     private const string TABLE = 'cookies';
 
     /**
-     * @param BaseConnection<object|resource|false, object|resource|false>|null $db
-     * @param TenantContext|null                                                $tenantContext When provided, every read
-     *                                                       is scoped to the current tenant via a WHERE tenant_id = ?
-     *                                                       clause. Null preserves the legacy "single-tenant deploy"
-     *                                                       behaviour where every row is visible — used by tests that
-     *                                                       don't go through Services.
+     * Connection injection: null means "resolve through the framework's
+     * Database helper". Closes 06/F15 — the previous
+     * BaseConnection<TConnection, TResult> template was over-specified
+     * and made test injection awkward.
+     *
+     * Tenant context: when provided, every read is scoped to the active
+     * tenant via WHERE tenant_id = ?. Null preserves the legacy
+     * single-tenant-deploy behaviour where every row stays visible.
      */
     public function __construct(
         private readonly ?BaseConnection $db = null,
@@ -128,7 +130,14 @@ final class CookieQueryRepository implements CookieQueryRepositoryInterface
             // (see CreateCookiesTable migration), so LIKE is naturally
             // case-insensitive without needing a separate `name_search`
             // column.
-            $builder->like('name', $searchTerm);
+            //
+            // Closes 06/F4 — user-input wildcard leak. CI4's `like()`
+            // does NOT pre-escape the bound value; it only emits an
+            // `ESCAPE '!'` clause when `$escape = true`. We therefore
+            // pre-escape `%`, `_`, and the escape char `!` itself in
+            // the term so user input is matched as a literal substring.
+            $escaped = self::escapeLikeWildcards($searchTerm);
+            $builder->like('name', $escaped, 'both', true);
         }
 
         $total = $builder->countAllResults(false);
@@ -139,8 +148,16 @@ final class CookieQueryRepository implements CookieQueryRepositoryInterface
             ->limit($perPage, $offset)
             ->get();
 
-        $rows = $result === false ? [] : $result->getResultArray();
+        if ($result === false) {
+            // Symmetric with the write side's executeFindPaginated: a
+            // false get() means the SELECT itself failed. Silently
+            // returning empty data with non-zero total hides the
+            // problem (closes 06/F10).
+            throw new \RuntimeException('Cookie findPaginated query failed');
+        }
+
         /** @var list<array<string, mixed>> $rows */
+        $rows = $result->getResultArray();
 
         $data = array_map(fn(array $row): CookieDTO => $this->toDto($row), $rows);
         // countAllResults is typed `int|string` upstream (CI4 quirk on
@@ -203,11 +220,35 @@ final class CookieQueryRepository implements CookieQueryRepositoryInterface
     }
 
     /**
-     * @return BaseConnection<object|resource|false, object|resource|false>
+     * connection.
      */
     private function connection(): BaseConnection
     {
         return $this->db ?? Database::connect();
+    }
+
+    /**
+     * Escape SQL `LIKE` wildcards in a user-supplied search term.
+     *
+     * CI4's `like()` does not auto-escape `%` / `_` in the bound value;
+     * it only emits an `ESCAPE '!'` clause when `$escape = true`. We
+     * therefore pre-escape with the same character (`!`) so the bound
+     * value matches as a literal substring. The escape character
+     * itself is doubled first so an end-user-typed `!` does not act as
+     * the escape for the next character (closes 06/F4).
+     *
+     * NOTE: the escape character (`!`) is CI4's connection default
+     * (see `BaseConnection::$likeEscapeChar`). If a future migration
+     * to a driver that overrides that default lands, this helper must
+     * read from the connection rather than hard-coding `!`.
+     */
+    private static function escapeLikeWildcards(string $term): string
+    {
+        return strtr($term, [
+            '!' => '!!',
+            '%' => '!%',
+            '_' => '!_',
+        ]);
     }
 
     /**

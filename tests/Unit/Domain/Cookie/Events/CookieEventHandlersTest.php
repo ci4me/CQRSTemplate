@@ -14,6 +14,8 @@ use App\Domain\Cookie\Events\CookieStockChanged\CookieStockChangedEvent;
 use App\Domain\Cookie\Events\CookieStockChanged\CookieStockChangedEventHandler;
 use App\Domain\Cookie\Events\CookieUpdated\CookieUpdatedEvent;
 use App\Domain\Cookie\Events\CookieUpdated\CookieUpdatedEventHandler;
+use App\Domain\Cookie\ValueObjects\StockChangeReason;
+use App\Domain\Shared\Events\CookieChangeSet;
 use App\Infrastructure\Logging\LoggerFactory;
 use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 use Psr\Log\LoggerInterface;
@@ -22,6 +24,14 @@ use Tests\Support\UnitTestCase;
 #[AllowMockObjectsWithoutExpectations]
 final class CookieEventHandlersTest extends UnitTestCase
 {
+    private \DateTimeImmutable $now;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->now = new \DateTimeImmutable('2026-05-22 10:00:00', new \DateTimeZone('UTC'));
+    }
+
     // ==========================================
     // CookieCreatedEventHandler Tests
     // ==========================================
@@ -39,10 +49,13 @@ final class CookieEventHandlersTest extends UnitTestCase
         $logger = LoggerFactory::create('test.cookie.events');
         $handler = new CookieCreatedEventHandler($logger);
         $event = new CookieCreatedEvent(
+            eventId: 'evt-created-1',
+            occurredAt: $this->now,
+            actorId: null,
             cookieId: 1,
             cookieName: 'Test Cookie',
             cookiePrice: '2.99',
-            initialStock: 100
+            initialStock: 100,
         );
 
         // Should not throw any exceptions
@@ -56,10 +69,13 @@ final class CookieEventHandlersTest extends UnitTestCase
         $logger = LoggerFactory::create('test.cookie.events');
         $handler = new CookieCreatedEventHandler($logger);
         $event = new CookieCreatedEvent(
+            eventId: 'evt-created-2',
+            occurredAt: $this->now,
+            actorId: null,
             cookieId: 1,
             cookieName: 'Out of Stock',
             cookiePrice: '2.99',
-            initialStock: 0
+            initialStock: 0,
         );
 
         $handler($event);
@@ -72,10 +88,13 @@ final class CookieEventHandlersTest extends UnitTestCase
         $logger = LoggerFactory::create('test.cookie.events');
         $handler = new CookieCreatedEventHandler($logger);
         $event = new CookieCreatedEvent(
+            eventId: 'evt-created-3',
+            occurredAt: $this->now,
+            actorId: 7,
             cookieId: 1,
             cookieName: 'Cookie "Special" & Characters!',
             cookiePrice: '2.99',
-            initialStock: 50
+            initialStock: 50,
         );
 
         $handler($event);
@@ -99,11 +118,7 @@ final class CookieEventHandlersTest extends UnitTestCase
     {
         $logger = LoggerFactory::create('test.cookie.events');
         $handler = new CookieUpdatedEventHandler($logger);
-        $event = new CookieUpdatedEvent(
-            cookieId: 1,
-            cookieName: 'Updated Cookie',
-            cookiePrice: '3.99'
-        );
+        $event = $this->makeUpdatedEvent(cookieId: 1, name: 'Updated Cookie', price: '3.99');
 
         $handler($event);
 
@@ -114,11 +129,7 @@ final class CookieEventHandlersTest extends UnitTestCase
     {
         $logger = LoggerFactory::create('test.cookie.events');
         $handler = new CookieUpdatedEventHandler($logger);
-        $event = new CookieUpdatedEvent(
-            cookieId: 5,
-            cookieName: 'Premium Cookie',
-            cookiePrice: '9.99'
-        );
+        $event = $this->makeUpdatedEvent(cookieId: 5, name: 'Premium Cookie', price: '9.99');
 
         $handler($event);
 
@@ -129,11 +140,7 @@ final class CookieEventHandlersTest extends UnitTestCase
     {
         $logger = LoggerFactory::create('test.cookie.events');
         $handler = new CookieUpdatedEventHandler($logger);
-        $event = new CookieUpdatedEvent(
-            cookieId: 1,
-            cookieName: 'Renamed "Cookie" & More!',
-            cookiePrice: '2.99'
-        );
+        $event = $this->makeUpdatedEvent(cookieId: 1, name: 'Renamed "Cookie" & More!', price: '2.99');
 
         $handler($event);
 
@@ -156,10 +163,7 @@ final class CookieEventHandlersTest extends UnitTestCase
     {
         $logger = LoggerFactory::create('test.cookie.events');
         $handler = new CookieDeletedEventHandler($logger);
-        $event = new CookieDeletedEvent(
-            cookieId: 1,
-            cookieName: 'Deleted Cookie'
-        );
+        $event = $this->makeDeletedEvent(cookieId: 1, name: 'Deleted Cookie');
 
         $handler($event);
 
@@ -170,10 +174,7 @@ final class CookieEventHandlersTest extends UnitTestCase
     {
         $logger = LoggerFactory::create('test.cookie.events');
         $handler = new CookieDeletedEventHandler($logger);
-        $event = new CookieDeletedEvent(
-            cookieId: 999,
-            cookieName: 'Cookie with "Quotes" & Symbols!'
-        );
+        $event = $this->makeDeletedEvent(cookieId: 999, name: 'Cookie with "Quotes" & Symbols!');
 
         $handler($event);
 
@@ -185,10 +186,7 @@ final class CookieEventHandlersTest extends UnitTestCase
         $logger = LoggerFactory::create('test.cookie.events');
         $handler = new CookieDeletedEventHandler($logger);
         $longName = str_repeat('A', 255);
-        $event = new CookieDeletedEvent(
-            cookieId: 1,
-            cookieName: $longName
-        );
+        $event = $this->makeDeletedEvent(cookieId: 1, name: $longName);
 
         $handler($event);
 
@@ -205,17 +203,21 @@ final class CookieEventHandlersTest extends UnitTestCase
         $logger->expects($this->once())
             ->method('info')
             ->with('Cookie restored', $this->callback(function (array $ctx): bool {
+                // The legacy `restored_at` string field is gone — the
+                // handler now logs the envelope's `occurredAt`.
                 return $ctx['domain'] === 'Cookie'
                     && $ctx['event'] === 'CookieRestoredEvent'
+                    && $ctx['event_id'] === 'evt-restored-1'
                     && $ctx['cookie_id'] === 7
                     && $ctx['restored_by'] === 42
-                    && $ctx['restored_at'] === '2026-05-22 10:00:00';
+                    && $ctx['occurred_at'] === '2026-05-22T10:00:00+00:00';
             }));
 
         (new CookieRestoredEventHandler($logger))(new CookieRestoredEvent(
+            eventId: 'evt-restored-1',
+            occurredAt: $this->now,
+            actorId: 42,
             cookieId: 7,
-            restoredBy: 42,
-            restoredAt: '2026-05-22 10:00:00'
         ));
     }
 
@@ -225,9 +227,10 @@ final class CookieEventHandlersTest extends UnitTestCase
         $handler = new CookieRestoredEventHandler($logger);
 
         $handler(new CookieRestoredEvent(
+            eventId: 'evt-restored-2',
+            occurredAt: $this->now,
+            actorId: 1,
             cookieId: 1,
-            restoredBy: 1,
-            restoredAt: '2026-01-01 00:00:00'
         ));
 
         $this->assertTrue(true);
@@ -245,33 +248,68 @@ final class CookieEventHandlersTest extends UnitTestCase
             ->with('Cookie stock changed', $this->callback(function (array $ctx): bool {
                 return $ctx['domain'] === 'Cookie'
                     && $ctx['event'] === 'CookieStockChangedEvent'
+                    && $ctx['event_id'] === 'evt-stock-1'
                     && $ctx['cookie_id'] === 5
                     && $ctx['previous_stock'] === 100
                     && $ctx['new_stock'] === 99
-                    && $ctx['reason'] === 'sale';
+                    && $ctx['reason'] === 'SALE';
             }));
 
         (new CookieStockChangedEventHandler($logger))(new CookieStockChangedEvent(
+            eventId: 'evt-stock-1',
+            occurredAt: $this->now,
+            actorId: null,
             cookieId: 5,
             previousStock: 100,
             newStock: 99,
-            reason: 'sale'
+            reason: StockChangeReason::Sale,
         ));
     }
 
-    public function test_cookie_stock_changed_handler_allows_null_cookie_id(): void
+    public function test_cookie_stock_changed_handler_accepts_persisted_cookie_id(): void
     {
-        // cookieId is nullable on the event for pre-persistence stock changes.
+        // Round-3 audit 05/F2: cookieId is now non-nullable. Stock cannot
+        // move on an unpersisted aggregate, so the previous nullable type
+        // was a lie. This test pins the new contract.
         $logger = LoggerFactory::create('test.cookie.events');
         $handler = new CookieStockChangedEventHandler($logger);
 
         $handler(new CookieStockChangedEvent(
-            cookieId: null,
+            eventId: 'evt-stock-2',
+            occurredAt: $this->now,
+            actorId: null,
+            cookieId: 1,
             previousStock: 0,
             newStock: 50,
-            reason: 'initial_load'
+            reason: StockChangeReason::InitialStock,
         ));
 
         $this->assertTrue(true);
+    }
+
+    private function makeUpdatedEvent(int $cookieId, string $name, string $price): CookieUpdatedEvent
+    {
+        return new CookieUpdatedEvent(
+            eventId: 'evt-updated-' . $cookieId,
+            occurredAt: $this->now,
+            actorId: null,
+            cookieId: $cookieId,
+            cookieName: $name,
+            cookiePrice: $price,
+            previousState: CookieChangeSet::empty(),
+            newState: CookieChangeSet::empty(),
+        );
+    }
+
+    private function makeDeletedEvent(int $cookieId, string $name): CookieDeletedEvent
+    {
+        return new CookieDeletedEvent(
+            eventId: 'evt-deleted-' . $cookieId,
+            occurredAt: $this->now,
+            actorId: null,
+            cookieId: $cookieId,
+            cookieName: $name,
+            snapshot: CookieChangeSet::empty(),
+        );
     }
 }

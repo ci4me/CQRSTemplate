@@ -12,8 +12,12 @@ use App\Domain\Cookie\Commands\RestoreCookie\RestoreCookieCommand;
 use App\Domain\Cookie\Commands\RestoreCookie\RestoreCookieHandler;
 use App\Domain\Cookie\Commands\UpdateCookie\UpdateCookieCommand;
 use App\Domain\Cookie\Commands\UpdateCookie\UpdateCookieHandler;
+use App\Domain\Cookie\Events\CookieActivated\CookieActivatedEvent;
+use App\Domain\Cookie\Events\CookieActivated\CookieActivatedEventHandler;
 use App\Domain\Cookie\Events\CookieCreated\CookieCreatedEvent;
 use App\Domain\Cookie\Events\CookieCreated\CookieCreatedEventHandler;
+use App\Domain\Cookie\Events\CookieDeactivated\CookieDeactivatedEvent;
+use App\Domain\Cookie\Events\CookieDeactivated\CookieDeactivatedEventHandler;
 use App\Domain\Cookie\Events\CookieDeleted\CookieDeletedEvent;
 use App\Domain\Cookie\Events\CookieDeleted\CookieDeletedEventHandler;
 use App\Domain\Cookie\Events\CookieRestored\CookieRestoredEvent;
@@ -80,6 +84,12 @@ final class CookieServiceProvider implements DomainServiceProviderInterface
      *
      * Commands represent write operations that change state.
      *
+     * Contract (post-E05): every handler passed to `$commandBus->register()`
+     * MUST implement {@see \App\Domain\Shared\Bus\CommandHandlerInterface}.
+     * The bus typehints the interface so any future Cookie handler that
+     * forgets the implements clause fails at boot with a PHP TypeError
+     * instead of at the first dispatch call site.
+     *
      * @param CommandBus $commandBus The command bus
      * @throws \RuntimeException
      */
@@ -126,6 +136,10 @@ final class CookieServiceProvider implements DomainServiceProviderInterface
      * Register all query handlers for the Cookie domain.
      *
      * Queries represent read operations that return data.
+     *
+     * Contract (post-E05): every handler passed to `$queryBus->register()`
+     * MUST implement {@see \App\Domain\Shared\Bus\QueryHandlerInterface}.
+     * Same register-time enforcement as registerCommands().
      *
      * @param QueryBus $queryBus The query bus
      * @throws \RuntimeException
@@ -212,6 +226,20 @@ final class CookieServiceProvider implements DomainServiceProviderInterface
         $dispatcher->subscribe(
             CookieRestoredEvent::class,
             new CookieRestoredEventHandler($logger)
+        );
+
+        // Register CookieActivated / CookieDeactivated handlers. The
+        // entity raises these on every $isActive flip (E07) so consumers
+        // (catalog visibility, search indexer, ops dashboards) can react
+        // without polling. Pre-E07 the toggle was silent (audit slice
+        // 01/F2).
+        $dispatcher->subscribe(
+            CookieActivatedEvent::class,
+            new CookieActivatedEventHandler($logger)
+        );
+        $dispatcher->subscribe(
+            CookieDeactivatedEvent::class,
+            new CookieDeactivatedEventHandler($logger)
         );
     }
 

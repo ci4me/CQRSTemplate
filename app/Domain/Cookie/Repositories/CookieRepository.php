@@ -9,6 +9,7 @@ use App\Domain\Cookie\ErrorCodes;
 use App\Domain\Cookie\Ports\CookieRepositoryInterface;
 use App\Domain\Cookie\ValueObjects\CookieName;
 use App\Domain\Cookie\ValueObjects\CookiePrice;
+use App\Domain\Shared\Aggregate\AggregateHydrator;
 use App\Domain\Shared\Exceptions\DomainException;
 use App\Domain\Shared\ValueObjects\Actor;
 use App\Infrastructure\Attributes\AutoBind;
@@ -102,6 +103,17 @@ final class CookieRepository implements CookieRepositoryInterface
 
     /**
      * Save a cookie (create or update).
+     *
+     * MUTATES `$cookie`:
+     *   - On first insert, calls `assignId()` so the entity carries the
+     *     generated row id.
+     *   - On every successful persist, calls `bumpVersion()` so the
+     *     in-memory entity stays in lock-step with the row's `version`
+     *     column. The optimistic-locking guard in
+     *     {@see self::updateWithOptimisticLock()} relies on this.
+     *
+     * The mutation is INTENTIONAL — callers must keep using the same
+     * `Cookie` reference for subsequent operations (06/F13).
      *
      * @param Cookie     $cookie The cookie to save
      * @param Actor|null $actor  Stamps `created_by` (insert) / `updated_by` (update)
@@ -204,10 +216,12 @@ final class CookieRepository implements CookieRepositoryInterface
                 return null;
             }
 
-            $cookie = $this->toDomainEntity($data);
-            $this->trackPopularCookie($id);
-
-            return $cookie;
+            // Popularity tracking USED to live here (06/F12) — a read-side
+            // concern leaked into the write-side adapter. The metric
+            // belongs on the read repository if it lives anywhere; the
+            // write path now reconstitutes and returns without side
+            // effects.
+            return $this->toDomainEntity($data);
         } catch (\Throwable $e) {
             $this->logQueryError('findById', $e);
             throw $e;
@@ -264,53 +278,56 @@ final class CookieRepository implements CookieRepositoryInterface
     /**
      * Check if a cookie exists with the given name.
      *
-     * @param string $name The cookie name
-     * @return bool True if exists
+     * Scope intentionally EXCLUDES soft-deleted rows: the migration's
+     * composite UNIQUE (`tenant_id`, `name`, `deleted_at`) treats NULL
+     * deleted_at as the "live row" slot — a name that belongs to a
+     * trashed cookie is available to be reused (closes 06/F1).
      */
-    public function existsByName(string $name): bool
+    public function existsByName(CookieName $name): bool
     {
-        return $this->model->existsByName($name);
+        return $this->model->existsByName($name->getValue());
     }
 
     /**
      * Check if a cookie exists with the given name, excluding a specific ID.
      *
-     * @param string $name      The cookie name
-     * @param int    $excludeId The ID to exclude
-     * @return bool True if exists
+     * Used by update handlers so a row can keep its own name.
      */
-    public function existsByNameExcludingId(string $name, int $excludeId): bool
+    public function existsByNameExcludingId(CookieName $name, int $excludeId): bool
     {
-        return $this->model->existsByNameExcludingId($name, $excludeId);
+        return $this->model->existsByNameExcludingId($name->getValue(), $excludeId);
     }
 
     /**
      * Soft delete a cookie.
      *
+     * Single conditional UPDATE — no SELECT-before-write, no second pass
+     * for the audit columns. The WHERE clause includes
+     * `deleted_at IS NULL` so a re-delete of an already-soft-deleted row
+     * is a no-op that returns false rather than re-stamping the
+     * deletion timestamp (closes 06/F8).
+     *
      * @param int        $id    The cookie ID
-     * @param Actor|null $actor Stamps `deleted_by` on the row before soft-delete
-     * @return bool True if successful, false if cookie doesn't exist
+     * @param Actor|null $actor Stamps `deleted_by` in the same UPDATE
+     * @return bool True iff exactly one row was affected.
      */
     public function delete(int $id, ?Actor $actor = null): bool
     {
         try {
-            $cookie = $this->findById($id);
-            if ($cookie === null) {
-                return false;
-            }
-
+            $payload = [
+                'deleted_at' => date('Y-m-d H:i:s'),
+                'version' => new \CodeIgniter\Database\RawSql('version + 1'),
+            ];
             if ($actor !== null) {
-                // Stamp deleted_by BEFORE the soft-delete so the audit trail
-                // captures who removed the row. CI4's softDelete sets only
-                // `deleted_at`; the column write here is the audit side.
-                $this->model->builder()
-                    ->where('id', $id)
-                    ->update(['deleted_by' => $actor->id]);
+                $payload['deleted_by'] = $actor->id;
             }
 
-            $result = $this->model->delete($id);
+            $this->model->builder()
+                ->where('id', $id)
+                ->where('deleted_at', null)
+                ->update($payload);
 
-            return is_bool($result) ? $result : false;
+            return $this->model->lastAffectedRows() === 1;
         } catch (\Throwable $e) {
             $this->logDeleteError($e);
             throw $e;
@@ -320,29 +337,60 @@ final class CookieRepository implements CookieRepositoryInterface
     /**
      * Restore a previously soft-deleted cookie.
      *
+     * Conditional UPDATE scoped on `deleted_at IS NOT NULL` so a
+     * restore of an active row is a no-op that returns false. The
+     * version column is bumped in the same statement so any in-memory
+     * `Cookie` carrying a stale version cannot silently overwrite the
+     * restored row on a subsequent save (closes 06/F9 — optimistic-
+     * locking gap).
+     *
      * @param int        $id    The cookie ID
      * @param Actor|null $actor Stamps `updated_by` on the restored row
+     * @return bool True iff exactly one row was affected.
      */
     public function restore(int $id, ?Actor $actor = null): bool
     {
         try {
-            $cookie = $this->findByIdWithTrashed($id);
-            if ($cookie === null || !$cookie->isDeleted()) {
-                return false;
-            }
-
             $update = [
                 'deleted_at' => null,
                 'deleted_by' => null,
+                'version' => new \CodeIgniter\Database\RawSql('version + 1'),
             ];
             if ($actor !== null) {
                 $update['updated_by'] = $actor->id;
                 $update['updated_at'] = date('Y-m-d H:i:s');
             }
 
-            return $this->model->builder()
+            $this->model->builder()
                 ->where('id', $id)
+                ->where('deleted_at IS NOT NULL', null, false)
                 ->update($update);
+
+            return $this->model->lastAffectedRows() === 1;
+        } catch (\Throwable $e) {
+            $this->logDeleteError($e);
+            throw $e;
+        }
+    }
+
+    /**
+     * Hard-delete a cookie row.
+     *
+     * GDPR / right-to-erasure escape hatch — see
+     * {@see CookieRepositoryInterface::purge()}. THIS IS DESTRUCTIVE and
+     * there is no recovery once the statement commits. The normal
+     * lifecycle is {@see self::delete()} (soft) + {@see self::restore()}.
+     *
+     * @return bool True iff exactly one row was affected.
+     */
+    public function purge(int $id): bool
+    {
+        try {
+            $this->model->builder()
+                ->where('id', $id)
+                ->delete();
+
+            return $this->model->lastAffectedRows() === 1;
         } catch (\Throwable $e) {
             $this->logDeleteError($e);
             throw $e;
@@ -367,6 +415,13 @@ final class CookieRepository implements CookieRepositoryInterface
     /**
      * Convert database array to domain entity.
      *
+     * Uses {@see CookieName::fromTrusted()} for the name VO so a row that
+     * predates the current invariant (e.g., a legacy migrated row whose
+     * value is now too short) can still be read instead of poisoning
+     * every list query with a `ValidationException` (closes 06/F7).
+     * `fromTrusted()` is the rehydration-only counterpart of
+     * `fromString()` — see the VO's docblock.
+     *
      * @param array<int|string, bool|float|int|string|null> $data The database row
      * @return Cookie The domain entity
      */
@@ -374,7 +429,7 @@ final class CookieRepository implements CookieRepositoryInterface
     {
         return Cookie::reconstitute(
             id: (int) $data['id'],
-            name: CookieName::fromString((string) $data['name']),
+            name: CookieName::fromTrusted((string) $data['name']),
             description: is_string($data['description']) ? $data['description'] : null,
             price: CookiePrice::fromString((string) $data['price']),
             stock: (int) $data['stock'],
@@ -422,14 +477,14 @@ final class CookieRepository implements CookieRepositoryInterface
         $id = $cookie->getId();
         if ($id !== null) {
             $this->updateWithOptimisticLock($cookie, $data, $actor);
-            $cookie->bumpVersion();
+            $cookie->bumpVersion(AggregateHydrator::key());
 
             return $id;
         }
 
         // First insert: row and entity start at version 1. Subsequent updates
         // bump in lock-step so DB and in-memory version always agree.
-        $cookie->bumpVersion();
+        $cookie->bumpVersion(AggregateHydrator::key());
         $data['version'] = $cookie->getVersion();
         if ($actor !== null) {
             // Audit trail (B10): stamp the creator on first insert. Without
@@ -449,7 +504,7 @@ final class CookieRepository implements CookieRepositoryInterface
         $newId = (int) $this->model->insert($data);
         // Hydrate the entity so subsequent saves take the UPDATE path and
         // optimistic locking applies.
-        $cookie->assignId($newId);
+        $cookie->assignId($newId, AggregateHydrator::key());
 
         return $newId;
     }
@@ -472,7 +527,10 @@ final class CookieRepository implements CookieRepositoryInterface
             ->where('version', $expectedVersion)
             ->update($data);
 
-        $affected = $this->model->db->affectedRows();
+        // Wrapper hides the model's leaky `$db` access (06/F11). The
+        // wrapper resolves the connection through the model itself so
+        // the repository doesn't reach into framework internals.
+        $affected = $this->model->lastAffectedRows();
 
         if ($affected === 1) {
             return;
@@ -551,7 +609,13 @@ final class CookieRepository implements CookieRepositoryInterface
         }
 
         if ($searchTerm !== null && $searchTerm !== '') {
-            $builder->like('name', $searchTerm);
+            // Pre-escape `%`, `_`, and the escape char `!` in the term
+            // so user input is matched as a literal substring (06/F4 —
+            // same contract as the read repository's findPaginated).
+            // CI4's `like()` does NOT auto-scrub bound values; it only
+            // emits `ESCAPE '!'` when `$escape = true`.
+            $escaped = strtr($searchTerm, ['!' => '!!', '%' => '!%', '_' => '!_']);
+            $builder->like('name', $escaped, 'both', true);
         }
 
         $totalCount = $builder->countAllResults(false);

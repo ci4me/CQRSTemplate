@@ -8,6 +8,7 @@ use App\Domain\Cookie\ErrorCodes;
 use App\Domain\Cookie\Ports\CookieRepositoryInterface;
 use App\Domain\Cookie\ValueObjects\CookieName;
 use App\Domain\Cookie\ValueObjects\CookiePrice;
+use App\Domain\Shared\Bus\CommandHandlerInterface;
 use App\Domain\Shared\Events\EventDispatcherInterface;
 use App\Domain\Shared\Exceptions\DomainException;
 use App\Domain\Shared\Exceptions\ValidationException;
@@ -30,8 +31,9 @@ use Psr\Log\LoggerInterface;
  * - Same validation rules as create
  *
  * @package App\Domain\Cookie\Commands\UpdateCookie
+ * @implements CommandHandlerInterface<UpdateCookieCommand, void>
  */
-final readonly class UpdateCookieHandler
+final readonly class UpdateCookieHandler implements CommandHandlerInterface
 {
     /**
      * Create a new UpdateCookieHandler.
@@ -53,7 +55,7 @@ final readonly class UpdateCookieHandler
      * @param UpdateCookieCommand $command The update command
      * @throws DomainException If cookie not found or business rules violated
      */
-    public function handle(UpdateCookieCommand $command): void
+    public function handle(object $command): void
     {
         $startTime = microtime(true);
 
@@ -95,9 +97,11 @@ final readonly class UpdateCookieHandler
             $name = CookieName::fromString($command->name);
             $price = CookiePrice::fromString($command->price);
 
-            // Check business rule: if name changed, new name must be unique
+            // Check business rule: if name changed, new name must be unique.
+            // Port takes the VO so the validation invariants travel with the
+            // value instead of being recreated in the adapter.
             if (!$cookie->getName()->equals($name)) {
-                if ($this->repository->existsByNameExcludingId($name->getValue(), $command->id)) {
+                if ($this->repository->existsByNameExcludingId($name, $command->id)) {
                     throw DomainException::businessRuleViolation(
                         'Cookie name must be unique',
                         sprintf('A cookie with name "%s" already exists', $name->getValue()),

@@ -10,6 +10,8 @@ use App\Domain\Cookie\Events\CookieCreated\CookieCreatedEvent;
 use App\Domain\Cookie\Ports\CookieRepositoryInterface;
 use App\Domain\Cookie\ValueObjects\CookieName;
 use App\Domain\Cookie\ValueObjects\CookiePrice;
+use App\Domain\Shared\Bus\CommandHandlerInterface;
+use App\Domain\Shared\Events\AbstractDomainEvent;
 use App\Domain\Shared\Events\EventDispatcherInterface;
 use App\Domain\Shared\Exceptions\DomainException;
 use App\Domain\Shared\Exceptions\ValidationException;
@@ -38,8 +40,9 @@ use Psr\Log\LoggerInterface;
  * - Can be decorated with cross-cutting concerns (logging, transactions)
  *
  * @package App\Domain\Cookie\Commands\CreateCookie
+ * @implements CommandHandlerInterface<CreateCookieCommand, int>
  */
-final readonly class CreateCookieHandler
+final readonly class CreateCookieHandler implements CommandHandlerInterface
 {
     /**
      * Create a new CreateCookieHandler.
@@ -62,7 +65,7 @@ final readonly class CreateCookieHandler
      * @return int The ID of the newly created cookie
      * @throws DomainException If business rules are violated
      */
-    public function handle(CreateCookieCommand $command): int
+    public function handle(object $command): int
     {
         $startTime = microtime(true);
 
@@ -80,8 +83,10 @@ final readonly class CreateCookieHandler
             $name = CookieName::fromString($command->name);
             $price = CookiePrice::fromString($command->price);
 
-            // Check business rule: name must be unique
-            if ($this->repository->existsByName($name->getValue())) {
+            // Check business rule: name must be unique.
+            // The port now takes the VO so the input-boundary validation
+            // is enforced by the type system, not by convention.
+            if ($this->repository->existsByName($name)) {
                 throw DomainException::businessRuleViolation(
                     'Cookie name must be unique',
                     sprintf('A cookie with name "%s" already exists', $name->getValue()),
@@ -101,12 +106,19 @@ final readonly class CreateCookieHandler
             // Persist to database; stamp created_by/updated_by audit columns.
             $cookieId = $this->repository->save($cookie, $command->createdBy);
 
-            // Dispatch domain event
+            // Dispatch domain event with the AbstractDomainEvent envelope.
+            // The actorId comes from the audit-stamping Actor on the
+            // command — system actors collapse to null (the envelope's
+            // contract is "null for system events"), human actors carry
+            // their user id.
             $this->eventDispatcher->dispatch(new CookieCreatedEvent(
+                eventId: AbstractDomainEvent::newId(),
+                occurredAt: new \DateTimeImmutable('now', new \DateTimeZone('UTC')),
+                actorId: $command->createdBy->isSystem() ? null : $command->createdBy->id,
                 cookieId: $cookieId,
                 cookieName: $name->getValue(),
                 cookiePrice: $price->toDecimalString(),
-                initialStock: $command->stock
+                initialStock: $command->stock,
             ));
 
             $durationMs = (microtime(true) - $startTime) * 1000;

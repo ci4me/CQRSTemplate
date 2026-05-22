@@ -37,7 +37,19 @@ interface CookieQueryRepositoryInterface
     public function findAll(bool $includeInactive = false): array;
 
     /**
+     * Paginate the read side.
+     *
+     * `$searchTerm` is treated as a literal substring match. Implementations
+     * MUST escape SQL `LIKE` wildcards (`%`, `_`, and the escape char `\`)
+     * before passing the term to the query builder so user input cannot
+     * accidentally expand into a full-table scan or leak rows the user
+     * did not target (closes 06/F4).
+     *
      * @return array{data: list<CookieDTO>, total: int, page: int, perPage: int, lastPage: int}
+     * @throws \RuntimeException If the underlying SELECT fails — symmetric
+     *                           with the write-side repository. Returning
+     *                           silent-empty would let a broken read hide
+     *                           behind `total = 0`.
      */
     public function findPaginated(
         int $page = 1,

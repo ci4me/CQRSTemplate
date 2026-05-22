@@ -215,11 +215,11 @@ final class ServiceProviderRegistryTest extends UnitTestCase
                 {
                     return ['data' => [], 'total' => 0, 'page' => $page, 'perPage' => $perPage, 'lastPage' => 1];
                 }
-                public function existsByName(string $name): bool
+                public function existsByName(\App\Domain\Cookie\ValueObjects\CookieName $name): bool
                 {
                     return false;
                 }
-                public function existsByNameExcludingId(string $name, int $excludeId): bool
+                public function existsByNameExcludingId(\App\Domain\Cookie\ValueObjects\CookieName $name, int $excludeId): bool
                 {
                     return false;
                 }
@@ -234,6 +234,10 @@ final class ServiceProviderRegistryTest extends UnitTestCase
                 public function findByIdWithTrashed(int $id): ?\App\Domain\Cookie\Entities\Cookie
                 {
                     return null;
+                }
+                public function purge(int $id): bool
+                {
+                    return true;
                 }
             },
             'cookieQueryRepository' => new class implements \App\Domain\Cookie\Ports\CookieQueryRepositoryInterface {

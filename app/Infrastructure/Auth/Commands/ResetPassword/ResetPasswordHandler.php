@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Auth\Commands\ResetPassword;
 
+use App\Domain\Shared\Bus\CommandHandlerInterface;
 use App\Domain\User\Repositories\PasswordHistoryRepository;
 use App\Domain\User\Repositories\UserRepository;
 use App\Domain\User\ValueObjects\HashedPassword;
@@ -23,8 +24,9 @@ use Psr\Log\LoggerInterface;
  * - Constant-time token comparison
  *
  * @package App\Infrastructure\Auth\Commands\ResetPassword
+ * @implements CommandHandlerInterface<ResetPasswordCommand, void>
  */
-final readonly class ResetPasswordHandler
+final readonly class ResetPasswordHandler implements CommandHandlerInterface
 {
     /** @var LoggerInterface */
     private LoggerInterface $logger;
@@ -49,7 +51,7 @@ final readonly class ResetPasswordHandler
      * @return void
      * @throws \RuntimeException
      */
-    public function handle(ResetPasswordCommand $command): void
+    public function handle(object $command): void
     {
         $this->logger->info('Password reset attempt', [
             'domain' => 'Auth',

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\User\Commands\DeleteUser;
 
+use App\Domain\Shared\Bus\CommandHandlerInterface;
 use App\Domain\Shared\Events\EventDispatcherInterface;
 use App\Domain\User\ErrorCodes;
 use App\Domain\User\Events\UserDeleted\UserDeletedEvent;
@@ -27,8 +28,9 @@ use Psr\Log\LoggerInterface;
  * - All deletions are logged with admin ID
  *
  * @package App\Domain\User\Commands\DeleteUser
+ * @implements CommandHandlerInterface<DeleteUserCommand, void>
  */
-final readonly class DeleteUserHandler
+final readonly class DeleteUserHandler implements CommandHandlerInterface
 {
     /**
      * __construct.
@@ -43,10 +45,11 @@ final readonly class DeleteUserHandler
     /**
      * handle.
      *
+     * @param DeleteUserCommand $command
      * @throws \InvalidArgumentException
      * @throws \RuntimeException
      */
-    public function handle(DeleteUserCommand $command): void
+    public function handle(object $command): void
     {
 
         $this->logger->info('Deleting user', [

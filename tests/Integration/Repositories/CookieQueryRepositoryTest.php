@@ -194,6 +194,42 @@ final class CookieQueryRepositoryTest extends IntegrationTestCase
         $this->assertSame('Tenant 999 Cookie', $bRows[0]->name);
     }
 
+    public function test_find_paginated_escapes_like_wildcards_in_search_term(): void
+    {
+        // Two rows differ ONLY in whether the name contains a literal `%`.
+        // If the read repo did NOT escape, the search term `%` would match
+        // both rows (because `%` is the SQL wildcard for "any sequence").
+        // The escape contract documented on the port forces `%` to be
+        // treated as a literal — only the row whose name actually contains
+        // a `%` character should come back (closes 06/F4).
+        $this->saveCookie('Plain Cookie', '1.00', 1, true);
+        $this->saveCookie('Cookie %50% Off', '1.00', 1, true);
+
+        $result = $this->readRepo->findPaginated(searchTerm: '%');
+
+        $this->assertSame(1, $result['total']);
+        $names = array_map(static fn($dto) => $dto->name, $result['data']);
+        $this->assertContains('Cookie %50% Off', $names);
+        $this->assertNotContains('Plain Cookie', $names);
+    }
+
+    public function test_find_paginated_escapes_underscore_wildcard_in_search_term(): void
+    {
+        // `_` is the single-character wildcard in SQL LIKE. Without
+        // escape, `_` would match every single character (effectively
+        // a one-character substring search). With escape it only
+        // matches a literal underscore.
+        $this->saveCookie('Plain Cookie', '1.00', 1, true);
+        $this->saveCookie('Cookie_underscore', '1.00', 1, true);
+
+        $result = $this->readRepo->findPaginated(searchTerm: '_');
+
+        $this->assertSame(1, $result['total']);
+        $names = array_map(static fn($dto) => $dto->name, $result['data']);
+        $this->assertContains('Cookie_underscore', $names);
+        $this->assertNotContains('Plain Cookie', $names);
+    }
+
     private function saveCookie(string $name, string $price, int $stock, bool $active): Cookie
     {
         $cookie = Cookie::create(

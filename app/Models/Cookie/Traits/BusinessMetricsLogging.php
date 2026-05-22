@@ -18,13 +18,6 @@ use App\Domain\Cookie\ValueObjects\CookiePrice;
 trait BusinessMetricsLogging
 {
     /**
-     * Query count tracking for popular cookies.
-     *
-     * @var array<int, int>
-     */
-    private array $queryCount = [];
-
-    /**
      * Log business metrics after successful save.
      */
     private function logBusinessMetrics(Cookie $cookie, int $cookieId, ?CookiePrice $oldPrice): void
@@ -112,32 +105,4 @@ trait BusinessMetricsLogging
         ]);
     }
 
-    /**
-     * Track popular cookie queries.
-     */
-    private function trackPopularCookie(int $id): void
-    {
-        if (!$this->loggingConfig->businessMetricsEnabled) {
-            return;
-        }
-
-        if (!isset($this->queryCount[$id])) {
-            $this->queryCount[$id] = 0;
-        }
-
-        $this->queryCount[$id]++;
-
-        $threshold = $this->metricInt('popularQueryCount', 100);
-        if ($this->queryCount[$id] <= $threshold) {
-            return;
-        }
-
-        $this->logger->info('Popular cookie', [
-            'domain' => 'Cookie',
-            'repository' => 'CookieRepository',
-            'cookieId' => $id,
-            'queryCount' => $this->queryCount[$id],
-            'threshold' => $threshold,
-        ]);
-    }
 }

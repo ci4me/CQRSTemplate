@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\User\Queries\SearchUsers;
 
+use App\Domain\Shared\Bus\QueryHandlerInterface;
 use App\Domain\Shared\Ports\LogConfigPort;
 use App\Domain\User\DTOs\UserDTO;
 use App\Domain\User\Ports\UserRepositoryInterface;
@@ -28,8 +29,9 @@ use Psr\Log\LoggerInterface;
  * - Reporting and analytics
  *
  * @package App\Domain\User\Queries\SearchUsers
+ * @implements QueryHandlerInterface<SearchUsersQuery, array{data: array<UserDTO>, total: int, page: int, perPage: int, lastPage: int}>
  */
-final readonly class SearchUsersHandler
+final readonly class SearchUsersHandler implements QueryHandlerInterface
 {
     /**
      * __construct.
@@ -42,9 +44,10 @@ final readonly class SearchUsersHandler
     }
 
     /**
+     * @param SearchUsersQuery $query
      * @return array{data: array<UserDTO>, total: int, page: int, perPage: int, lastPage: int}
      */
-    public function handle(SearchUsersQuery $query): array
+    public function handle(object $query): array
     {
 
         $startTime = microtime(true);

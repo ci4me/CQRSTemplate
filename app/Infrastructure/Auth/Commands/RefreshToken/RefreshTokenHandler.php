@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Auth\Commands\RefreshToken;
 
+use App\Domain\Shared\Bus\CommandHandlerInterface;
 use App\Domain\User\Ports\TokenBlacklistInterface;
 use App\Domain\User\Repositories\UserRepository;
 use App\Infrastructure\Auth\Services\JwtService;
@@ -29,8 +30,9 @@ use Psr\Log\LoggerInterface;
  * If token already revoked → possible token theft → revoke ALL user tokens
  *
  * @package App\Infrastructure\Auth\Commands\RefreshToken
+ * @implements CommandHandlerInterface<RefreshTokenCommand, AuthenticationResult>
  */
-final readonly class RefreshTokenHandler
+final readonly class RefreshTokenHandler implements CommandHandlerInterface
 {
     /** @var LoggerInterface */
     private LoggerInterface $logger;
@@ -57,7 +59,7 @@ final readonly class RefreshTokenHandler
      * @return AuthenticationResult
      * @throws \RuntimeException
      */
-    public function handle(RefreshTokenCommand $command): AuthenticationResult
+    public function handle(object $command): AuthenticationResult
     {
         $this->logger->info('Processing refresh token request', [
             'domain' => 'Auth',

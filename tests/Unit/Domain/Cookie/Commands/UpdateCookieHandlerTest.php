@@ -105,7 +105,12 @@ final class UpdateCookieHandlerTest extends UnitTestCase
         $this->repository->method('findById')->willReturn($existing);
         $this->repository->expects($this->once())
             ->method('existsByNameExcludingId')
-            ->with('Taken Name', 1)
+            ->with(
+                $this->callback(static fn($name): bool =>
+                    $name instanceof \App\Domain\Cookie\ValueObjects\CookieName
+                    && $name->getValue() === 'Taken Name'),
+                1
+            )
             ->willReturn(true);
 
         $this->expectException(DomainException::class);

@@ -151,6 +151,14 @@ parameters:
         -
             identifier: return.unusedType
             path: app/Infrastructure/I18n/LocaleResolver.php
+        # CookieQueryRepository::__construct() / connection() deliberately
+        # drop the BaseConnection<TConnection, TResult> template parameters
+        # (closes 06/F15 — the over-specified union was bleeding through
+        # test injection sites for no payoff at runtime). The framework
+        # types are still honoured; only the generic adornment is omitted.
+        -
+            identifier: missingType.generics
+            path: app/Domain/Cookie/Repositories/CookieQueryRepository.php
     bootstrapFiles:
         - phpstan-bootstrap.php
 
