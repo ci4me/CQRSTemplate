@@ -133,9 +133,15 @@ final class JwtServiceTest extends UnitTestCase
         $service = new JwtService();
         $token = $service->generateAccessToken($this->user(1));
 
-        // Flip the very last byte of the signature segment. A header/payload
-        // edit would just decode garbage; this is a sharper failure mode.
-        $tampered = substr($token, 0, -1) . ($token[-1] === 'A' ? 'B' : 'A');
+        // Flip a character in the middle of the signature segment. The very
+        // last base64url char only encodes ~4 bits of the 256-bit signature,
+        // so single-bit flips there occasionally collapse to the same decoded
+        // signature. Middle-of-segment flips always change real signature bytes.
+        $parts = explode('.', $token);
+        $sig = $parts[2];
+        $mid = (int) (strlen($sig) / 2);
+        $sig[$mid] = $sig[$mid] === 'A' ? 'B' : 'A';
+        $tampered = $parts[0] . '.' . $parts[1] . '.' . $sig;
 
         $this->expectException(\Exception::class);
         $service->validateToken($tampered);
