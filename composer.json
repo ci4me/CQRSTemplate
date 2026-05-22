@@ -38,7 +38,8 @@
     "autoload-dev": {
         "psr-4": {
             "Tests\\Support\\": "tests/Support",
-            "Tests\\": "tests/"
+            "Tests\\": "tests/",
+            "Tools\\PHPStan\\": "tools/PHPStan/"
         }
     },
     "config": {

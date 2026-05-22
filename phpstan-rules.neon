@@ -1,0 +1,31 @@
+# Custom PHPStan rules — Epic E05.5.
+#
+# Static-analysis follow-on to E05: the runtime CommandBus / QueryBus
+# `register()` already typehints CommandHandlerInterface / QueryHandlerInterface
+# so a typo'd handler fails at registration time. These rules push the
+# same contract earlier — into `composer phpstan` — so the violation
+# surfaces on the commit that introduced it instead of the first dispatch.
+#
+# Three rules:
+#   1. HandlerImplementsInterfaceRule  — *Handler.php in Commands/Queries
+#      must implement the corresponding interface.
+#   2. CommandQueryDtoIsReadonlyRule    — *Command.php / *Query.php must be
+#      declared `final readonly class`.
+#   3. HandleParamTypeMatchesCommandRule — `@implements`/`@extends` generic
+#      must name a real *Command / *Query class in the same slice dir.
+#
+# Wired through phpstan.neon `includes:`.
+
+services:
+    -
+        class: Tools\PHPStan\Rules\HandlerImplementsInterfaceRule
+        tags:
+            - phpstan.rules.rule
+    -
+        class: Tools\PHPStan\Rules\CommandQueryDtoIsReadonlyRule
+        tags:
+            - phpstan.rules.rule
+    -
+        class: Tools\PHPStan\Rules\HandleParamTypeMatchesCommandRule
+        tags:
+            - phpstan.rules.rule
