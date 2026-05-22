@@ -53,6 +53,7 @@ final readonly class GetCookiesPaginatedHandler implements QueryHandlerInterface
      * @param GetCookiesPaginatedQuery $query The query
      * @return array{data: array<int, CookieDTO>, total: int, page: int, perPage: int, lastPage: int} Pagination result
      */
+    #[\Override]
     public function handle(object $query): array
     {
         $startTime = microtime(true);

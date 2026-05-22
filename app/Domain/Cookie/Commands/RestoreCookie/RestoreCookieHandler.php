@@ -41,6 +41,7 @@ final readonly class RestoreCookieHandler implements CommandHandlerInterface
      * @throws DomainException     When the cookie is missing or is not actually deleted.
      * @throws \RuntimeException   When the SQL restore fails.
      */
+    #[\Override]
     public function handle(object $command): void
     {
 

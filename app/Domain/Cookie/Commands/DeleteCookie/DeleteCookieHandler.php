@@ -44,6 +44,7 @@ final readonly class DeleteCookieHandler implements CommandHandlerInterface
     /**
      * @throws DomainException If the cookie is not found.
      */
+    #[\Override]
     public function handle(object $command): void
     {
 

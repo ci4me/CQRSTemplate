@@ -55,6 +55,7 @@ final readonly class UpdateCookieHandler implements CommandHandlerInterface
      * @param UpdateCookieCommand $command The update command
      * @throws DomainException If cookie not found or business rules violated
      */
+    #[\Override]
     public function handle(object $command): void
     {
         $startTime = microtime(true);

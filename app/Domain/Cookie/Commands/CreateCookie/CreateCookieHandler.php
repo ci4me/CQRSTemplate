@@ -65,6 +65,7 @@ final readonly class CreateCookieHandler implements CommandHandlerInterface
      * @return int The ID of the newly created cookie
      * @throws DomainException If business rules are violated
      */
+    #[\Override]
     public function handle(object $command): int
     {
         $startTime = microtime(true);

@@ -52,6 +52,7 @@ final readonly class GetAllCookiesHandler implements QueryHandlerInterface
      * @param GetAllCookiesQuery $query The query
      * @return array<int, CookieDTO> Array of cookie DTOs
      */
+    #[\Override]
     public function handle(object $query): array
     {
         $startTime = microtime(true);

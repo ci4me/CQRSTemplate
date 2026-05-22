@@ -44,6 +44,7 @@ final readonly class CookieActivatedEvent extends AbstractDomainEvent
     /**
      * @return array<string, scalar|array<int|string, scalar|null>|null>
      */
+    #[\Override]
     public function jsonSerialize(): array
     {
         return array_merge(parent::jsonSerialize(), [

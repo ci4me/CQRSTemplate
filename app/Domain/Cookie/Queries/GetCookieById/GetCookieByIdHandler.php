@@ -54,6 +54,7 @@ final readonly class GetCookieByIdHandler implements QueryHandlerInterface
      * @param GetCookieByIdQuery $query The query
      * @return CookieDTO|null The cookie DTO or null if not found
      */
+    #[\Override]
     public function handle(object $query): ?CookieDTO
     {
         $startTime = microtime(true);

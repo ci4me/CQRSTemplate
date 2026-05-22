@@ -114,6 +114,7 @@ final class Cookie implements AggregateRootInterface
     }
 
     // Accessors (inlined from former CookieAccessors trait, slice 01/F8).
+    #[\Override]
     public function getId(): ?int
     {
         return $this->id;
