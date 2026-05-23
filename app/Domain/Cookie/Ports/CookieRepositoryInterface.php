@@ -28,7 +28,13 @@ interface CookieRepositoryInterface
     public function save(Cookie $cookie, ?Actor $actor = null): int;
 
     /**
-     * findById.
+     * Look up a cookie aggregate by id.
+     *
+     * Returns null when no row matches OR the row is soft-deleted: the
+     * implementation hides `deleted_at IS NOT NULL` rows via CI4's
+     * `useSoftDeletes = true` model behaviour. Callers that need to see
+     * deleted rows (e.g. the restore command) MUST use
+     * {@see self::findByIdWithTrashed()} instead.
      */
     public function findById(int $id): ?Cookie;
 
@@ -48,17 +54,32 @@ interface CookieRepositoryInterface
     ): array;
 
     /**
-     * existsByName.
+     * Case-insensitive existence check by name across the live + trashed set.
+     *
+     * The underlying query does `LOWER(name) = LOWER(?)` AND includes
+     * soft-deleted rows — by design. A previously-deleted name still counts as
+     * "taken" so ERP/audit references to the historical row are preserved
+     * (the same surrogate id can't be reused without a name change first).
      */
     public function existsByName(string $name): bool;
 
     /**
-     * existsByNameExcludingId.
+     * Case-insensitive existence check by name, ignoring one specific id.
+     *
+     * Same semantics as {@see self::existsByName()} (case-insensitive,
+     * includes soft-deleted), but excludes a single row from the comparison.
+     * Used by the update handler to allow "rename a cookie to its own name"
+     * (no change) without tripping the uniqueness check.
      */
     public function existsByNameExcludingId(string $name, int $excludeId): bool;
 
     /**
-     * delete.
+     * Soft-delete the row identified by `$id`.
+     *
+     * Sets `deleted_at` and stamps `deleted_by` with the supplied actor.
+     * Returns false when no row matches (and therefore nothing was deleted).
+     * The actor MUST be non-null in HTTP/user-driven flows; null is reserved
+     * for system contexts (background jobs, migrations).
      */
     public function delete(int $id, ?Actor $actor = null): bool;
 

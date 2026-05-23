@@ -51,7 +51,12 @@ final readonly class CookieView
     }
 
     /**
-     * detail.
+     * Full read-model projection for a single-resource detail surface.
+     *
+     * Carries description, timestamps, lifecycle flags (isDeleted /
+     * isAvailable), and the version — everything a detail view or single-row
+     * API response needs. Pair with {@see self::summary()} for the lighter
+     * list shape.
      */
     public static function detail(Cookie $cookie): self
     {

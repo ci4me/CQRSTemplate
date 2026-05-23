@@ -2,6 +2,13 @@
 <ruleset name="CodeIgniter4 CQRS Coding Standard">
     <description>PSR-12 + Slevomat Coding Standard with Clean Code enforcement</description>
 
+    <!-- E02 — pin PHP target. Mirrors `phpstan.neon: phpVersion: 80300` and
+         `composer.json: require.php = ^8.3`. Without this, a developer on
+         PHP 8.4 can land 8.4-only syntax (property hooks, asymmetric
+         visibility) and Slevomat's PHP-8.3-aware sniffs won't flag it.
+         Bumped in lock-step with composer.json in epic E16. -->
+    <config name="php_version" value="80300"/>
+
     <!-- Files to check -->
     <file>app/Domain</file>
     <file>app/Infrastructure</file>

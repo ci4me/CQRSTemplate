@@ -18,7 +18,14 @@ use App\Domain\Shared\ValueObjects\Actor;
 final readonly class CreateCookieCommand
 {
     /**
-     * __construct.
+     * Construct a new CreateCookieCommand.
+     *
+     * @param string  $name        Cookie display name; trimmed and validated by CookieName at the entity boundary.
+     * @param ?string $description Optional long-form description rendered on the catalog page.
+     * @param string  $price       Decimal-string sale price; converted to CookiePrice (minor units) by the handler.
+     * @param int     $stock       Initial on-hand quantity (>= 0).
+     * @param Actor   $createdBy   Audit-trail actor; stamps `created_by`. NEVER null on HTTP-originated commands.
+     * @param bool    $isActive    Whether the row is published at create time (defaults to true).
      */
     public function __construct(
         public string $name,

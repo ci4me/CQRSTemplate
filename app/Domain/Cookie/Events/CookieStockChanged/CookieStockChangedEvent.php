@@ -18,7 +18,16 @@ use App\Domain\Shared\Events\DomainEventInterface;
 final readonly class CookieStockChangedEvent implements DomainEventInterface
 {
     /**
-     * __construct.
+     * Construct a CookieStockChangedEvent payload.
+     *
+     * Captures the BEFORE and AFTER stock levels plus a free-text reason
+     * (e.g. "sale", "manual_adjustment", "restock_received") so downstream
+     * inventory consumers don't need to diff against the read model.
+     *
+     * @param ?int   $cookieId      Surrogate id; null only for events emitted by an unpersisted aggregate (rare; tightened in E04).
+     * @param int    $previousStock Stock level immediately before the change (>= 0).
+     * @param int    $newStock      Stock level immediately after the change (>= 0).
+     * @param string $reason        Short identifier categorising the movement.
      */
     public function __construct(
         public ?int $cookieId,

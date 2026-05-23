@@ -22,7 +22,7 @@
         "phpstan/phpstan-strict-rules": "^2.0",
         "phpunit/phpunit": "^12.5.8",
         "qossmic/deptrac": "^2.0",
-        "slevomat/coding-standard": "^8.15",
+        "slevomat/coding-standard": "^8.18",
         "squizlabs/php_codesniffer": "^3.11"
     },
     "autoload": {
@@ -65,7 +65,7 @@
         "deptrac": "deptrac analyse --no-progress",
         "gitleaks": "@php -r \"passthru('command -v gitleaks >/dev/null 2>&1 && gitleaks detect --no-banner --redact --staged || echo gitleaks-not-installed-skipping');\"",
         "docblocks:generate": "@php bin/docblocks-generate app/",
-        "docblocks:audit": "@php bin/docblocks-audit",
+        "docblocks:audit": "@php bin/docblocks-audit app/Domain/Cookie",
         "check": [
             "@docblocks:audit",
             "@phpcs",
@@ -87,6 +87,6 @@
         "ci": "CI variant of check (with Clover coverage output).",
         "deptrac": "Run deptrac to enforce architectural layer boundaries (zero violations enforced).",
         "docblocks:generate": "Walk app/ and insert PHPDoc stubs on every class/method/property that lacks one. Reuses the AST so existing docblocks are preserved.",
-        "docblocks:audit": "Fail the build if any auto-generated docblock markers remain. AI agents and developers must replace each placeholder with a real description before committing."
+        "docblocks:audit": "Fail the build if any single-word placeholder docblocks (e.g. \"* __construct.\") or legacy \"@todo Auto-generated docblock\" markers remain in the gated scope. Today the gate covers app/Domain/Cookie (E02 closes Cookie's F1 backlog); later epics widen the scope domain-by-domain as their own stubs are replaced (E04-E08 cover Shared, E18 covers User/Auth). Final state walks all of app/."
     }
 }

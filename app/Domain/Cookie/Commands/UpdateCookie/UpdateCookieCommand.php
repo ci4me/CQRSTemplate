@@ -27,7 +27,16 @@ use App\Domain\Shared\ValueObjects\Actor;
 final readonly class UpdateCookieCommand
 {
     /**
-     * __construct.
+     * Construct a new UpdateCookieCommand.
+     *
+     * @param int     $id              Target cookie id; must exist and not be soft-deleted.
+     * @param string  $name            New display name; validated by CookieName at the handler boundary.
+     * @param ?string $description     New long-form description (null to clear).
+     * @param string  $price           New decimal-string sale price; converted to CookiePrice by the handler.
+     * @param int     $stock           New on-hand quantity (>= 0).
+     * @param bool    $isActive        Whether the row stays published after the update.
+     * @param Actor   $updatedBy       Audit-trail actor; stamps `updated_by`.
+     * @param ?int    $expectedVersion Optional optimistic-lock anchor; see class docblock for the contract.
      */
     public function __construct(
         public int $id,

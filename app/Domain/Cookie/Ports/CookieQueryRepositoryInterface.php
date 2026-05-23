@@ -27,7 +27,12 @@ use App\Domain\Cookie\DTOs\CookieDTO;
 interface CookieQueryRepositoryInterface
 {
     /**
-     * findById.
+     * Read-side findById; returns a CookieDTO or null.
+     *
+     * Soft-deleted rows are filtered out via an explicit `WHERE deleted_at
+     * IS NULL` (the read path does not piggy-back on CI4's `useSoftDeletes`).
+     * Implementations MUST also apply the current tenant filter so a query
+     * issued under tenant A cannot leak tenant B's rows.
      */
     public function findById(int $cookieId): ?CookieDTO;
 
