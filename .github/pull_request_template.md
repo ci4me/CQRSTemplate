@@ -1,6 +1,36 @@
+## Linked Issue
+
+Closes: #
+
+## Agent Identity
+
+- Agent/tool/model:
+- Persona:
+- Role:
+- Self-review conflict: Yes / No
+- Human escalation: Yes / No
+
 ## Summary
 
-<!-- What does this PR do and WHY? Code shows the what; you provide the why. -->
+<!-- What does this PR do and WHY? -->
+
+## Acceptance Criteria Evidence
+
+| Criterion | Status | Evidence |
+| --- | --- | --- |
+| | | |
+
+## Risk and Areas
+
+- Risk label:
+- Area labels:
+- Migration risk:
+
+## Tests and Checks
+
+- Commands run:
+- Commands not run:
+- Why not run:
 
 ## Changes
 
@@ -13,17 +43,26 @@
 ## Quality checklist
 
 - [ ] `composer phpstan` — Level 8, 0 errors
-- [ ] `composer phpcs`   — 0 violations
-- [ ] `composer test`    — passing, coverage ≥ 90%
+- [ ] `composer phpcs` — 0 violations
+- [ ] `composer test` — passing, coverage ≥ 90%
 - [ ] No business logic in controllers
 - [ ] Methods ≤ 20 lines, classes ≤ 200 lines
 - [ ] `declare(strict_types=1)` on every new file
 - [ ] Conventional Commits in all commit messages
 - [ ] No `.env`, secrets, or generated files committed
 
-## Breaking changes
+## Rollback and Migration Notes
 
-<!-- Describe + migration steps, or write "None". -->
+<!-- Describe rollback strategy, or write "None". -->
+
+## Review Quorum
+
+- Required reviewers:
+- Requested reviewers:
+
+## Reusable Knowledge
+
+Should this update Wiki, Discussions, prompts, templates, checks, or memory? Yes / No
 
 ## Related
 

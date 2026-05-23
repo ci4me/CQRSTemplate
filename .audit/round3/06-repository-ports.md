@@ -136,3 +136,4 @@ READY-WITH-FIXES
 **Severity counts:** CRITICAL 0 | HIGH 4 | MEDIUM 6 | LOW 5 | INFO 2 (17 findings total)
 
 **Top finding:** F1 — handler-side `existsByName` uses `withDeleted()` and rejects names that match soft-deleted rows, directly contradicting the migration's documented `UNIQUE(tenant_id, name, deleted_at)` B16/B17 reuse-after-delete contract. Every cloned domain inherits a name-uniqueness rule that disagrees with its own schema.
+

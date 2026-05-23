@@ -1,0 +1,84 @@
+name: AI Decision Record
+about: Create a decision record for high-risk or cross-cutting agent work.
+labels: ["type:decision", "area:agent"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## Decision Record
+        Use this form to capture the chosen approach, rejected alternatives, and required approvals.
+  - type: input
+    id: decision_title
+    attributes:
+      label: Decision title
+      description: Short title for the decision record.
+      placeholder: Tenant-aware audit query boundary
+      required: true
+  - type: textarea
+    id: issue_link
+    attributes:
+      label: Related issue
+      description: Link the issue that this decision supports.
+      required: true
+  - type: textarea
+    id: options_considered
+    attributes:
+      label: Options considered
+      description: Describe the candidate approaches.
+      required: true
+  - type: textarea
+    id: selected_approach
+    attributes:
+      label: Selected approach
+      description: Explain the chosen path.
+      required: true
+  - type: textarea
+    id: rejected_approaches
+    attributes:
+      label: Rejected approaches
+      description: Explain why other options were not selected.
+  - type: markdown
+    attributes:
+      value: |
+        ### Risk and concerns
+  - type: textarea
+    id: security_concerns
+    attributes:
+      label: Security concerns
+      description: Describe any security or tenant isolation risks.
+  - type: textarea
+    id: audit_concerns
+    attributes:
+      label: Audit concerns
+      description: Describe audit or data traceability risks.
+  - type: textarea
+    id: test_concerns
+    attributes:
+      label: Testing concerns
+      description: Describe the test strategy and known gaps.
+  - type: textarea
+    id: required_signoffs
+    attributes:
+      label: Required sign-offs
+      description: List personas and required approvals.
+      placeholder: |
+        - Vera: APPROVE
+        - Iris: APPROVE
+        - Theo: APPROVE
+        - Omar: APPROVE
+        - Tessa: APPROVE
+        - Rhea: APPROVE
+  - type: dropdown
+    id: implementation_start
+    attributes:
+      label: Implementation may start?
+      description: Only select Yes after required evidence is present.
+      options:
+        - Yes
+        - No
+      required: true
+  - type: textarea
+    id: notes
+    attributes:
+      label: Additional notes
+      description: Any extra context, links, or next steps.

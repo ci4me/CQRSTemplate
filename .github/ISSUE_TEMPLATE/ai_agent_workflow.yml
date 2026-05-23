@@ -1,0 +1,82 @@
+name: AI Agent Work Request
+about: Use this form for agent-managed features, audits, or policy changes.
+labels: ["type:feature", "area:agent"]
+assignees: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## AI Agent Work Request
+        Use this form when a change requires planning, specialist review, or a decision record.
+  - type: input
+    id: title
+    attributes:
+      label: Issue title
+      description: Short, actionable issue title.
+      placeholder: Tenant-aware audit query filters
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem statement
+      description: What is broken or missing today?
+      placeholder: Describe the current problem.
+      required: true
+  - type: textarea
+    id: goal
+    attributes:
+      label: Goal
+      description: What the change should achieve.
+      placeholder: Add tenant-aware command audit filtering.
+      required: true
+  - type: textarea
+    id: business_value
+    attributes:
+      label: Business value
+      description: Why this work matters.
+      placeholder: Reduce tenant investigation time and prevent audit leakage.
+      required: true
+  - type: textarea
+    id: acceptance_criteria
+    attributes:
+      label: Acceptance criteria
+      description: What success looks like.
+      placeholder: |
+        - Tenant filter applies to audit queries.
+        - Command type filter works.
+        - Tenant boundaries are enforced.
+      required: true
+  - type: dropdown
+    id: risk
+    attributes:
+      label: Risk level
+      description: Select the risk category.
+      options:
+        - Low
+        - Medium
+        - High
+        - Critical
+      required: true
+  - type: checkboxes
+    id: areas
+    attributes:
+      label: Area labels
+      description: Select the relevant domains.
+      options:
+        - label: audit
+        - label: tenant
+        - label: security
+        - label: backend
+        - label: api
+        - label: ci
+  - type: textarea
+    id: reviewers
+    attributes:
+      label: Required reviewers/personas
+      description: List the personas or roles that must review this work.
+      placeholder: Theo, Iris, Omar, Tessa, Rhea
+  - type: textarea
+    id: notes
+    attributes:
+      label: Additional notes
+      description: Any extra context, decision link requirements, or constraints.

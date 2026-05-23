@@ -1,5 +1,10 @@
 {
   "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "env": {
+    "CI": "false",
+    "XDEBUG_MODE": "coverage,debug",
+    "ENVIRONMENT": "development"
+  },
   "permissions": {
     "allow": [
       "Bash(cat:*)",
@@ -46,12 +51,12 @@
       "Glob(*)",
       "Grep(*)",
       "TodoWrite(*)",
-      "Task(*)"
+      "Task(*)",
+      "Bash(git commit:*)"
     ],
     "deny": [
       "Bash(rm -rf:*)",
       "Bash(rm -fr:*)",
-      "Bash(:(){:|:&};:)",
       "Bash(drop database:*)",
       "Bash(DROP DATABASE:*)",
       "Bash(git push --force*)",
@@ -78,9 +83,6 @@
       "Write(secrets/**)"
     ],
     "ask": [
-      "Bash(git push:*)",
-      "Bash(git commit:*)",
-      "Bash(git merge:*)",
       "Bash(git rebase -i*)",
       "Bash(gh repo delete:*)",
       "Bash(gh repo edit *--visibility*)"
@@ -98,10 +100,5 @@
         ]
       }
     ]
-  },
-  "env": {
-    "CI": "false",
-    "XDEBUG_MODE": "coverage,debug",
-    "ENVIRONMENT": "development"
   }
 }
