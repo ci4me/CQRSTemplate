@@ -77,13 +77,26 @@
         <const name="CONFIGPATH" value="./app/Config/"/>
         <!-- Directory containing the front controller (index.php) -->
         <const name="PUBLICPATH" value="./public/"/>
-        <!-- Force test isolation even when a local .env defines database.tests.* -->
-        <env name="database.tests.hostname" value="localhost" force="true"/>
-        <env name="database.tests.database" value=":memory:" force="true"/>
-        <env name="database.tests.username" value="" force="true"/>
-        <env name="database.tests.password" value="" force="true"/>
-        <env name="database.tests.DBDriver" value="SQLite3" force="true"/>
-        <env name="database.tests.DBPrefix" value="" force="true"/>
-        <env name="database.tests.foreignKeys" value="true" force="true"/>
+        <!--
+            Test-DB defaults: SQLite :memory: for fast local feedback.
+
+            These values are NOT forced — CI (or any contributor running
+            `make test-mysql`) can override them through process env so the
+            same test suite executes against MySQL 8. The MySQL CI lane
+            sets `database.tests.DBDriver=MySQLi` plus the hostname /
+            database / username / password env vars (see
+            `.github/workflows/ci.yml` and `Makefile :: test-mysql`).
+
+            Round-3 audit findings closed by removing `force="true"`:
+            13/F1 (SQLite hard-lock), 18/F-T1 (engine blindness),
+            18/F-T2 (DBPrefix divergence).
+        -->
+        <env name="database.tests.hostname" value="localhost"/>
+        <env name="database.tests.database" value=":memory:"/>
+        <env name="database.tests.username" value=""/>
+        <env name="database.tests.password" value=""/>
+        <env name="database.tests.DBDriver" value="SQLite3"/>
+        <env name="database.tests.DBPrefix" value=""/>
+        <env name="database.tests.foreignKeys" value="true"/>
     </php>
 </phpunit>

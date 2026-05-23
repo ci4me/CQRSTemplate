@@ -89,24 +89,39 @@ jobs:
         run: composer deptrac
 
   # ---------------------------------------------------------------------------
+  # PHPUnit matrix: same suite runs against both lanes.
+  #
+  # The SQLite lane is the fast feedback path — what `composer test` runs out
+  # of the box. The MySQL lane closes round-3 13/F1 + 18/F-T1: it actually
+  # exercises engine-specific behaviour (UNIQUE-NULL semantics, FK CASCADE,
+  # FOR UPDATE SKIP LOCKED, JSON, FULLTEXT, collation) that SQLite cannot
+  # reproduce. Coverage is collected on both lanes; the `coverage-merge` job
+  # below combines the clover reports with `phpcov merge` so the >=90% gate
+  # is applied to the union of files (per REVIEW-tests required change #4).
   tests:
-    name: PHPUnit (PHP ${{ matrix.php }})
+    name: PHPUnit (PHP ${{ matrix.php }} · db=${{ matrix.db }})
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
         php: ['8.4']
+        db: [sqlite, mysql]
     services:
       mysql:
-        image: mysql:8.0
+        image: mysql:8.0.36
         env:
           MYSQL_ROOT_PASSWORD: root
-          MYSQL_DATABASE: ci_test
+          MYSQL_DATABASE: ci4me_test
+          MYSQL_USER: ci4me
+          MYSQL_PASSWORD: ci4me
         ports: ['3306:3306']
         options: >-
-          --health-cmd="mysqladmin ping -uroot -proot"
-          --health-interval=5s --health-timeout=5s --health-retries=10
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -proot"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=12
+          --health-start-period=10s
     steps:
       - name: Checkout
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
@@ -116,8 +131,8 @@ jobs:
         with:
           php-version: ${{ matrix.php }}
           coverage: pcov
-          tools: composer:v2
-          extensions: intl, mbstring, json, mysqli, pdo_mysql, pcov
+          tools: composer:v2, phpcov
+          extensions: intl, mbstring, json, mysqli, pdo_mysql, pcntl, pcov
 
       - name: Cache Composer
         uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830  # v4
@@ -131,49 +146,139 @@ jobs:
       - name: Install dependencies
         run: composer install --no-interaction --no-progress --prefer-dist
 
-      - name: Configure environment
+      - name: Configure environment (SQLite lane)
+        if: matrix.db == 'sqlite'
         run: |
           cp env .env || true
-          {
-            echo "database.default.hostname = 127.0.0.1"
-            echo "database.default.database = ci_test"
-            echo "database.default.username = root"
-            echo "database.default.password = root"
-            echo "database.default.DBDriver = MySQLi"
-          } >> .env
+          # phpunit.xml.dist defaults map `database.tests.*` to in-memory
+          # SQLite already — no env overrides needed.
+          echo "CI lane: SQLite :memory: (phpunit.xml.dist defaults)"
 
-      - name: Run migrations
-        run: php spark migrate --all || true
+      - name: Configure environment (MySQL lane)
+        if: matrix.db == 'mysql'
+        run: |
+          cp env .env || true
+          # Override the test-DB block; phpunit.xml.dist no longer forces
+          # SQLite (round-3 13/F1), so these env vars take effect.
+          {
+            echo "database.tests.hostname = 127.0.0.1"
+            echo "database.tests.port = 3306"
+            echo "database.tests.database = ci4me_test"
+            echo "database.tests.username = ci4me"
+            echo "database.tests.password = ci4me"
+            echo "database.tests.DBDriver = MySQLi"
+            echo "database.tests.DBPrefix ="
+          } >> .env
+          # Same overrides for the process env so phpunit's `<env>` block
+          # picks them up regardless of how Database.php resolves values.
+          {
+            echo "database.tests.hostname=127.0.0.1"
+            echo "database.tests.port=3306"
+            echo "database.tests.database=ci4me_test"
+            echo "database.tests.username=ci4me"
+            echo "database.tests.password=ci4me"
+            echo "database.tests.DBDriver=MySQLi"
+            echo "database.tests.DBPrefix="
+          } >> "$GITHUB_ENV"
+
+      - name: Migrate up + down + up (smoke)
+        if: matrix.db == 'mysql'
+        env:
+          CI_ENVIRONMENT: testing
+        run: |
+          # Exercise both directions of every migration before the suite runs.
+          # If a future schema change is non-reversible the lane catches it
+          # here rather than in production.
+          php spark migrate --all
+          php spark migrate:rollback -all
+          php spark migrate --all
 
       - name: PHPUnit with coverage
-        run: vendor/bin/phpunit --coverage-text --coverage-clover=coverage.xml
-
-      - name: Coverage gate (>= ${{ env.COVERAGE_THRESHOLD }}%)
+        env:
+          CI_ENVIRONMENT: testing
         run: |
-          if [ ! -f coverage.xml ]; then
-            echo "::error::coverage.xml missing — was PHPUnit configured with PCOV?"
-            exit 1
-          fi
-          # Parse Clover: elements covered / total statements.
-          covered=$(grep -oP '(?<=coveredstatements=")\d+' coverage.xml | head -1)
-          total=$(grep -oP '(?<= statements=")\d+' coverage.xml | head -1)
-          if [ -z "$covered" ] || [ -z "$total" ] || [ "$total" -eq 0 ]; then
-            echo "::warning::Could not parse coverage figures — skipping gate."
-            exit 0
-          fi
-          pct=$(awk "BEGIN{printf \"%.2f\", ($covered/$total)*100}")
-          echo "Coverage: $pct% ($covered / $total statements)"
-          awk -v p="$pct" -v t="${{ env.COVERAGE_THRESHOLD }}" 'BEGIN{exit (p+0 < t+0) ? 1 : 0}' || {
-            echo "::error::Coverage $pct% < threshold ${{ env.COVERAGE_THRESHOLD }}%."
-            exit 1
-          }
+          mkdir -p build/logs
+          vendor/bin/phpunit \
+            --coverage-text \
+            --coverage-clover=build/logs/clover.${{ matrix.db }}.xml \
+            --coverage-php=build/logs/coverage.${{ matrix.db }}.serialized
 
-      - name: Upload coverage artifact
+      - name: Upload per-lane coverage artifact
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4
         with:
-          name: coverage-php${{ matrix.php }}
-          path: coverage.xml
+          name: coverage-php${{ matrix.php }}-${{ matrix.db }}
+          path: |
+            build/logs/clover.${{ matrix.db }}.xml
+            build/logs/coverage.${{ matrix.db }}.serialized
+          if-no-files-found: error
+          retention-days: 14
+
+  # ---------------------------------------------------------------------------
+  # Merge clover reports across the matrix and apply the >=90% gate to the
+  # union (REVIEW-tests round-3 required change #4). A single-lane gate is
+  # unenforceable because lane-skipped MySQL tests would drop integration
+  # files below 90% on the SQLite lane.
+  coverage-merge:
+    name: Coverage gate (merged ≥ ${{ env.COVERAGE_THRESHOLD }}%)
+    needs: tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
+
+      - name: Setup PHP ${{ env.PHP_VERSION }}
+        uses: shivammathur/setup-php@7c071dfe9dc99bdf297fa79cb49ea005b9fcadbc  # v2
+        with:
+          php-version: ${{ env.PHP_VERSION }}
+          coverage: none
+          tools: composer:v2, phpcov
+
+      - name: Download all coverage artifacts
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093  # v4
+        with:
+          path: build/coverage-artifacts
+          pattern: coverage-php*-*
+
+      - name: Merge clover reports with phpcov
+        run: |
+          mkdir -p build/logs build/coverage-serialized
+          # Collect every .serialized coverage file into one directory so
+          # `phpcov merge` can fold them into a single clover report.
+          find build/coverage-artifacts -name '*.serialized' \
+            -exec cp {} build/coverage-serialized/ \;
+          ls -la build/coverage-serialized/
+          phpcov merge \
+            --clover build/logs/clover.merged.xml \
+            build/coverage-serialized/
+
+      - name: Coverage gate (>= ${{ env.COVERAGE_THRESHOLD }}%)
+        run: |
+          if [ ! -f build/logs/clover.merged.xml ]; then
+            echo "::error::Merged clover report missing — phpcov merge failed."
+            exit 1
+          fi
+          # Parse Clover: elements covered / total statements.
+          covered=$(grep -oP '(?<=coveredstatements=")\d+' build/logs/clover.merged.xml | head -1)
+          total=$(grep -oP '(?<= statements=")\d+' build/logs/clover.merged.xml | head -1)
+          if [ -z "$covered" ] || [ -z "$total" ] || [ "$total" -eq 0 ]; then
+            echo "::error::Could not parse coverage figures from merged report."
+            exit 1
+          fi
+          pct=$(awk "BEGIN{printf \"%.2f\", ($covered/$total)*100}")
+          echo "Merged coverage: $pct% ($covered / $total statements)"
+          awk -v p="$pct" -v t="${{ env.COVERAGE_THRESHOLD }}" 'BEGIN{exit (p+0 < t+0) ? 1 : 0}' || {
+            echo "::error::Merged coverage $pct% < threshold ${{ env.COVERAGE_THRESHOLD }}%."
+            exit 1
+          }
+
+      - name: Upload merged coverage artifact
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4
+        with:
+          name: coverage-merged
+          path: build/logs/clover.merged.xml
           if-no-files-found: ignore
           retention-days: 14
 

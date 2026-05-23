@@ -160,7 +160,23 @@ class Database extends Config
     //    ];
 
     /**
-     * This database connection is used when running PHPUnit database tests.
+     * Default connection used by the PHPUnit test suite.
+     *
+     * Local default is in-memory SQLite — fast feedback, zero infra.
+     * The CI MySQL lane (and `make test-mysql`) overrides these values
+     * through env vars (`database.tests.DBDriver=MySQLi`, hostname,
+     * username, password, database) so the same `composer test` suite
+     * runs against MySQL 8 and exercises engine-specific behaviours
+     * (UNIQUE-NULL semantics, FK CASCADE, FOR UPDATE SKIP LOCKED, JSON,
+     * FULLTEXT, collation) that SQLite cannot reproduce.
+     *
+     * Round-3 audit: `DBPrefix` was previously `'db_'` here but blank
+     * everywhere else (`.env`, phpunit overrides, migrations) — kept
+     * the config silently divergent from runtime (18/F-T2). Now blank
+     * project-wide.
+     *
+     * E03 will add `sessionVariables` (sql_mode, isolation, time_zone)
+     * — out of scope for E01.
      *
      * @var array<string, mixed>
      */
@@ -171,19 +187,63 @@ class Database extends Config
         'password'    => '',
         'database'    => ':memory:',
         'DBDriver'    => 'SQLite3',
-        'DBPrefix'    => 'db_',  // Needed to ensure we're working correctly with prefixes live. DO NOT REMOVE FOR CI DEVS
+        'DBPrefix'    => '',
         'pConnect'    => false,
         'DBDebug'     => true,
-        'charset'     => 'utf8',
-        'DBCollat'    => '',
+        'charset'     => 'utf8mb4',
+        'DBCollat'    => 'utf8mb4_unicode_ci',
         'swapPre'     => '',
         'encrypt'     => false,
         'compress'    => false,
-        'strictOn'    => false,
+        'strictOn'    => true,
         'failover'    => [],
         'port'        => 3306,
         'foreignKeys' => true,
         'busyTimeout' => 1000,
+        'dateFormat'  => [
+            'date'     => 'Y-m-d',
+            'datetime' => 'Y-m-d H:i:s',
+            'time'     => 'H:i:s',
+        ],
+    ];
+
+    /**
+     * Documented reference for the MySQL test lane.
+     *
+     * The MySQL CI matrix axis (`db: mysql` in `.github/workflows/ci.yml`)
+     * does NOT switch `$defaultGroup` to this name — it keeps
+     * `defaultGroup = 'tests'` and overrides `database.tests.*` via env.
+     * This array is provided so a developer can run
+     * `php spark migrate -g tests_mysql` against a local docker MySQL
+     * container without having to set env vars first.
+     *
+     * Charset, collation and strict mode mirror the values that the
+     * `tests` group is overridden with on the MySQL lane. E03 will pin
+     * `sessionVariables` (sql_mode + transaction_isolation + time_zone)
+     * on top of these basics.
+     *
+     * @var array<string, mixed>
+     */
+    public array $tests_mysql = [
+        'DSN'         => '',
+        'hostname'    => '127.0.0.1',
+        'username'    => 'ci4me',
+        'password'    => 'ci4me',
+        'database'    => 'ci4me_test',
+        'DBDriver'    => 'MySQLi',
+        'DBPrefix'    => '',
+        'pConnect'    => false,
+        'DBDebug'     => true,
+        'charset'     => 'utf8mb4',
+        'DBCollat'    => 'utf8mb4_unicode_ci',
+        'swapPre'     => '',
+        'encrypt'     => false,
+        'compress'    => false,
+        'strictOn'    => true,
+        'failover'    => [],
+        'port'        => 3306,
+        'numberNative' => false,
+        'foundRows'   => false,
         'dateFormat'  => [
             'date'     => 'Y-m-d',
             'datetime' => 'Y-m-d H:i:s',

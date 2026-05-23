@@ -1,0 +1,39 @@
+# Local-only test infrastructure for the MySQL CI lane.
+#
+# Brought up automatically by `make test-mysql`; teardown is `make
+# test-mysql-down`. Mirrors the GitHub Actions `services:` block in
+# `.github/workflows/ci.yml` so a CI failure can be reproduced locally
+# without guessing the image tag or env vars.
+#
+# Image is pinned to a specific 8.0 minor so a hosted MySQL bump does
+# not silently change behaviour between local and CI runs (REVIEW-tests
+# round-3, required change #1).
+services:
+  mysql:
+    image: mysql:8.0.36
+    container_name: ci4me-mysql-test
+    restart: "no"
+    environment:
+      MYSQL_DATABASE: ci4me_test
+      MYSQL_USER: ci4me
+      MYSQL_PASSWORD: ci4me
+      MYSQL_ROOT_PASSWORD: root
+    # Pin the basics so the lane exercises the same envelope CI does.
+    # E03 will tighten sql_mode + transaction_isolation + time_zone via
+    # `sessionVariables` in app/Config/Database.php; until then the
+    # `--sql-mode` arg below keeps strict semantics on local runs.
+    command:
+      - --default-authentication-plugin=caching_sha2_password
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --sql-mode=STRICT_ALL_TABLES,NO_ZERO_DATE,NO_ZERO_IN_DATE,ONLY_FULL_GROUP_BY,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION
+    ports:
+      # 33060:3306 — keep 3306 free on the host so a developer can keep
+      # a separate MySQL running for day-to-day work without conflict.
+      - "33060:3306"
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-proot"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
