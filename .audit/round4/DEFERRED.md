@@ -56,7 +56,28 @@ row's "NOT reclaimed" column is the only content unique to that PR.
 | `reportUnmatchedIgnoredErrors: true` flip in phpstan.neon | E02 follow-up | Blocked on E05/E08 full landing per the inline TODO. |
 | E15 docs:cookie-sync CI guard + full COMPLETE_FILE_INVENTORY regeneration | round-3 plan | Round-4 added an addendum to the inventory; the generator/CI guard remains open. |
 
+## MySQL-lane verification status (2026-06-05)
+
+- **Migrations: VERIFIED on real MySQL 8.0.36.** A local throwaway container
+  (native-auth, default group repointed) ran the full set **up → down → up
+  = 0/0/0**, including the round-4 destructive migrations
+  `AddCookiesNameIndex` and `HardenEventOutboxTable` (information_schema
+  index discovery + `ALTER TABLE MODIFY` + `event_uuid` UNIQUE + lease/
+  tenant columns). The MySQL-only paths execute and reverse cleanly.
+- **PHPUnit-on-MySQL: NOT verified locally** — the `database.tests` group
+  could not be repointed at the container from a plain shell (phpunit.xml.dist's
+  `<env>` block governs that group; GitHub CI overrides it via `$GITHUB_ENV`).
+  All 1130 tests pass on SQLite; the MySQL run failed only with
+  "Unable to connect to the database" (a harness-wiring issue, identical
+  with and without the auth fix), not a code defect.
+- **Authoritative MySQL run = GitHub CI**, once Actions is re-enabled on the
+  `ci4me` account (currently disabled account-side — see env-blockers memory).
+  The CI trigger fix (commit `1a8cef4`) makes it run automatically on the
+  next push to this branch.
+
 ## Re-audit trigger
 
 Run a focused 1-agent re-audit of the six core dimensions before cloning
-the first real ERP domain, per CONSOLIDATED-PLAN §Verification.
+the first real ERP domain, per CONSOLIDATED-PLAN §Verification. The round-4
+self-re-audit already CONFIRMED 9/10 dimensions and caught two introduced
+defects (Money INT_MIN guard, CookieCreated actorId) — both fixed in `f772f48`.
