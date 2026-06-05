@@ -5,9 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Cookie\Commands\DeleteCookie;
 
 use App\Domain\Cookie\ErrorCodes;
-use App\Domain\Cookie\Events\CookieDeleted\CookieDeletedEvent;
 use App\Domain\Cookie\Ports\CookieRepositoryInterface;
-use App\Domain\Shared\Events\EventDispatcherInterface;
 use App\Domain\Shared\Exceptions\DomainException;
 use Psr\Log\LoggerInterface;
 
@@ -16,8 +14,13 @@ use Psr\Log\LoggerInterface;
  *
  * Responsibilities:
  * 1. Verify cookie exists
- * 2. Perform soft delete via repository
- * 3. Dispatch domain event
+ * 2. Mark the aggregate deleted (raises CookieDeletedEvent with the final snapshot)
+ * 3. Persist the soft delete via repository
+ *
+ * Event flow (round-4 R1): {@see \App\Domain\Cookie\Entities\Cookie::markDeleted()}
+ * snapshots the final state and raises the event; the repository persists the
+ * flip and drains the event outbox-first in the same transaction. Handlers
+ * never construct or dispatch events.
  *
  * Business Rules:
  * - Cookie must exist to be deleted
@@ -30,13 +33,11 @@ final readonly class DeleteCookieHandler
     /**
      * Create a new DeleteCookieHandler.
      *
-     * @param CookieRepositoryInterface $repository      For persistence operations
-     * @param EventDispatcherInterface  $eventDispatcher For dispatching domain events
-     * @param LoggerInterface           $logger          For logging command execution (channel: cookie.command.delete)
+     * @param CookieRepositoryInterface $repository For persistence operations
+     * @param LoggerInterface           $logger     For logging command execution (channel: cookie.command.delete)
      */
     public function __construct(
         private CookieRepositoryInterface $repository,
-        private EventDispatcherInterface $eventDispatcher,
         private LoggerInterface $logger
     ) {
     }
@@ -58,7 +59,6 @@ final readonly class DeleteCookieHandler
         ]);
 
         try {
-            // Load existing cookie to get its name for the event
             $cookie = $this->repository->findById($command->id);
 
             if ($cookie === null) {
@@ -67,17 +67,6 @@ final readonly class DeleteCookieHandler
 
             $cookieName = $cookie->getName()->getValue();
 
-            // B13: snapshot the cookie before persistence flips deleted_at,
-            // so the event payload preserves the final state for audit.
-            $snapshot = [
-                'id' => $cookie->getId(),
-                'name' => $cookieName,
-                'description' => $cookie->getDescription(),
-                'price' => $cookie->getPrice()->toDecimalString(),
-                'stock' => $cookie->getStock(),
-                'is_active' => $cookie->getIsActive(),
-            ];
-
             $this->logger->info('Cookie found, performing soft delete', [
                 'domain' => 'Cookie',
                 'command' => 'DeleteCookieCommand',
@@ -85,15 +74,11 @@ final readonly class DeleteCookieHandler
                 'cookieName' => $cookieName,
             ]);
 
-            // Perform soft delete; stamps deleted_by audit column.
-            $this->repository->delete($command->id, $command->deletedBy);
-
-            // Dispatch domain event
-            $this->eventDispatcher->dispatch(new CookieDeletedEvent(
-                cookieId: $command->id,
-                cookieName: $cookieName,
-                snapshot: $snapshot
-            ));
+            // The aggregate snapshots its final state and raises
+            // CookieDeletedEvent; the repository persists the flip and
+            // drains the event in the same transaction.
+            $cookie->markDeleted($command->deletedBy);
+            $this->repository->delete($cookie, $command->deletedBy);
 
             $durationMs = (hrtime(true) - $startTime) / 1_000_000;
 

@@ -29,6 +29,15 @@ use App\Domain\Shared\Exceptions\ValidationException;
  */
 final readonly class CookieStock
 {
+    /**
+     * Domain ceiling for a single SKU's on-hand quantity (round-4 R1).
+     *
+     * Exists primarily as an overflow guard: unbounded incrementBy() could
+     * wrap past PHP_INT_MAX into negative stock. One billion units is far
+     * beyond any plausible catalogue line while leaving generous headroom.
+     */
+    public const int MAX_STOCK = 1_000_000_000;
+
     private function __construct(public int $value)
     {
     }
@@ -40,6 +49,16 @@ final readonly class CookieStock
     {
         if ($value < 0) {
             throw ValidationException::tooSmall('stock', 0, $value, ErrorCodes::COOKIE_VALIDATION_STOCK);
+        }
+
+        if ($value > self::MAX_STOCK) {
+            throw ValidationException::outOfRange(
+                'stock',
+                0,
+                self::MAX_STOCK,
+                $value,
+                ErrorCodes::COOKIE_VALIDATION_STOCK
+            );
         }
 
         return new self($value);
@@ -66,11 +85,22 @@ final readonly class CookieStock
     }
 
     /**
-     * @throws ValidationException
+     * @throws ValidationException When the quantity is not positive or the
+     *                             result would exceed MAX_STOCK (overflow guard)
      */
     public function incrementBy(int $quantity): self
     {
         $this->assertPositiveQuantity($quantity);
+
+        if ($quantity > self::MAX_STOCK - $this->value) {
+            throw ValidationException::outOfRange(
+                'stock',
+                0,
+                self::MAX_STOCK,
+                $this->value + $quantity,
+                ErrorCodes::COOKIE_VALIDATION_STOCK
+            );
+        }
 
         return new self($this->value + $quantity);
     }

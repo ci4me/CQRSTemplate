@@ -47,8 +47,9 @@ final class CookieQueryRepositoryTest extends IntegrationTestCase
     public function test_find_by_id_skips_soft_deleted_rows(): void
     {
         $cookie = $this->saveCookie('Gone', '1.00', 1, true);
-        // Soft-delete via the write-side repository.
-        $this->cookieRepository->delete((int) $cookie->getId());
+        // Soft-delete via the write-side repository (round-4 R1 entity-based contract).
+        $cookie->markDeleted();
+        $this->cookieRepository->delete($cookie);
 
         $this->assertNull($this->readRepo->findById((int) $cookie->getId()));
     }

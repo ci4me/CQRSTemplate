@@ -33,7 +33,7 @@ final class CookieServiceProviderTest extends UnitTestCase
         ]);
 
         $this->expectException(\RuntimeException::class);
-        $this->expectExceptionMessage('Invalid repository, event dispatcher or logger type');
+        $this->expectExceptionMessage('Invalid repository or logger type');
 
         $provider->registerCommands(new CommandBus());
     }

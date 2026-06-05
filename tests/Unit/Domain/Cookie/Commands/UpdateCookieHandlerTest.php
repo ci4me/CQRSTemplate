@@ -7,10 +7,10 @@ namespace Tests\Unit\Domain\Cookie\Commands;
 use App\Domain\Cookie\Commands\UpdateCookie\UpdateCookieCommand;
 use App\Domain\Shared\ValueObjects\Actor;
 use App\Domain\Cookie\Commands\UpdateCookie\UpdateCookieHandler;
+use App\Domain\Cookie\Entities\Cookie;
 use App\Domain\Cookie\Events\CookieUpdated\CookieUpdatedEvent;
 use App\Domain\Cookie\Ports\CookieRepositoryInterface;
 use App\Domain\Shared\Exceptions\DomainException;
-use App\Domain\Shared\Events\EventDispatcherInterface;
 use App\Infrastructure\Logging\LoggerFactory;
 use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 use Tests\Support\Factories\CookieFactory;
@@ -20,16 +20,14 @@ use Tests\Support\UnitTestCase;
 final class UpdateCookieHandlerTest extends UnitTestCase
 {
     private CookieRepositoryInterface $repository;
-    private EventDispatcherInterface $eventDispatcher;
     private UpdateCookieHandler $handler;
 
     protected function setUp(): void
     {
         parent::setUp();
         $this->repository = $this->createMock(CookieRepositoryInterface::class);
-        $this->eventDispatcher = $this->createMock(EventDispatcherInterface::class);
         $logger = LoggerFactory::create('test.cookie.commands');
-        $this->handler = new UpdateCookieHandler($this->repository, $this->eventDispatcher, $logger);
+        $this->handler = new UpdateCookieHandler($this->repository, $logger);
     }
 
     public function test_updates_cookie_successfully(): void
@@ -55,12 +53,16 @@ final class UpdateCookieHandlerTest extends UnitTestCase
             ->method('existsByNameExcludingId')
             ->willReturn(false);
 
+        // Round-4 R1 contract: the aggregate carries CookieUpdatedEvent into
+        // save(); the repository drains it (outbox-first, same transaction).
+        // Handlers never dispatch.
         $this->repository->expects($this->once())
-            ->method('save');
+            ->method('save')
+            ->with($this->callback(static function (Cookie $cookie): bool {
+                $events = $cookie->peekEvents();
 
-        $this->eventDispatcher->expects($this->once())
-            ->method('dispatch')
-            ->with($this->isInstanceOf(CookieUpdatedEvent::class));
+                return count($events) === 1 && $events[0] instanceof CookieUpdatedEvent;
+            }));
 
         $this->handler->handle($command);
     }
@@ -189,7 +191,6 @@ final class UpdateCookieHandlerTest extends UnitTestCase
         ]);
         $this->repository->method('findById')->willReturn($existing);
         $this->repository->expects($this->once())->method('save');
-        $this->eventDispatcher->expects($this->once())->method('dispatch');
 
         $this->handler->handle($command);
     }

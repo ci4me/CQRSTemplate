@@ -192,4 +192,33 @@ final class MoneyTest extends UnitTestCase
         $this->expectException(ValidationException::class);
         Money::fromFloat(-2e20, Currency::usd());
     }
+
+    public function test_multiply_rejects_overflow(): void
+    {
+        // Round-4 R1: price * quantity is the most common ERP money op and
+        // must never silently wrap negative past PHP_INT_MAX.
+        $large = Money::fromMinorUnits(intdiv(PHP_INT_MAX, 2) + 1, Currency::usd());
+
+        $this->expectException(ValidationException::class);
+        $large->multiply(2);
+    }
+
+    public function test_multiply_rejects_negative_multiplier_overflow(): void
+    {
+        $large = Money::fromMinorUnits(intdiv(PHP_INT_MAX, 2) + 1, Currency::usd());
+
+        $this->expectException(ValidationException::class);
+        $large->multiply(-2);
+    }
+
+    public function test_multiply_by_zero_and_boundary_succeeds(): void
+    {
+        $money = Money::fromMinorUnits(500, Currency::usd());
+
+        $this->assertSame(0, $money->multiply(0)->amountMinor());
+
+        // Exactly at the boundary: PHP_INT_MAX itself is representable.
+        $max = Money::fromMinorUnits(PHP_INT_MAX, Currency::usd());
+        $this->assertSame(PHP_INT_MAX, $max->multiply(1)->amountMinor());
+    }
 }

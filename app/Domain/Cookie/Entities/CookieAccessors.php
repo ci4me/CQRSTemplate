@@ -71,4 +71,24 @@ trait CookieAccessors
     {
         return $this->deletedAt;
     }
+
+    public function getVersion(): int
+    {
+        return $this->version;
+    }
+
+    public function isAvailable(): bool
+    {
+        return $this->isActive && $this->deletedAt === null && ! $this->stock->isOutOfStock();
+    }
+
+    public function isOutOfStock(): bool
+    {
+        return $this->stock->isOutOfStock();
+    }
+
+    public function isDeleted(): bool
+    {
+        return $this->deletedAt !== null;
+    }
 }

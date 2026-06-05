@@ -29,31 +29,66 @@ final class UsersEmailUniqueWithSoftDelete extends Migration
     {
         $platform = strtolower($this->db->getPlatform());
 
-        // The original migration set `'unique' => true` on the `email`
-        // column, which CI4 implements as a single-column UNIQUE index.
-        // Index name conventions vary by engine:
-        //   - SQLite auto-generates `sqlite_autoindex_users_*`, no drop API.
-        //   - MySQL/MariaDB names it `email` or `users_email`.
-        // We attempt a best-effort drop and tolerate failures so the
-        // composite index always lands.
-        try {
-            $this->forge->dropKey('users', 'users_email', false);
-        } catch (\Throwable) {
-            // index didn't exist under that name — fine.
-        }
-
         if ($platform === 'sqlite3') {
-            // SQLite's column-level UNIQUE creates an auto-index that we
-            // can't drop directly. Adding the composite index alongside
-            // is enough — uniqueness on (email, deleted_at) is strictly
-            // weaker than uniqueness on email alone, so the original
-            // constraint stays as a backstop.
+            // SQLite: NEVER attempt dropKey here. The column-level UNIQUE is
+            // an auto-index that cannot be dropped, and the failed DDL is
+            // logged at ERROR by the connection layer even when the throw is
+            // caught — a full test run used to append ~92k copies of
+            // "SQLite3Exception: no such index: users_email" (round-4 R1).
+            // Adding the composite index alongside is enough — uniqueness on
+            // (email, deleted_at) is strictly weaker than uniqueness on
+            // email alone, so the original constraint stays as a backstop.
             $this->db->query('CREATE UNIQUE INDEX IF NOT EXISTS users_email_deleted_unique ON users (email, deleted_at)');
             return;
         }
 
+        // MySQL/MariaDB: the original migration set `'unique' => true` on the
+        // `email` column; the resulting index name varies (`email`,
+        // `users_email`, ...). Discover the real single-column index name
+        // from information_schema instead of guessing-and-catching.
+        $indexName = $this->findSingleColumnEmailIndexName();
+        if ($indexName !== null) {
+            $this->forge->dropKey('users', $indexName, false);
+        }
+
         $this->forge->addKey(['email', 'deleted_at'], false, true, 'users_email_deleted_unique');
         $this->forge->processIndexes('users');
+    }
+
+    /**
+     * Find the name of a single-column index covering ONLY users.email.
+     *
+     * Excludes the composite index this migration creates and the primary
+     * key. Returns null when no such index exists (fresh schema or already
+     * migrated) — the caller then skips the drop entirely, so no failing
+     * DDL is ever issued.
+     */
+    private function findSingleColumnEmailIndexName(): ?string
+    {
+        $rows = $this->db->query(
+            "SELECT INDEX_NAME, COUNT(*) AS column_count,
+                    SUM(CASE WHEN COLUMN_NAME = 'email' THEN 1 ELSE 0 END) AS email_columns
+             FROM information_schema.STATISTICS
+             WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'users'
+             GROUP BY INDEX_NAME"
+        )->getResultArray();
+
+        foreach ($rows as $row) {
+            $name = (string) ($row['INDEX_NAME'] ?? '');
+            $isSingleEmailIndex = (int) ($row['column_count'] ?? 0) === 1
+                && (int) ($row['email_columns'] ?? 0) === 1;
+
+            if (
+                $isSingleEmailIndex
+                && $name !== ''
+                && $name !== 'users_email_deleted_unique'
+                && strtoupper($name) !== 'PRIMARY'
+            ) {
+                return $name;
+            }
+        }
+
+        return null;
     }
 
     public function down(): void

@@ -67,13 +67,26 @@ final class LoggerFactory
     /**
      * Get the log directory path.
      *
-     * Uses WRITEPATH constant if defined (CodeIgniter context),
-     * otherwise falls back to __DIR__ navigation (standalone context).
+     * Test isolation (round-4 R1): under ENVIRONMENT=testing logs go to a
+     * throwaway directory beneath the system temp dir — a full PHPUnit run
+     * used to append hundreds of MB/day into the real writable/logs.
+     *
+     * Otherwise uses WRITEPATH when defined (CodeIgniter context) and falls
+     * back to __DIR__ navigation (standalone context).
      *
      * @return string Absolute path to logs directory with trailing slash
      */
     private static function getLogDirectory(): string
     {
+        if (defined('ENVIRONMENT') && ENVIRONMENT === 'testing') {
+            $dir = rtrim(sys_get_temp_dir(), '/') . '/cqrstemplate-test-logs/';
+            if (!is_dir($dir)) {
+                @mkdir($dir, 0775, true);
+            }
+
+            return $dir;
+        }
+
         if (defined('WRITEPATH')) {
             return WRITEPATH . 'logs/';
         }

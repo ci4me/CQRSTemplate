@@ -8,7 +8,6 @@ use App\Domain\Cookie\ErrorCodes;
 use App\Domain\Cookie\Ports\CookieRepositoryInterface;
 use App\Domain\Cookie\ValueObjects\CookieName;
 use App\Domain\Cookie\ValueObjects\CookiePrice;
-use App\Domain\Shared\Events\EventDispatcherInterface;
 use App\Domain\Shared\Exceptions\DomainException;
 use App\Domain\Shared\Exceptions\ValidationException;
 use Psr\Log\LoggerInterface;
@@ -20,9 +19,12 @@ use Psr\Log\LoggerInterface;
  * 1. Load existing cookie from repository
  * 2. Validate new data using domain rules
  * 3. Check business rules (e.g., name uniqueness if changed)
- * 4. Update cookie entity
+ * 4. Update cookie entity (raises CookieUpdatedEvent on the aggregate)
  * 5. Persist changes
- * 6. Dispatch domain event
+ *
+ * Event flow (round-4 R1): the repository is the single drain point — it
+ * writes the aggregate's events to the outbox and dispatches them in the
+ * same transaction. Handlers never dispatch.
  *
  * Business Rules Enforced:
  * - Cookie must exist
@@ -36,13 +38,11 @@ final readonly class UpdateCookieHandler
     /**
      * Create a new UpdateCookieHandler.
      *
-     * @param CookieRepositoryInterface $repository      For persistence operations
-     * @param EventDispatcherInterface  $eventDispatcher For dispatching domain events
-     * @param LoggerInterface           $logger          For logging command execution (channel: cookie.command.update)
+     * @param CookieRepositoryInterface $repository For persistence operations
+     * @param LoggerInterface           $logger     For logging command execution (channel: cookie.command.update)
      */
     public function __construct(
         private CookieRepositoryInterface $repository,
-        private EventDispatcherInterface $eventDispatcher,
         private LoggerInterface $logger
     ) {
     }
@@ -116,16 +116,11 @@ final readonly class UpdateCookieHandler
                 isActive: $command->isActive
             );
 
-            // Persist changes; stamps updated_by on the row.
+            // Persist changes; stamps updated_by on the row. The repository
+            // drains the aggregate's CookieUpdatedEvent outbox-first in the
+            // same transaction (single drain point — round-4 R1 removed the
+            // handler-side duplicate drain).
             $this->repository->save($cookie, $command->updatedBy);
-
-            // Drain entity-raised events explicitly so dispatch is
-            // deterministic regardless of repository implementation
-            // (the repository ALSO drains, but a mock repo in tests
-            // won't — the drain here is the contract the test asserts).
-            foreach ($cookie->pullEvents() as $event) {
-                $this->eventDispatcher->dispatch($event);
-            }
 
             $durationMs = (microtime(true) - $startTime) * 1000;
 

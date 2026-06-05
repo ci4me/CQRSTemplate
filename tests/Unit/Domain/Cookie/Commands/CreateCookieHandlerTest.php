@@ -7,23 +7,25 @@ namespace Tests\Unit\Domain\Cookie\Commands;
 use App\Domain\Cookie\Commands\CreateCookie\CreateCookieCommand;
 use App\Domain\Shared\ValueObjects\Actor;
 use App\Domain\Cookie\Commands\CreateCookie\CreateCookieHandler;
-use App\Domain\Cookie\Events\CookieCreated\CookieCreatedEvent;
+use App\Domain\Cookie\Entities\Cookie;
 use App\Domain\Cookie\Ports\CookieRepositoryInterface;
 use App\Domain\Shared\Exceptions\DomainException;
 use App\Domain\Shared\Exceptions\ValidationException;
-use App\Domain\Shared\Events\EventDispatcherInterface;
 use App\Infrastructure\Logging\LoggerFactory;
 use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 use Tests\Support\UnitTestCase;
 
 /**
  * Unit tests for CreateCookieHandler.
+ *
+ * Round-4 R1: the handler no longer dispatches CookieCreatedEvent — the
+ * repository records it on the aggregate after id assignment and drains it
+ * outbox-first in the same transaction (covered by repository tests).
  */
 #[AllowMockObjectsWithoutExpectations]
 final class CreateCookieHandlerTest extends UnitTestCase
 {
     private CookieRepositoryInterface $repository;
-    private EventDispatcherInterface $eventDispatcher;
     private CreateCookieHandler $handler;
 
     protected function setUp(): void
@@ -31,9 +33,8 @@ final class CreateCookieHandlerTest extends UnitTestCase
         parent::setUp();
 
         $this->repository = $this->createMock(CookieRepositoryInterface::class);
-        $this->eventDispatcher = $this->createMock(EventDispatcherInterface::class);
         $logger = LoggerFactory::create('test.cookie.commands');
-        $this->handler = new CreateCookieHandler($this->repository, $this->eventDispatcher, $logger);
+        $this->handler = new CreateCookieHandler($this->repository, $logger);
     }
 
     public function test_creates_cookie_successfully(): void
@@ -57,11 +58,6 @@ final class CreateCookieHandlerTest extends UnitTestCase
             ->expects($this->once())
             ->method('save')
             ->willReturn(1);
-
-        $this->eventDispatcher
-            ->expects($this->once())
-            ->method('dispatch')
-            ->with($this->isInstanceOf(CookieCreatedEvent::class));
 
         $result = $this->handler->handle($command);
 
@@ -143,7 +139,7 @@ final class CreateCookieHandlerTest extends UnitTestCase
         $this->handler->handle($command);
     }
 
-    public function test_dispatches_event_with_correct_data(): void
+    public function test_passes_validated_entity_to_repository(): void
     {
         $command = new CreateCookieCommand(
             name: 'New Cookie',
@@ -158,20 +154,20 @@ final class CreateCookieHandlerTest extends UnitTestCase
             ->method('existsByName')
             ->willReturn(false);
 
+        // The handler's job ends at building a valid aggregate and handing
+        // it to save(); event recording happens inside the repository after
+        // id assignment (round-4 R1).
         $this->repository
-            ->method('save')
-            ->willReturn(42);
-
-        $this->eventDispatcher
             ->expects($this->once())
-            ->method('dispatch')
-            ->with($this->callback(function ($event) {
-                return $event instanceof CookieCreatedEvent &&
-                       $event->cookieId === 42 &&
-                       $event->cookieName === 'New Cookie' &&
-                       $event->cookiePrice === '3.50' &&
-                       $event->initialStock === 75;
-            }));
+            ->method('save')
+            ->with($this->callback(static function (Cookie $cookie): bool {
+                return $cookie->getName()->getValue() === 'New Cookie'
+                    && $cookie->getPrice()->toDecimalString() === '3.50'
+                    && $cookie->getStock() === 75
+                    && $cookie->getId() === null
+                    && $cookie->peekEvents() === [];
+            }))
+            ->willReturn(42);
 
         $this->handler->handle($command);
     }

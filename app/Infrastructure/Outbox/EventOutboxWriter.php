@@ -82,7 +82,8 @@ final class EventOutboxWriter
      * @param string                  $aggregateType FQCN of the aggregate (e.g. Cookie::class).
      * @param int|string|null         $aggregateId   Identifier of the aggregate, if known.
      * @param \DateTimeImmutable|null $availableAt
-     * @return void
+     * @return int The inserted outbox row id (used by {@see self::markDelivered()}
+     *             after a successful synchronous dispatch).
      *                                If provided, the relay won't pick this row
      *                                up until that wall-clock time. Defaults to
      *                                "now" — typical for events emitted by a
@@ -93,14 +94,15 @@ final class EventOutboxWriter
         string $aggregateType,
         int|string|null $aggregateId,
         ?\DateTimeImmutable $availableAt = null
-    ): void {
+    ): int {
         $now = new \DateTimeImmutable();
         $available = $availableAt ?? $now;
         $correlationId = CorrelationIdService::get();
 
         $payload = $this->buildEnvelope($event, $now, $correlationId);
 
-        $this->connection()->table('event_outbox')->insert([
+        $connection = $this->connection();
+        $connection->table('event_outbox')->insert([
             'aggregate_type' => $aggregateType,
             'aggregate_id' => $aggregateId === null ? null : (string) $aggregateId,
             'event_class' => $event::class,
@@ -113,6 +115,35 @@ final class EventOutboxWriter
             'occurred_at' => $now->format('Y-m-d H:i:s'),
             'delivered_at' => null,
         ]);
+
+        return (int) $connection->insertID();
+    }
+
+    /**
+     * Mark a set of outbox rows as delivered after a SUCCESSFUL synchronous
+     * in-process dispatch (round-4 R1 double-delivery fix).
+     *
+     * Runs inside the same transaction as the entity write and the sync
+     * dispatch, so the committed row state is consistent:
+     *  - sync dispatch succeeded  -> row commits as `delivered` (relay skips it);
+     *  - sync listener threw      -> TransactionMiddleware rolls back row + write;
+     *  - no dispatcher configured -> rows stay `pending` and the relay delivers.
+     *
+     * @param list<int> $ids Outbox row ids returned by {@see self::append()}.
+     * @return void
+     */
+    public function markDelivered(array $ids): void
+    {
+        if ($ids === []) {
+            return;
+        }
+
+        $this->connection()->table('event_outbox')
+            ->whereIn('id', $ids)
+            ->update([
+                'status' => 'delivered',
+                'delivered_at' => (new \DateTimeImmutable())->format('Y-m-d H:i:s'),
+            ]);
     }
 
     /**

@@ -102,6 +102,21 @@ final class CookieRepository implements CookieRepositoryInterface
     }
 
     /**
+     * Late-inject the shared event dispatcher.
+     *
+     * #[AutoBind] construction passes null for the dispatcher to avoid the
+     * Services::eventDispatcher() -> ensureProvidersRegistered() ->
+     * discoverRepositories() recursion. Services calls this AFTER provider
+     * registration so production repositories dispatch synchronously
+     * (round-4 R1 — previously the dispatcher stayed null forever and
+     * repository-drained events were relay-only).
+     */
+    public function setEventDispatcher(EventDispatcher $eventDispatcher): void
+    {
+        $this->eventDispatcher = $eventDispatcher;
+    }
+
+    /**
      * Save a cookie (create or update).
      *
      * @param Cookie     $cookie The cookie to save
@@ -182,10 +197,11 @@ final class CookieRepository implements CookieRepositoryInterface
         // Outbox FIRST so the event row commits with the entity write
         // even if synchronous dispatch fails. The relay drains pending
         // rows out-of-band and retries until a listener succeeds.
+        $outboxIds = [];
         if ($this->outboxWriter !== null) {
             $cookieId = $cookie->getId();
             foreach ($events as $event) {
-                $this->outboxWriter->append($event, Cookie::class, $cookieId);
+                $outboxIds[] = $this->outboxWriter->append($event, Cookie::class, $cookieId);
             }
         }
 
@@ -199,6 +215,17 @@ final class CookieRepository implements CookieRepositoryInterface
         foreach ($events as $event) {
             $this->eventDispatcher->dispatch($event);
         }
+
+        // Round-4 R1 double-delivery fix: synchronous dispatch succeeded for
+        // every event, so the outbox rows are audit trail, not work items.
+        // Mark them delivered IN THE SAME TRANSACTION; the relay then only
+        // ever delivers rows whose synchronous dispatch never completed
+        // (crash before commit rolls everything back consistently).
+        if ($this->outboxWriter === null) {
+            return;
+        }
+
+        $this->outboxWriter->markDelivered($outboxIds);
     }
 
     /**
@@ -298,32 +325,43 @@ final class CookieRepository implements CookieRepositoryInterface
     }
 
     /**
-     * Soft delete a cookie.
+     * Soft-delete the aggregate (round-4 R1: entity-based, single UPDATE).
      *
-     * @param int        $id    The cookie ID
-     * @param Actor|null $actor Stamps `deleted_by` on the row before soft-delete
-     * @return bool True if successful, false if cookie doesn't exist
+     * One conditional UPDATE folds `deleted_at` + `deleted_by` + the version
+     * bump together (E11 single-statement delete) and is guarded by
+     * `WHERE id = ? AND version = ? AND deleted_at IS NULL` so a concurrent
+     * writer surfaces as a domain-level concurrent-modification instead of a
+     * silent lost update. Drains the aggregate's events (CookieDeletedEvent
+     * raised by {@see Cookie::markDeleted()}) outbox-first in the same
+     * transaction.
+     *
+     * @param Cookie     $cookie The aggregate (markDeleted() already invoked)
+     * @param Actor|null $actor  Stamps `deleted_by` on the row
+     * @throws DomainException Concurrent-modification when zero rows match
      */
-    public function delete(int $id, ?Actor $actor = null): bool
+    public function delete(Cookie $cookie, ?Actor $actor = null): void
     {
         try {
-            $cookie = $this->findById($id);
-            if ($cookie === null) {
-                return false;
+            $expectedVersion = $cookie->getVersion();
+            $update = [
+                'deleted_at' => date('Y-m-d H:i:s'),
+                'deleted_by' => $actor?->id,
+                'version' => $expectedVersion + 1,
+                'updated_at' => date('Y-m-d H:i:s'),
+            ];
+
+            $this->model->builder()
+                ->where('id', $cookie->getId())
+                ->where('version', $expectedVersion)
+                ->where('deleted_at IS NULL')
+                ->update($update);
+
+            if ($this->model->db->affectedRows() !== 1) {
+                $this->raiseConcurrentModification($cookie, $expectedVersion);
             }
 
-            if ($actor !== null) {
-                // Stamp deleted_by BEFORE the soft-delete so the audit trail
-                // captures who removed the row. CI4's softDelete sets only
-                // `deleted_at`; the column write here is the audit side.
-                $this->model->builder()
-                    ->where('id', $id)
-                    ->update(['deleted_by' => $actor->id]);
-            }
-
-            $result = $this->model->delete($id);
-
-            return is_bool($result) ? $result : false;
+            $cookie->bumpVersion(AggregateHydrator::key());
+            $this->dispatchPendingEvents($cookie);
         } catch (\Throwable $e) {
             $this->logDeleteError($e);
             throw $e;
@@ -331,31 +369,45 @@ final class CookieRepository implements CookieRepositoryInterface
     }
 
     /**
-     * Restore a previously soft-deleted cookie.
+     * Restore a previously soft-deleted aggregate (round-4 R1: entity-based).
      *
-     * @param int        $id    The cookie ID
-     * @param Actor|null $actor Stamps `updated_by` on the restored row
+     * Single UPDATE guarded by `WHERE id = ? AND version = ? AND deleted_at
+     * IS NOT NULL`, bumping the version in the same statement (E11 restore
+     * hygiene — the old implementation bumped no version and reported true
+     * even when zero rows changed). Drains the aggregate's events
+     * (CookieRestoredEvent raised by {@see Cookie::restore()}) outbox-first
+     * in the same transaction.
+     *
+     * @param Cookie     $cookie The aggregate (restore() already invoked)
+     * @param Actor|null $actor  Stamps `updated_by` on the restored row
+     * @throws DomainException Concurrent-modification when zero rows match
      */
-    public function restore(int $id, ?Actor $actor = null): bool
+    public function restore(Cookie $cookie, ?Actor $actor = null): void
     {
         try {
-            $cookie = $this->findByIdWithTrashed($id);
-            if ($cookie === null || !$cookie->isDeleted()) {
-                return false;
-            }
-
+            $expectedVersion = $cookie->getVersion();
             $update = [
                 'deleted_at' => null,
                 'deleted_by' => null,
+                'version' => $expectedVersion + 1,
+                'updated_at' => date('Y-m-d H:i:s'),
             ];
             if ($actor !== null) {
                 $update['updated_by'] = $actor->id;
-                $update['updated_at'] = date('Y-m-d H:i:s');
             }
 
-            return $this->model->builder()
-                ->where('id', $id)
+            $this->model->builder()
+                ->where('id', $cookie->getId())
+                ->where('version', $expectedVersion)
+                ->where('deleted_at IS NOT NULL')
                 ->update($update);
+
+            if ($this->model->db->affectedRows() !== 1) {
+                $this->raiseConcurrentModification($cookie, $expectedVersion);
+            }
+
+            $cookie->bumpVersion(AggregateHydrator::key());
+            $this->dispatchPendingEvents($cookie);
         } catch (\Throwable $e) {
             $this->logDeleteError($e);
             throw $e;
@@ -463,6 +515,11 @@ final class CookieRepository implements CookieRepositoryInterface
         // Hydrate the entity so subsequent saves take the UPDATE path and
         // optimistic locking applies.
         $cookie->assignId($newId, AggregateHydrator::key());
+        // Round-4 R1: the aggregate raises CookieCreatedEvent itself now
+        // that the id exists; save()'s drain ships it outbox-first in the
+        // same transaction as the INSERT (previously the create handler
+        // hand-dispatched with no outbox row -> no durability).
+        $cookie->recordCreation(AggregateHydrator::key());
 
         return $newId;
     }

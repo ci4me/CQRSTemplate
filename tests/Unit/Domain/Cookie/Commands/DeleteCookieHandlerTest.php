@@ -5,12 +5,12 @@ declare(strict_types=1);
 namespace Tests\Unit\Domain\Cookie\Commands;
 
 use App\Domain\Cookie\Commands\DeleteCookie\DeleteCookieCommand;
-use App\Domain\Shared\ValueObjects\Actor;
 use App\Domain\Cookie\Commands\DeleteCookie\DeleteCookieHandler;
+use App\Domain\Cookie\Entities\Cookie;
 use App\Domain\Cookie\Events\CookieDeleted\CookieDeletedEvent;
 use App\Domain\Cookie\Ports\CookieRepositoryInterface;
 use App\Domain\Shared\Exceptions\DomainException;
-use App\Domain\Shared\Events\EventDispatcherInterface;
+use App\Domain\Shared\ValueObjects\Actor;
 use App\Infrastructure\Logging\LoggerFactory;
 use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 use Tests\Support\Factories\CookieFactory;
@@ -20,16 +20,14 @@ use Tests\Support\UnitTestCase;
 final class DeleteCookieHandlerTest extends UnitTestCase
 {
     private CookieRepositoryInterface $repository;
-    private EventDispatcherInterface $eventDispatcher;
     private DeleteCookieHandler $handler;
 
     protected function setUp(): void
     {
         parent::setUp();
         $this->repository = $this->createMock(CookieRepositoryInterface::class);
-        $this->eventDispatcher = $this->createMock(EventDispatcherInterface::class);
         $logger = LoggerFactory::create('test.cookie.commands');
-        $this->handler = new DeleteCookieHandler($this->repository, $this->eventDispatcher, $logger);
+        $this->handler = new DeleteCookieHandler($this->repository, $logger);
     }
 
     public function test_deletes_cookie_successfully(): void
@@ -42,14 +40,21 @@ final class DeleteCookieHandlerTest extends UnitTestCase
             ->with(1)
             ->willReturn($existing);
 
+        // Round-4 R1 contract: the handler marks the AGGREGATE deleted
+        // (raising CookieDeletedEvent with the final snapshot) and hands the
+        // entity to the repository, which persists + drains in one
+        // transaction. Handlers never dispatch.
         $this->repository->expects($this->once())
             ->method('delete')
-            ->with(1)
-            ->willReturn(true);
+            ->with($this->callback(static function (Cookie $cookie): bool {
+                $events = $cookie->peekEvents();
 
-        $this->eventDispatcher->expects($this->once())
-            ->method('dispatch')
-            ->with($this->isInstanceOf(CookieDeletedEvent::class));
+                return $cookie->isDeleted()
+                    && count($events) === 1
+                    && $events[0] instanceof CookieDeletedEvent
+                    && $events[0]->cookieId === 1
+                    && $events[0]->snapshot !== [];
+            }));
 
         $this->handler->handle($command);
     }
@@ -62,6 +67,9 @@ final class DeleteCookieHandlerTest extends UnitTestCase
             ->method('findById')
             ->with(999)
             ->willReturn(null);
+
+        $this->repository->expects($this->never())
+            ->method('delete');
 
         $this->expectException(DomainException::class);
         $this->expectExceptionMessage('not found');

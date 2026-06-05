@@ -86,39 +86,42 @@ final class CookieServiceProvider implements DomainServiceProviderInterface
     public function registerCommands(CommandBus $commandBus): void
     {
         $repository = $this->getRepository('cookieRepository');
-        $eventDispatcher = $this->getRepository('eventDispatcher');
         $logger = $this->getRepository('logger');
 
         if (
             !$repository instanceof CookieRepositoryInterface
-            || !$eventDispatcher instanceof EventDispatcher
             || !$logger instanceof LoggerInterface
         ) {
-            throw new \RuntimeException('Invalid repository, event dispatcher or logger type injected');
+            throw new \RuntimeException('Invalid repository or logger type injected');
         }
+
+        // Round-4 R1: command handlers no longer take the event dispatcher —
+        // the repository is the single event drain (outbox-first, same
+        // transaction). The dispatcher reaches the repository via
+        // Services::ensureProvidersRegistered() -> setEventDispatcher().
 
         // Register CreateCookie command
         $commandBus->register(
             CreateCookieCommand::class,
-            new CreateCookieHandler($repository, $eventDispatcher, $logger)
+            new CreateCookieHandler($repository, $logger)
         );
 
         // Register UpdateCookie command
         $commandBus->register(
             UpdateCookieCommand::class,
-            new UpdateCookieHandler($repository, $eventDispatcher, $logger)
+            new UpdateCookieHandler($repository, $logger)
         );
 
         // Register DeleteCookie command
         $commandBus->register(
             DeleteCookieCommand::class,
-            new DeleteCookieHandler($repository, $eventDispatcher, $logger)
+            new DeleteCookieHandler($repository, $logger)
         );
 
         // Register RestoreCookie command
         $commandBus->register(
             RestoreCookieCommand::class,
-            new RestoreCookieHandler($repository, $eventDispatcher, $logger)
+            new RestoreCookieHandler($repository, $logger)
         );
     }
 

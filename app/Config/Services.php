@@ -241,6 +241,16 @@ class Services extends BaseService
             $repositories
         );
 
+        // Round-4 R1: late-inject the shared dispatcher into repositories.
+        // #[AutoBind] construction passes null for optional EventDispatcher
+        // params (recursion guard); without this loop the repositories never
+        // sync-dispatch and every repository-drained event was relay-only.
+        foreach ($repositories as $repository) {
+            if (is_object($repository) && method_exists($repository, 'setEventDispatcher')) {
+                $repository->setEventDispatcher($eventDispatcher);
+            }
+        }
+
         self::$providersRegistered = true;
 
         // Build the projection registry AFTER the domain providers have wired

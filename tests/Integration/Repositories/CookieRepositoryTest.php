@@ -9,6 +9,7 @@ use App\Domain\Cookie\Repositories\CookieRepository;
 use App\Domain\Cookie\ValueObjects\CookieName;
 use App\Domain\Cookie\ValueObjects\CookiePrice;
 use App\Domain\Shared\Events\DomainEventInterface;
+use App\Domain\Shared\Exceptions\DomainException;
 use App\Domain\Shared\ValueObjects\Actor;
 use App\Infrastructure\Bus\EventDispatcher;
 use App\Infrastructure\Logging\LoggerFactory;
@@ -204,11 +205,23 @@ final class CookieRepositoryTest extends IntegrationTestCase
         $cookie = CookieFactory::createCookie(['name' => 'To Be Deleted']);
         $id = $this->cookieRepository->save($cookie);
 
-        $this->cookieRepository->delete($id);
+        $this->softDeleteById($id);
 
         $found = $this->cookieRepository->findById($id);
 
         $this->assertNull($found);
+    }
+
+    /**
+     * Round-4 R1 helper: soft-delete through the entity-based contract
+     * (markDeleted() raises the event; the repository persists + drains).
+     */
+    private function softDeleteById(int $id, ?Actor $actor = null): void
+    {
+        $cookie = $this->cookieRepository->findById($id);
+        $this->assertNotNull($cookie, sprintf('Cookie #%d must exist before soft-deleting', $id));
+        $cookie->markDeleted($actor);
+        $this->cookieRepository->delete($cookie, $actor);
     }
 
     // ==========================================
@@ -395,7 +408,7 @@ final class CookieRepositoryTest extends IntegrationTestCase
     public function test_exists_by_name_includes_soft_deleted_cookies(): void
     {
         $id = $this->cookieRepository->save(CookieFactory::createCookie(['name' => 'Reserved Cookie']));
-        $this->cookieRepository->delete($id);
+        $this->softDeleteById($id);
 
         $this->assertTrue($this->cookieRepository->existsByName('Reserved Cookie'));
     }
@@ -446,7 +459,7 @@ final class CookieRepositoryTest extends IntegrationTestCase
     {
         $activeId = $this->cookieRepository->save(CookieFactory::createCookie(['name' => 'Active Cookie']));
         $deletedId = $this->cookieRepository->save(CookieFactory::createCookie(['name' => 'Deleted But Reserved']));
-        $this->cookieRepository->delete($deletedId);
+        $this->softDeleteById($deletedId);
 
         $exists = $this->cookieRepository->existsByNameExcludingId('Deleted But Reserved', $activeId);
 
@@ -460,19 +473,35 @@ final class CookieRepositoryTest extends IntegrationTestCase
     public function test_delete_soft_deletes_cookie(): void
     {
         $id = $this->cookieRepository->save(CookieFactory::createCookie(['name' => 'To Delete']));
+        $cookie = $this->cookieRepository->findById($id);
+        $this->assertNotNull($cookie);
 
-        $result = $this->cookieRepository->delete($id);
+        $cookie->markDeleted();
+        $this->cookieRepository->delete($cookie);
 
-        $this->assertTrue($result);
         $this->assertNull($this->cookieRepository->findById($id));
         $this->assertDatabaseMissing('cookies', ['id' => $id, 'deleted_at' => null]);
     }
 
-    public function test_delete_returns_false_for_non_existent_cookie(): void
+    public function test_delete_with_stale_version_throws_concurrent_modification(): void
     {
-        $result = $this->cookieRepository->delete(99999);
+        // Round-4 R1: the delete UPDATE is guarded by WHERE version = ?.
+        // An out-of-band writer bumping the version must surface as a
+        // domain-level concurrent-modification, not a silent zero-row no-op.
+        $id = $this->cookieRepository->save(CookieFactory::createCookie(['name' => 'Race Delete']));
+        $cookie = $this->cookieRepository->findById($id);
+        $this->assertNotNull($cookie);
 
-        $this->assertFalse($result);
+        \Config\Database::connect()->table('cookies')
+            ->where('id', $id)
+            ->update(['version' => $cookie->getVersion() + 1]);
+
+        $cookie->markDeleted();
+
+        $this->expectException(DomainException::class);
+        $this->expectExceptionMessage('modified by someone else');
+
+        $this->cookieRepository->delete($cookie);
     }
 
     // ==========================================
@@ -483,26 +512,34 @@ final class CookieRepositoryTest extends IntegrationTestCase
     // restore() Tests
     // ==========================================
 
-    public function test_restore_brings_back_soft_deleted_cookie(): void
+    public function test_restore_brings_back_soft_deleted_cookie_and_bumps_version(): void
     {
         $id = $this->cookieRepository->save(CookieFactory::createCookie(['name' => 'Restorable']));
-        $this->cookieRepository->delete($id);
+        $this->softDeleteById($id);
         $this->assertNull($this->cookieRepository->findById($id));
 
-        $restored = $this->cookieRepository->restore($id);
+        $trashed = $this->cookieRepository->findByIdWithTrashed($id);
+        $this->assertNotNull($trashed);
+        $trashed->restore();
+        $this->cookieRepository->restore($trashed);
 
-        $this->assertTrue($restored);
         $found = $this->cookieRepository->findById($id);
         $this->assertNotNull($found);
         $this->assertEquals('Restorable', $found->getName()->getValue());
+        // insert = v1, soft delete = v2, restore = v3 (round-4 R1: restore
+        // participates in optimistic locking instead of bypassing it).
+        $this->assertSame(3, $found->getVersion());
     }
 
     public function test_restore_with_actor_stamps_updated_by(): void
     {
         $id = $this->cookieRepository->save(CookieFactory::createCookie(['name' => 'Audit Restore']));
-        $this->cookieRepository->delete($id);
+        $this->softDeleteById($id);
 
-        $this->cookieRepository->restore($id, Actor::system('audit-test'));
+        $trashed = $this->cookieRepository->findByIdWithTrashed($id);
+        $this->assertNotNull($trashed);
+        $trashed->restore(Actor::system('audit-test'));
+        $this->cookieRepository->restore($trashed, Actor::system('audit-test'));
 
         $this->assertDatabaseHas('cookies', [
             'id' => $id,
@@ -511,20 +548,42 @@ final class CookieRepositoryTest extends IntegrationTestCase
         ]);
     }
 
-    public function test_restore_returns_false_when_cookie_does_not_exist(): void
+    public function test_restore_with_stale_version_throws_concurrent_modification(): void
     {
-        $result = $this->cookieRepository->restore(99999);
+        // Round-4 R1: a parallel restore (or any write) between load and
+        // UPDATE must surface as concurrent-modification — the old
+        // implementation reported success even when zero rows changed.
+        $id = $this->cookieRepository->save(CookieFactory::createCookie(['name' => 'Race Restore']));
+        $this->softDeleteById($id);
 
-        $this->assertFalse($result);
+        $stale = $this->cookieRepository->findByIdWithTrashed($id);
+        $this->assertNotNull($stale);
+
+        // Out-of-band restore: the row is live again with a newer version.
+        \Config\Database::connect()->table('cookies')
+            ->where('id', $id)
+            ->update(['deleted_at' => null, 'version' => $stale->getVersion() + 1]);
+
+        $stale->restore();
+
+        $this->expectException(DomainException::class);
+        $this->expectExceptionMessage('modified by someone else');
+
+        $this->cookieRepository->restore($stale);
     }
 
-    public function test_restore_returns_false_when_cookie_is_not_deleted(): void
+    public function test_restoring_a_live_cookie_is_a_business_rule_violation(): void
     {
+        // Round-4 R1: the "must currently be deleted" invariant lives on the
+        // AGGREGATE now (COOKIE_STATE_NOT_DELETED), not in the handler.
         $id = $this->cookieRepository->save(CookieFactory::createCookie(['name' => 'Not Deleted']));
+        $cookie = $this->cookieRepository->findById($id);
+        $this->assertNotNull($cookie);
 
-        $result = $this->cookieRepository->restore($id);
+        $this->expectException(DomainException::class);
+        $this->expectExceptionMessage('not deleted');
 
-        $this->assertFalse($result);
+        $cookie->restore();
     }
 
     // ==========================================
@@ -544,7 +603,7 @@ final class CookieRepositoryTest extends IntegrationTestCase
     public function test_find_by_id_with_trashed_returns_soft_deleted_cookie(): void
     {
         $id = $this->cookieRepository->save(CookieFactory::createCookie(['name' => 'Trashed']));
-        $this->cookieRepository->delete($id);
+        $this->softDeleteById($id);
 
         $found = $this->cookieRepository->findByIdWithTrashed($id);
 
@@ -570,14 +629,16 @@ final class CookieRepositoryTest extends IntegrationTestCase
         $this->assertGreaterThan(0, $id);
     }
 
-    public function test_delete_with_actor_stamps_deleted_by_before_soft_delete(): void
+    public function test_delete_with_actor_stamps_deleted_by(): void
     {
         $id = $this->cookieRepository->save(CookieFactory::createCookie(['name' => 'Audited Delete']));
+        $actor = Actor::system('audit-test');
 
-        $result = $this->cookieRepository->delete($id, Actor::system('audit-test'));
+        $this->softDeleteById($id, $actor);
 
-        $this->assertTrue($result);
         $this->assertNull($this->cookieRepository->findById($id));
+        // Single-statement delete (round-4 R1) folds the audit stamp in.
+        $this->assertDatabaseHas('cookies', ['id' => $id, 'deleted_by' => $actor->id]);
     }
 
     // ==========================================
@@ -586,10 +647,10 @@ final class CookieRepositoryTest extends IntegrationTestCase
 
     public function test_save_drains_pending_events_to_injected_dispatcher(): void
     {
-        // Cookie::create() does NOT raise an event (that's the command
-        // handler's job). Cookie::update() DOES raise CookieUpdatedEvent
-        // on the aggregate, which is what we observe here to prove the
-        // repository drains the pendingEvents buffer.
+        // Round-4 R1: the repository records CookieCreatedEvent on the first
+        // save (after id assignment) and drains the aggregate's buffer on
+        // every save. We subscribe to CookieUpdatedEvent and assert the
+        // update() -> save() path delivers it through the repository drain.
         $dispatched = [];
         $logger = LoggerFactory::create('test.cookie.repository.events');
         $dispatcher = new EventDispatcher($logger);
@@ -605,7 +666,7 @@ final class CookieRepositoryTest extends IntegrationTestCase
         $repo = new CookieRepository($logger, $loggingConfig, null, $dispatcher);
 
         $cookie = CookieFactory::createCookie(['name' => 'Event Drainer']);
-        $id = $repo->save($cookie); // first save: no events on aggregate
+        $id = $repo->save($cookie); // first save: drains CookieCreatedEvent (no subscriber here)
 
         $found = $repo->findById($id);
         $this->assertNotNull($found);
@@ -623,6 +684,81 @@ final class CookieRepositoryTest extends IntegrationTestCase
             \App\Domain\Cookie\Events\CookieUpdated\CookieUpdatedEvent::class,
             $dispatched[0]
         );
+    }
+
+    // ==========================================
+    // Outbox-first lifecycle delivery (round-4 R1)
+    // ==========================================
+
+    public function test_lifecycle_events_reach_outbox_and_are_marked_delivered_on_sync_dispatch(): void
+    {
+        // The full round-4 R1 contract in one flow: create, delete and
+        // restore each raise their event on the AGGREGATE, the repository
+        // writes it to the outbox in the same transaction, dispatches
+        // synchronously, and marks the row delivered so the relay never
+        // double-delivers.
+        $logger = LoggerFactory::create('test.cookie.repository.outbox');
+        /** @var \Config\Logging $loggingConfig */
+        $loggingConfig = config('Logging');
+        $dispatcher = new EventDispatcher($logger);
+        $writer = new \App\Infrastructure\Outbox\EventOutboxWriter();
+        $repo = new CookieRepository($logger, $loggingConfig, null, $dispatcher, $writer);
+
+        $cookie = CookieFactory::createCookie(['name' => 'Outbox Lifecycle']);
+        $id = $repo->save($cookie);
+
+        $this->assertDatabaseHas('event_outbox', [
+            'aggregate_id' => (string) $id,
+            'event_class' => \App\Domain\Cookie\Events\CookieCreated\CookieCreatedEvent::class,
+            'status' => 'delivered',
+        ]);
+
+        $cookie->markDeleted();
+        $repo->delete($cookie);
+
+        $this->assertDatabaseHas('event_outbox', [
+            'aggregate_id' => (string) $id,
+            'event_class' => \App\Domain\Cookie\Events\CookieDeleted\CookieDeletedEvent::class,
+            'status' => 'delivered',
+        ]);
+
+        $trashed = $repo->findByIdWithTrashed($id);
+        $this->assertNotNull($trashed);
+        $trashed->restore();
+        $repo->restore($trashed);
+
+        $this->assertDatabaseHas('event_outbox', [
+            'aggregate_id' => (string) $id,
+            'event_class' => \App\Domain\Cookie\Events\CookieRestored\CookieRestoredEvent::class,
+            'status' => 'delivered',
+        ]);
+
+        // No pending leftovers for this aggregate -> the relay has nothing
+        // to re-deliver (the double-delivery defect is closed).
+        $this->assertDatabaseMissing('event_outbox', [
+            'aggregate_id' => (string) $id,
+            'status' => 'pending',
+        ]);
+    }
+
+    public function test_outbox_rows_stay_pending_without_dispatcher_for_relay_delivery(): void
+    {
+        // Repository wired with outbox but NO dispatcher (e.g. a CLI
+        // context): rows must stay pending so the relay delivers them.
+        $logger = LoggerFactory::create('test.cookie.repository.outbox-pending');
+        /** @var \Config\Logging $loggingConfig */
+        $loggingConfig = config('Logging');
+        $writer = new \App\Infrastructure\Outbox\EventOutboxWriter();
+        $repo = new CookieRepository($logger, $loggingConfig, null, null, $writer);
+
+        $cookie = CookieFactory::createCookie(['name' => 'Relay Bound']);
+        $id = $repo->save($cookie);
+
+        $this->assertDatabaseHas('event_outbox', [
+            'aggregate_id' => (string) $id,
+            'event_class' => \App\Domain\Cookie\Events\CookieCreated\CookieCreatedEvent::class,
+            'status' => 'pending',
+        ]);
     }
 
     // ==========================================
@@ -654,10 +790,10 @@ final class CookieRepositoryTest extends IntegrationTestCase
         // Verify update
         $updated = $this->cookieRepository->findById($id);
         $this->assertEquals('Updated CRUD Cookie', $updated->getName()->getValue());
-        $this->assertEquals(3.99, $updated->getPrice()->getValue());
+        $this->assertSame('3.99', $updated->getPrice()->toDecimalString());
 
         // Delete
-        $this->cookieRepository->delete($id);
+        $this->softDeleteById($id);
         $deleted = $this->cookieRepository->findById($id);
         $this->assertNull($deleted);
     }

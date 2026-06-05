@@ -5,6 +5,10 @@ declare(strict_types=1);
 namespace Tests\Unit\Domain\Cookie\Entities;
 
 use App\Domain\Cookie\Entities\Cookie;
+use App\Domain\Cookie\ErrorCodes;
+use App\Domain\Cookie\Events\CookieCreated\CookieCreatedEvent;
+use App\Domain\Cookie\Events\CookieDeleted\CookieDeletedEvent;
+use App\Domain\Cookie\Events\CookieRestored\CookieRestoredEvent;
 use App\Domain\Cookie\Events\CookieStockChanged\CookieStockChangedEvent;
 use App\Domain\Cookie\ValueObjects\CookieName;
 use App\Domain\Cookie\ValueObjects\CookiePrice;
@@ -12,6 +16,7 @@ use App\Domain\Shared\Aggregate\AggregateHydrator;
 use App\Domain\Shared\Aggregate\AggregateRootInterface;
 use App\Domain\Shared\Exceptions\DomainException;
 use App\Domain\Shared\Exceptions\ValidationException;
+use App\Domain\Shared\ValueObjects\Actor;
 use ReflectionMethod;
 use Tests\Support\UnitTestCase;
 
@@ -603,6 +608,113 @@ final class CookieTest extends UnitTestCase
             updatedAt: '2025-10-21 10:00:00',
             deletedAt: null,
             version: -3
+        );
+    }
+
+    // ==================== LIFECYCLE EVENTS (round-4 R1) ====================
+
+    public function test_mark_deleted_sets_deleted_at_and_raises_event_with_snapshot(): void
+    {
+        $cookie = $this->makePersisted(id: 5);
+
+        $cookie->markDeleted(Actor::user(42));
+
+        $this->assertTrue($cookie->isDeleted());
+        $events = $cookie->peekEvents();
+        $this->assertCount(1, $events);
+        $this->assertInstanceOf(CookieDeletedEvent::class, $events[0]);
+        $this->assertSame(5, $events[0]->cookieId);
+        $this->assertSame(42, $events[0]->deletedBy);
+        $this->assertSame('Persisted Cookie', $events[0]->snapshot['name']);
+    }
+
+    public function test_mark_deleted_twice_is_rejected(): void
+    {
+        $cookie = $this->makePersisted(id: 5);
+        $cookie->markDeleted();
+
+        $this->expectException(DomainException::class);
+        $cookie->markDeleted();
+    }
+
+    public function test_mark_deleted_requires_persisted_entity(): void
+    {
+        $cookie = Cookie::create(
+            name: CookieName::fromString('Unsaved'),
+            description: null,
+            price: CookiePrice::fromString('1.00'),
+            stock: 1
+        );
+
+        $this->expectException(DomainException::class);
+        $cookie->markDeleted();
+    }
+
+    public function test_restore_clears_deleted_at_and_raises_event(): void
+    {
+        $cookie = $this->makePersisted(id: 9, deletedAt: '2026-01-01 00:00:00');
+
+        $cookie->restore(Actor::user(7));
+
+        $this->assertFalse($cookie->isDeleted());
+        $events = $cookie->peekEvents();
+        $this->assertCount(1, $events);
+        $this->assertInstanceOf(CookieRestoredEvent::class, $events[0]);
+        $this->assertSame(9, $events[0]->cookieId);
+        $this->assertSame(7, $events[0]->restoredBy);
+    }
+
+    public function test_restore_of_live_cookie_is_business_rule_violation(): void
+    {
+        $cookie = $this->makePersisted(id: 9);
+
+        try {
+            $cookie->restore();
+            $this->fail('Expected DomainException restoring a live cookie');
+        } catch (DomainException $e) {
+            $this->assertSame(ErrorCodes::COOKIE_STATE_NOT_DELETED, $e->getErrorCode());
+        }
+    }
+
+    public function test_record_creation_raises_created_event_with_current_state(): void
+    {
+        $cookie = $this->makePersisted(id: 11);
+
+        $cookie->recordCreation(AggregateHydrator::key());
+
+        $events = $cookie->peekEvents();
+        $this->assertCount(1, $events);
+        $this->assertInstanceOf(CookieCreatedEvent::class, $events[0]);
+        $this->assertSame(11, $events[0]->cookieId);
+        $this->assertSame('Persisted Cookie', $events[0]->cookieName);
+    }
+
+    public function test_record_creation_requires_persisted_entity(): void
+    {
+        $cookie = Cookie::create(
+            name: CookieName::fromString('Unsaved'),
+            description: null,
+            price: CookiePrice::fromString('1.00'),
+            stock: 1
+        );
+
+        $this->expectException(DomainException::class);
+        $cookie->recordCreation(AggregateHydrator::key());
+    }
+
+    private function makePersisted(int $id, ?string $deletedAt = null): Cookie
+    {
+        return Cookie::reconstitute(
+            id: $id,
+            name: CookieName::fromString('Persisted Cookie'),
+            description: 'desc',
+            price: CookiePrice::fromString('2.50'),
+            stock: 10,
+            isActive: true,
+            createdAt: '2025-10-21 10:00:00',
+            updatedAt: '2025-10-21 10:00:00',
+            deletedAt: $deletedAt,
+            version: 1
         );
     }
 }

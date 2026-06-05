@@ -132,25 +132,21 @@ final class CookieRepositoryErrorMappingTest extends UnitTestCase
     #[AllowMockObjectsWithoutExpectations]
     public function test_restore_logs_and_rethrows_when_model_throws(): void
     {
-        // findByIdWithTrashed inside restore() succeeds with a soft-deleted
-        // row, but the builder->update() chain throws.
+        // Entity-based contract (round-4 R1): the aggregate already ran
+        // restore(); the repository's builder->update() chain throws.
         $model = $this->createMock(CookieModel::class);
-        $model->method('withDeleted')->willReturnSelf();
-        $model->method('find')->willReturn([
-            'id' => 1, 'name' => 'Trashed', 'description' => null,
-            'price' => '1.00', 'stock' => 1, 'is_active' => 0,
-            'created_at' => '2026-05-22 00:00:00', 'updated_at' => null,
-            'deleted_at' => '2026-05-22 12:00:00', 'version' => 1,
-        ]);
         $model->method('builder')->willThrowException(new RuntimeException('restore failed'));
 
         $logger = LoggerFactory::create('test.cookie.repository.restore-error');
         $repo = new CookieRepository($logger, $this->logging(), $model);
 
+        $cookie = $this->makeTrashedCookie();
+        $cookie->restore();
+
         $this->expectException(RuntimeException::class);
         $this->expectExceptionMessage('restore failed');
 
-        $repo->restore(1);
+        $repo->restore($cookie);
     }
 
     #[AllowMockObjectsWithoutExpectations]
@@ -171,24 +167,53 @@ final class CookieRepositoryErrorMappingTest extends UnitTestCase
     #[AllowMockObjectsWithoutExpectations]
     public function test_delete_logs_and_rethrows_when_model_throws(): void
     {
-        // findById inside delete() returns a cookie row, but then the
-        // builder->update() chain throws.
+        // Entity-based contract (round-4 R1): the aggregate already ran
+        // markDeleted(); the repository's builder->update() chain throws.
         $model = $this->createMock(CookieModel::class);
-        $model->method('find')->willReturn([
-            'id' => 1, 'name' => 'Doomed', 'description' => null,
-            'price' => '1.00', 'stock' => 1, 'is_active' => 1,
-            'created_at' => '2026-05-22 00:00:00', 'updated_at' => null,
-            'deleted_at' => null, 'version' => 1,
-        ]);
-        $model->method('delete')->willThrowException(new RuntimeException('write barrier failed'));
+        $model->method('builder')->willThrowException(new RuntimeException('write barrier failed'));
 
         $logger = LoggerFactory::create('test.cookie.repository.delete-error');
         $repo = new CookieRepository($logger, $this->logging(), $model);
 
+        $cookie = $this->makeLiveCookie();
+        $cookie->markDeleted();
+
         $this->expectException(RuntimeException::class);
         $this->expectExceptionMessage('write barrier failed');
 
-        $repo->delete(1);
+        $repo->delete($cookie);
+    }
+
+    private function makeLiveCookie(): \App\Domain\Cookie\Entities\Cookie
+    {
+        return \App\Domain\Cookie\Entities\Cookie::reconstitute(
+            id: 1,
+            name: \App\Domain\Cookie\ValueObjects\CookieName::fromString('Doomed'),
+            description: null,
+            price: \App\Domain\Cookie\ValueObjects\CookiePrice::fromString('1.00'),
+            stock: 1,
+            isActive: true,
+            createdAt: '2026-05-22 00:00:00',
+            updatedAt: null,
+            deletedAt: null,
+            version: 1
+        );
+    }
+
+    private function makeTrashedCookie(): \App\Domain\Cookie\Entities\Cookie
+    {
+        return \App\Domain\Cookie\Entities\Cookie::reconstitute(
+            id: 1,
+            name: \App\Domain\Cookie\ValueObjects\CookieName::fromString('Trashed'),
+            description: null,
+            price: \App\Domain\Cookie\ValueObjects\CookiePrice::fromString('1.00'),
+            stock: 1,
+            isActive: false,
+            createdAt: '2026-05-22 00:00:00',
+            updatedAt: null,
+            deletedAt: '2026-05-22 12:00:00',
+            version: 1
+        );
     }
 
     #[AllowMockObjectsWithoutExpectations]

@@ -5,6 +5,9 @@ declare(strict_types=1);
 namespace App\Domain\Cookie\Entities;
 
 use App\Domain\Cookie\ErrorCodes;
+use App\Domain\Cookie\Events\CookieCreated\CookieCreatedEvent;
+use App\Domain\Cookie\Events\CookieDeleted\CookieDeletedEvent;
+use App\Domain\Cookie\Events\CookieRestored\CookieRestoredEvent;
 use App\Domain\Cookie\Events\CookieStockChanged\CookieStockChangedEvent;
 use App\Domain\Cookie\Events\CookieUpdated\CookieUpdatedEvent;
 use App\Domain\Cookie\ValueObjects\CookieName;
@@ -15,6 +18,7 @@ use App\Domain\Shared\Aggregate\AggregateRootInterface;
 use App\Domain\Shared\AggregateRoot;
 use App\Domain\Shared\Exceptions\DomainException;
 use App\Domain\Shared\Exceptions\ValidationException;
+use App\Domain\Shared\ValueObjects\Actor;
 
 /**
  * Cookie Domain Entity (Aggregate Root).
@@ -33,12 +37,16 @@ use App\Domain\Shared\Exceptions\ValidationException;
  * 4. Inactive cookies cannot be displayed to customers
  * 5. Deleted cookies are soft-deleted (deleted_at field)
  *
- * Event-emission convention:
- * - The entity raises CookieStockChangedEvent / CookieUpdatedEvent
- *   through the AggregateRoot trait; the repository drains them after
- *   a successful save.
- * - CookieCreatedEvent is dispatched by the create handler (not the
- *   entity) because the event payload needs the freshly-allocated id.
+ * Event-emission convention (round-4 R1 — single dispatch path):
+ * - The AGGREGATE raises every lifecycle event through the AggregateRoot
+ *   trait: update() -> CookieUpdatedEvent, markDeleted() -> CookieDeletedEvent,
+ *   restore() -> CookieRestoredEvent, changeStock() -> CookieStockChangedEvent,
+ *   and recordCreation() -> CookieCreatedEvent (invoked by the repository
+ *   right after the freshly-allocated id is assigned).
+ * - The REPOSITORY is the single drain point: it writes drained events to
+ *   the outbox in the same transaction as the entity write, then (when a
+ *   dispatcher is wired) dispatches synchronously and marks the rows
+ *   delivered. Handlers never construct or dispatch events.
  *
  * Hydration contract:
  * - {@see assignId()} and {@see bumpVersion()} require an
@@ -58,28 +66,18 @@ final class Cookie implements AggregateRootInterface
     use CookieAccessors;
 
     private ?int $id = null;
-    private CookieName $name;
-    private ?string $description;
-    private CookiePrice $price;
-    private CookieStock $stock;
-    private bool $isActive;
     private int $version = 0;
     private ?string $createdAt = null;
     private ?string $updatedAt = null;
     private ?string $deletedAt = null;
 
     private function __construct(
-        CookieName $name,
-        ?string $description,
-        CookiePrice $price,
-        CookieStock $stock,
-        bool $isActive = true
+        private CookieName $name,
+        private ?string $description,
+        private CookiePrice $price,
+        private CookieStock $stock,
+        private bool $isActive = true
     ) {
-        $this->name = $name;
-        $this->description = $description;
-        $this->price = $price;
-        $this->stock = $stock;
-        $this->isActive = $isActive;
     }
 
     /**
@@ -180,11 +178,6 @@ final class Cookie implements AggregateRootInterface
             );
         }
         $this->id = $id;
-    }
-
-    public function getVersion(): int
-    {
-        return $this->version;
     }
 
     /**
@@ -303,6 +296,86 @@ final class Cookie implements AggregateRootInterface
         ));
     }
 
+    /**
+     * Record the creation event once the repository has assigned the id.
+     *
+     * CookieCreatedEvent needs the freshly-allocated database id, so it
+     * cannot be raised inside {@see self::create()}. The repository calls
+     * this right after {@see self::assignId()} on the insert path; the
+     * event then drains through the same outbox-first path as every other
+     * lifecycle event. Hydrator-gated so handlers/controllers cannot fake
+     * a creation record.
+     *
+     * @param AggregateHydrator $key Permission token; pass `AggregateHydrator::key()`
+     * @throws DomainException When the entity has no id yet
+     */
+    // phpcs:ignore SlevomatCodingStandard.Functions.UnusedParameter.UnusedParameter -- $key is the security contract, not a value
+    public function recordCreation(AggregateHydrator $key): void
+    {
+        $this->assertPersisted('recordCreation');
+
+        $this->raiseEvent(new CookieCreatedEvent(
+            cookieId: (int) $this->id,
+            cookieName: $this->name->getValue(),
+            cookiePrice: $this->price->toDecimalString(),
+            initialStock: $this->stock->value
+        ));
+    }
+
+    /**
+     * Soft-delete the aggregate: record the final snapshot and raise
+     * CookieDeletedEvent. The repository persists the `deleted_at` flip
+     * and drains the event in the same transaction.
+     *
+     * @param Actor|null $actor Who initiated the delete (0/system when null)
+     * @throws DomainException When not persisted or already deleted
+     */
+    public function markDeleted(?Actor $actor = null): void
+    {
+        $this->assertPersisted('markDeleted');
+        $this->assertNotDeleted();
+
+        $snapshot = $this->snapshot();
+        $this->deletedAt = (new \DateTimeImmutable())->format('Y-m-d H:i:s');
+
+        $this->raiseEvent(new CookieDeletedEvent(
+            cookieId: (int) $this->id,
+            cookieName: $this->name->getValue(),
+            snapshot: $snapshot,
+            deletedBy: $actor->id ?? 0
+        ));
+    }
+
+    /**
+     * Bring a soft-deleted aggregate back to life and raise
+     * CookieRestoredEvent. Restoring a live cookie is a business-rule
+     * violation (COOKIE_STATE_NOT_DELETED) — restore is not idempotent
+     * by design, so a double-submit surfaces instead of silently passing.
+     *
+     * @param Actor|null $actor Who initiated the restore (0/system when null)
+     * @throws DomainException When not persisted or not currently deleted
+     */
+    public function restore(?Actor $actor = null): void
+    {
+        $this->assertPersisted('restore');
+
+        if ($this->deletedAt === null) {
+            throw DomainException::businessRuleViolation(
+                'Cookie is not deleted; nothing to restore.',
+                (string) $this->id,
+                ErrorCodes::COOKIE_STATE_NOT_DELETED
+            );
+        }
+
+        $this->deletedAt = null;
+
+        $this->raiseEvent(new CookieRestoredEvent(
+            cookieId: (int) $this->id,
+            restoredBy: $actor->id ?? 0,
+            restoredAt: (new \DateTimeImmutable())->format('c')
+        ));
+    }
+
     public function activate(): void
     {
         $this->assertNotDeleted();
@@ -313,20 +386,5 @@ final class Cookie implements AggregateRootInterface
     {
         $this->assertNotDeleted();
         $this->isActive = false;
-    }
-
-    public function isAvailable(): bool
-    {
-        return $this->isActive && $this->deletedAt === null && ! $this->stock->isOutOfStock();
-    }
-
-    public function isOutOfStock(): bool
-    {
-        return $this->stock->isOutOfStock();
-    }
-
-    public function isDeleted(): bool
-    {
-        return $this->deletedAt !== null;
     }
 }

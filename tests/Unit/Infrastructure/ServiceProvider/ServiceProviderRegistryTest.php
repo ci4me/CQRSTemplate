@@ -283,13 +283,11 @@ final class ServiceProviderRegistryTest extends UnitTestCase
                 {
                     return false;
                 }
-                public function delete(int $id, ?\App\Domain\Shared\ValueObjects\Actor $actor = null): bool
+                public function delete(\App\Domain\Cookie\Entities\Cookie $cookie, ?\App\Domain\Shared\ValueObjects\Actor $actor = null): void
                 {
-                    return true;
                 }
-                public function restore(int $id, ?\App\Domain\Shared\ValueObjects\Actor $actor = null): bool
+                public function restore(\App\Domain\Cookie\Entities\Cookie $cookie, ?\App\Domain\Shared\ValueObjects\Actor $actor = null): void
                 {
-                    return true;
                 }
                 public function findByIdWithTrashed(int $id): ?\App\Domain\Cookie\Entities\Cookie
                 {

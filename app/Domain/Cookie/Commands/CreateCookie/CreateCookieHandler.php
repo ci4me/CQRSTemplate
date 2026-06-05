@@ -6,11 +6,9 @@ namespace App\Domain\Cookie\Commands\CreateCookie;
 
 use App\Domain\Cookie\Entities\Cookie;
 use App\Domain\Cookie\ErrorCodes;
-use App\Domain\Cookie\Events\CookieCreated\CookieCreatedEvent;
 use App\Domain\Cookie\Ports\CookieRepositoryInterface;
 use App\Domain\Cookie\ValueObjects\CookieName;
 use App\Domain\Cookie\ValueObjects\CookiePrice;
-use App\Domain\Shared\Events\EventDispatcherInterface;
 use App\Domain\Shared\Exceptions\DomainException;
 use App\Domain\Shared\Exceptions\ValidationException;
 use Psr\Log\LoggerInterface;
@@ -23,7 +21,10 @@ use Psr\Log\LoggerInterface;
  * 2. Check business rules (e.g., name uniqueness)
  * 3. Create Cookie domain entity
  * 4. Persist via repository
- * 5. Dispatch domain event
+ *
+ * Event flow (round-4 R1): the repository records CookieCreatedEvent on the
+ * aggregate right after the id is allocated and drains it outbox-first in
+ * the same transaction. Handlers no longer construct or dispatch events.
  *
  * Business Rules Enforced:
  * - Cookie name must be unique (case-insensitive)
@@ -44,13 +45,11 @@ final readonly class CreateCookieHandler
     /**
      * Create a new CreateCookieHandler.
      *
-     * @param CookieRepositoryInterface $repository      For persistence operations
-     * @param EventDispatcherInterface  $eventDispatcher For dispatching domain events
-     * @param LoggerInterface           $logger          For logging command execution (channel: cookie.command.create)
+     * @param CookieRepositoryInterface $repository For persistence operations
+     * @param LoggerInterface           $logger     For logging command execution (channel: cookie.command.create)
      */
     public function __construct(
         private CookieRepositoryInterface $repository,
-        private EventDispatcherInterface $eventDispatcher,
         private LoggerInterface $logger
     ) {
     }
@@ -99,15 +98,9 @@ final readonly class CreateCookieHandler
             );
 
             // Persist to database; stamp created_by/updated_by audit columns.
+            // The repository records + drains CookieCreatedEvent in the same
+            // transaction (outbox-first), so nothing to dispatch here.
             $cookieId = $this->repository->save($cookie, $command->createdBy);
-
-            // Dispatch domain event
-            $this->eventDispatcher->dispatch(new CookieCreatedEvent(
-                cookieId: $cookieId,
-                cookieName: $name->getValue(),
-                cookiePrice: $price->toDecimalString(),
-                initialStock: $command->stock
-            ));
 
             $durationMs = (microtime(true) - $startTime) * 1000;
 

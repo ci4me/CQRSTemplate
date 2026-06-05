@@ -74,22 +74,33 @@ interface CookieRepositoryInterface
     public function existsByNameExcludingId(string $name, int $excludeId): bool;
 
     /**
-     * Soft-delete the row identified by `$id`.
+     * Soft-delete the aggregate (round-4 R1: entity-based contract).
      *
-     * Sets `deleted_at` and stamps `deleted_by` with the supplied actor.
-     * Returns false when no row matches (and therefore nothing was deleted).
-     * The actor MUST be non-null in HTTP/user-driven flows; null is reserved
-     * for system contexts (background jobs, migrations).
+     * The caller MUST have invoked {@see Cookie::markDeleted()} first so the
+     * aggregate carries the CookieDeletedEvent; this method persists the
+     * `deleted_at`/`deleted_by` flip with an optimistic-locking guard
+     * (`WHERE id = ? AND version = ? AND deleted_at IS NULL`), bumps the
+     * version, and drains the aggregate's events outbox-first in the same
+     * transaction. The actor MUST be non-null in HTTP/user-driven flows;
+     * null is reserved for system contexts (background jobs, migrations).
+     *
+     * @throws \App\Domain\Shared\Exceptions\DomainException Concurrent-modification when zero rows match.
      */
-    public function delete(int $id, ?Actor $actor = null): bool;
+    public function delete(Cookie $cookie, ?Actor $actor = null): void;
 
     /**
-     * Restore a previously soft-deleted cookie.
+     * Restore a previously soft-deleted aggregate (round-4 R1: entity-based).
      *
-     * Looks the row up including soft-deleted rows, clears `deleted_at`, and
-     * returns true on success. Returns false if no row matches.
+     * The caller MUST have invoked {@see Cookie::restore()} first so the
+     * aggregate carries the CookieRestoredEvent and a cleared `deletedAt`.
+     * Persists the un-delete with an optimistic-locking guard
+     * (`WHERE id = ? AND version = ? AND deleted_at IS NOT NULL`), bumps the
+     * version, and drains the aggregate's events outbox-first in the same
+     * transaction.
+     *
+     * @throws \App\Domain\Shared\Exceptions\DomainException Concurrent-modification when zero rows match.
      */
-    public function restore(int $id, ?Actor $actor = null): bool;
+    public function restore(Cookie $cookie, ?Actor $actor = null): void;
 
     /**
      * Find a cookie by id INCLUDING soft-deleted rows.

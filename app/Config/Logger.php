@@ -37,9 +37,15 @@ class Logger extends BaseConfig
      * For a live site you'll usually enable Critical or higher (3) to be logged otherwise
      * your log files will fill up very fast.
      *
+     * Round-4 R1: `testing` runs at threshold 4 (runtime errors and worse).
+     * The previous blanket 9 meant every framework debug/info line from a
+     * full PHPUnit run was appended to writable/logs — combined with a
+     * migration that raised a caught-but-logged exception per test, one
+     * day's CI logging reached ~390 MB.
+     *
      * @var int|list<int>
      */
-    public $threshold = (ENVIRONMENT === 'production') ? 4 : 9;
+    public $threshold = (ENVIRONMENT === 'production' || ENVIRONMENT === 'testing') ? 4 : 9;
 
     /**
      * --------------------------------------------------------------------------

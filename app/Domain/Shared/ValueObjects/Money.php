@@ -258,10 +258,28 @@ final readonly class Money implements \JsonSerializable
     }
 
     /**
-     * multiply.
+     * Multiply by an integer factor (the price * quantity line-total op).
+     *
+     * Guards against 64-bit overflow BEFORE constructing (round-4 R1): a
+     * large quantity would otherwise silently wrap the product negative and
+     * corrupt every downstream total. The string-ingestion factories were
+     * already guarded; this closes the same hole on the arithmetic path.
+     *
+     * @throws ValidationException When the product exceeds PHP_INT_MAX/MIN
      */
     public function multiply(int $multiplier): self
     {
+        if (
+            $multiplier !== 0
+            && $this->amountMinor !== 0
+            && intdiv(PHP_INT_MAX, abs($multiplier)) < abs($this->amountMinor)
+        ) {
+            throw ValidationException::invalidFormat(
+                'amount',
+                sprintf('a value within %s minor units', PHP_INT_MAX)
+            );
+        }
+
         return new self($this->amountMinor * $multiplier, $this->currency);
     }
 
