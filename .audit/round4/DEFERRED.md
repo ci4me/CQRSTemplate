@@ -8,12 +8,24 @@ session per `.audit/round4/CONSOLIDATED-PLAN.md`. Everything below was
 
 ## Disposition of the open PR stack (#32, #34–#42)
 
-Round-4 re-implemented the load-bearing content of E04/E05(part)/E07(part)/
-E08(part)/E10(part)/E11(part)/E12(part)/E18(logger-isolation) directly on
-the branch. **Recommendation: close PRs #32, #34–#42 as "folded into
-round-4"** after diffing each against the branch for any nugget not
-re-implemented (notably: E05.5 PHPStan custom rule, full abstract handler
-bases, CookieChangeSet typed snapshot from PR #35).
+Round-4 re-implemented the load-bearing content directly on the branch.
+**Recommendation: close every PR below as "folded into round-4"** (file
+lists diffed against the tree on 2026-06-05; per-PR verdicts follow). The
+stack is cumulative — later PRs carry earlier branches' files — so each
+row's "NOT reclaimed" column is the only content unique to that PR.
+
+| PR | Landed in round-4 | NOT reclaimed (lives only in the PR branch) |
+|---|---|---|
+| #32 (E04) | Envelope (eventId/occurredAt/actorId), 5 events extended, writer stamps event_uuid | **CookieChangeSet** typed snapshot (+tests); `aggregateType`/`aggregateId` ON the envelope; EventDispatcher tweaks |
+| #34 (E05) | Domain-owned marker interfaces on all 21 handlers; Closure-typed buses | **Abstract Command/Query handler bases, ClockInterface/SystemClock, LogSampler** (+tests) — largest deferred item |
+| #35 (E07) | markDeleted/restore/recordCreation on aggregate; repo single drain; NOT_DELETED code | **CookieActivated/CookieDeactivated events** (activate()/deactivate() still raise nothing); **StockChangeReason enum** (string reasons landed); CookieSnapshot VO; CookieStateAssertions split |
+| #36 (E08) | Restore parity; handler/dispatcher decoupling; pagination guards | Handler migration onto the abstract bases (blocked on #34 content) |
+| #37 (E05.5) | (the markers the rules enforce are in-tree) | **Three custom PHPStan rules + fixtures** under tools/PHPStan — natural next step, re-cut against new base |
+| #38 (E12.5) | Outbox-side dedup (event_uuid UNIQUE) + markDelivered-in-tx | **ProcessedEventStore** (at-most-once listeners) + migration + flow tests |
+| #39 (E17) | — | Entire idiom polish (cosmetic) |
+| #40 (E15) | Inventory round-4 addendum (different content; this PR's docs are stale now) | PROJECTIONS.md; scaffolding-skill rewrite; **bin/docs-cookie-sync CI guard** |
+| #41 (E11) | existsByName live-only; LIKE prefix+escape; version-guarded delete/restore | **purge()** hard-delete; **fromTrusted()** reconstitution on CookieName/CookiePrice; write-port read-concern split |
+| #42 (E18) | Logger isolation (re-implemented); migration dropKey fix; CookieStockTest | **deptrac LoggerFactory-ban rule**; ErrorCodes/PriceFormatter/CookieFactory test backfill; sleep() removal |
 
 ## Deferred — architectural
 
