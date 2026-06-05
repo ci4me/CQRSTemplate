@@ -45,7 +45,7 @@ final class CookiePriceTest extends UnitTestCase
         $price = CookiePrice::fromString('0.01');
 
         $this->assertSame(1, $price->getMinorUnits());
-        $this->assertSame('$0.01', $price->format());
+        $this->assertSame('$0.01', \App\Domain\Cookie\Services\PriceFormatter::format($price));
     }
 
     public function test_accepts_large_price(): void
@@ -102,8 +102,8 @@ final class CookiePriceTest extends UnitTestCase
     {
         $price = CookiePrice::fromString('2.99');
 
-        $this->assertSame('$2.99', $price->format());
-        $this->assertSame('EUR 2.99', $price->format('EUR '));
+        $this->assertSame('$2.99', \App\Domain\Cookie\Services\PriceFormatter::format($price));
+        $this->assertSame('EUR 2.99', \App\Domain\Cookie\Services\PriceFormatter::format($price, 'EUR '));
     }
 
     public function test_string_parsing_with_currency_symbol(): void
@@ -212,7 +212,7 @@ final class CookiePriceTest extends UnitTestCase
         $price = CookiePrice::fromString('4.99');
 
         $this->assertSame('USD', $price->getCurrency()->iso);
-        $this->assertSame('$4.99', $price->format());
+        $this->assertSame('$4.99', \App\Domain\Cookie\Services\PriceFormatter::format($price));
     }
 
     public function test_explicit_currency_changes_format_symbol(): void
@@ -220,7 +220,7 @@ final class CookiePriceTest extends UnitTestCase
         $price = CookiePrice::fromString('4.99', Currency::eur());
 
         $this->assertSame('EUR', $price->getCurrency()->iso);
-        $this->assertSame('€4.99', $price->format());
+        $this->assertSame('€4.99', \App\Domain\Cookie\Services\PriceFormatter::format($price));
         $this->assertSame(499, $price->getMinorUnits());
     }
 
@@ -228,7 +228,7 @@ final class CookiePriceTest extends UnitTestCase
     {
         $price = CookiePrice::fromString('4.99');
 
-        $this->assertSame('R$4.99', $price->format('R$'));
+        $this->assertSame('R$4.99', \App\Domain\Cookie\Services\PriceFormatter::format($price, 'R$'));
     }
 
     public function test_arithmetic_across_currencies_is_rejected(): void

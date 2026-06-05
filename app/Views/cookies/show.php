@@ -44,7 +44,7 @@
                         <tr>
                             <th>Stock:</th>
                             <td>
-                                <span class="badge bg-<?= $cookie->isOutOfStock() ? 'danger' : 'success' ?> fs-6">
+                                <span class="badge bg-<?= $cookie->outOfStock ? 'danger' : 'success' ?> fs-6">
                                     <?= esc($cookie->stock) ?> units
                                 </span>
                             </td>

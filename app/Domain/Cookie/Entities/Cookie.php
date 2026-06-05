@@ -261,26 +261,32 @@ final class Cookie implements AggregateRootInterface
     /**
      * Decrease stock by a given quantity.
      *
+     * @param int    $quantity How many units to remove (> 0)
+     * @param string $reason   Business reason for the movement (e.g. "sale",
+     *                         "shrinkage") — flows into CookieStockChangedEvent
      * @throws ValidationException
      * @throws DomainException If resulting stock would be negative
      */
-    public function decreaseStock(int $quantity): void
+    public function decreaseStock(int $quantity, string $reason = 'manual_decrease'): void
     {
         $this->assertNotDeleted();
         $this->assertPersisted('decreaseStock');
-        $this->changeStock($this->stock->decrementBy($quantity), 'decreaseStock');
+        $this->changeStock($this->stock->decrementBy($quantity), $reason);
     }
 
     /**
      * Increase stock by a given quantity.
      *
+     * @param int    $quantity How many units to add (> 0)
+     * @param string $reason   Business reason for the movement (e.g.
+     *                         "restock_received", "return")
      * @throws ValidationException If quantity is not positive
      */
-    public function increaseStock(int $quantity): void
+    public function increaseStock(int $quantity, string $reason = 'manual_increase'): void
     {
         $this->assertNotDeleted();
         $this->assertPersisted('increaseStock');
-        $this->changeStock($this->stock->incrementBy($quantity), 'increaseStock');
+        $this->changeStock($this->stock->incrementBy($quantity), $reason);
     }
 
     private function changeStock(CookieStock $newStock, string $reason): void

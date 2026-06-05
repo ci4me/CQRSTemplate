@@ -224,6 +224,7 @@ final class GetCookiesPaginatedHandlerTest extends UnitTestCase
                 price: '1.00',
                 formattedPrice: '$1.00',
                 stock: 10,
+                outOfStock: false,
                 isActive: true,
                 createdAt: '2025-10-21 10:00:00',
                 updatedAt: null

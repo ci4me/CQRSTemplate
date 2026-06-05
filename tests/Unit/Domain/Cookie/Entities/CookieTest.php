@@ -286,7 +286,7 @@ final class CookieTest extends UnitTestCase
         $this->assertInstanceOf(CookieStockChangedEvent::class, $events[0]);
         $this->assertEquals(10, $events[0]->previousStock);
         $this->assertEquals(7, $events[0]->newStock);
-        $this->assertEquals('decreaseStock', $events[0]->reason);
+        $this->assertEquals('manual_decrease', $events[0]->reason); // default business reason (round-4 R3)
 
         $this->assertFalse($cookie->hasPendingEvents(), 'pull drains the buffer');
     }
@@ -310,7 +310,7 @@ final class CookieTest extends UnitTestCase
         $this->assertInstanceOf(CookieStockChangedEvent::class, $events[0]);
         $this->assertEquals(5, $events[0]->previousStock);
         $this->assertEquals(13, $events[0]->newStock);
-        $this->assertEquals('increaseStock', $events[0]->reason);
+        $this->assertEquals('manual_increase', $events[0]->reason); // default business reason (round-4 R3)
     }
 
     public function test_has_stock_returns_true_when_available(): void

@@ -41,21 +41,43 @@ final class CookieDTOTest extends UnitTestCase
         $this->assertNull($dto->description);
     }
 
-    public function test_is_out_of_stock_returns_true_when_stock_is_zero(): void
+    public function test_out_of_stock_is_precomputed_field(): void
     {
-        $cookie = CookieFactory::createPersistedCookie(['stock' => 0]);
+        // E10 (round-4 R3): read DTOs carry data, not behaviour — the old
+        // isOutOfStock() method became the precomputed outOfStock field.
+        $dto = CookieDTO::fromEntity(CookieFactory::createPersistedCookie(['stock' => 0]));
+        $this->assertTrue($dto->outOfStock);
 
-        $dto = CookieDTO::fromEntity($cookie);
-
-        $this->assertTrue($dto->isOutOfStock());
+        $dto = CookieDTO::fromEntity(CookieFactory::createPersistedCookie(['stock' => 1]));
+        $this->assertFalse($dto->outOfStock);
     }
 
-    public function test_is_out_of_stock_returns_false_when_stock_is_positive(): void
+    public function test_from_entity_requires_persisted_entity(): void
     {
-        $cookie = CookieFactory::createPersistedCookie(['stock' => 1]);
+        $unsaved = \App\Domain\Cookie\Entities\Cookie::create(
+            name: \App\Domain\Cookie\ValueObjects\CookieName::fromString('Unsaved'),
+            description: null,
+            price: \App\Domain\Cookie\ValueObjects\CookiePrice::fromString('1.00'),
+            stock: 1
+        );
 
-        $dto = CookieDTO::fromEntity($cookie);
+        $this->expectException(\LogicException::class);
+        CookieDTO::fromEntity($unsaved);
+    }
 
-        $this->assertFalse($dto->isOutOfStock());
+    public function test_wire_shape_is_snake_case_with_matching_json(): void
+    {
+        // ReadDTOInterface contract (E10): toArray() === jsonSerialize(),
+        // snake_case keys at the JSON boundary.
+        $dto = CookieDTO::fromEntity(CookieFactory::createPersistedCookie(['id' => 9, 'stock' => 0]));
+
+        $wire = $dto->toArray();
+        $this->assertSame(9, $wire['id']);
+        $this->assertArrayHasKey('formatted_price', $wire);
+        $this->assertArrayHasKey('out_of_stock', $wire);
+        $this->assertArrayHasKey('is_active', $wire);
+        $this->assertTrue($wire['out_of_stock']);
+        $this->assertSame($wire, $dto->jsonSerialize());
+        $this->assertSame(json_encode($wire), json_encode($dto));
     }
 }

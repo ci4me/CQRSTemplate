@@ -171,6 +171,7 @@ final class GetCookieByIdHandlerTest extends UnitTestCase
             price: '2.99',
             formattedPrice: '$2.99',
             stock: 5,
+            outOfStock: false,
             isActive: true,
             createdAt: '2025-10-21 10:00:00',
             updatedAt: null

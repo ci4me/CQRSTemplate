@@ -188,6 +188,7 @@ final class CookieQueryRepository implements CookieQueryRepositoryInterface
     {
         $price = (string) ($row['price'] ?? '0.00');
         $formattedPrice = $this->formatPrice($price);
+        $stock = (int) ($row['stock'] ?? 0);
 
         return new CookieDTO(
             id: (int) $row['id'],
@@ -195,11 +196,32 @@ final class CookieQueryRepository implements CookieQueryRepositoryInterface
             description: isset($row['description']) && is_string($row['description']) ? $row['description'] : null,
             price: $price,
             formattedPrice: $formattedPrice,
-            stock: (int) ($row['stock'] ?? 0),
+            stock: $stock,
+            outOfStock: $stock === 0,
             isActive: (bool) ($row['is_active'] ?? 0),
-            createdAt: isset($row['created_at']) && is_string($row['created_at']) ? $row['created_at'] : null,
-            updatedAt: isset($row['updated_at']) && is_string($row['updated_at']) ? $row['updated_at'] : null,
+            createdAt: $this->toIso8601($row['created_at'] ?? null),
+            updatedAt: $this->toIso8601($row['updated_at'] ?? null),
         );
+    }
+
+    /**
+     * Convert a stored MySQL DATETIME ("Y-m-d H:i:s") into the ISO-8601
+     * string the read DTO contract promises (E10, round-4 R3). Values that
+     * are already ISO-shaped or unparseable pass through unchanged — read
+     * paths never throw on bad source data.
+     */
+    private function toIso8601(mixed $value): ?string
+    {
+        if (!is_string($value) || $value === '') {
+            return null;
+        }
+
+        $parsed = \DateTimeImmutable::createFromFormat('Y-m-d H:i:s', $value);
+        if ($parsed === false) {
+            return $value; // already ISO or unknown shape — pass through
+        }
+
+        return $parsed->format(\DateTimeInterface::ATOM);
     }
 
     /**
@@ -215,11 +237,15 @@ final class CookieQueryRepository implements CookieQueryRepositoryInterface
 
     /**
      * Best-effort formatting of a stored decimal price.
+     *
+     * Routed through {@see \App\Domain\Cookie\Services\PriceFormatter} —
+     * the single formatting home (E10) — instead of the deprecated
+     * CookiePrice::format().
      */
     private function formatPrice(string $decimalPrice): string
     {
         try {
-            return CookiePrice::fromString($decimalPrice)->format();
+            return \App\Domain\Cookie\Services\PriceFormatter::format(CookiePrice::fromString($decimalPrice));
         } catch (\Throwable) {
             // Defensive: read paths should not crash on malformed source
             // rows. Returning the raw decimal keeps the UI usable.

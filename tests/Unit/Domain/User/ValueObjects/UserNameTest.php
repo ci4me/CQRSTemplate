@@ -29,7 +29,8 @@ final class UserNameTest extends UnitTestCase
     {
         $this->expectException(\InvalidArgumentException::class);
         $this->expectExceptionMessage('User name is required');
-        $this->expectExceptionCode(ErrorCodes::USER_VALIDATION_NAME);
+        // Round-4 R3: the domain code travels via getErrorCode() (ValidationException),
+        // not the PHP \Exception::$code slot.
 
         UserName::fromString('');
     }
@@ -46,7 +47,8 @@ final class UserNameTest extends UnitTestCase
     {
         $this->expectException(\InvalidArgumentException::class);
         $this->expectExceptionMessage('User name must be at least 2 characters');
-        $this->expectExceptionCode(ErrorCodes::USER_VALIDATION_NAME);
+        // Round-4 R3: the domain code travels via getErrorCode() (ValidationException),
+        // not the PHP \Exception::$code slot.
 
         UserName::fromString('A');
     }
@@ -55,9 +57,24 @@ final class UserNameTest extends UnitTestCase
     {
         $this->expectException(\InvalidArgumentException::class);
         $this->expectExceptionMessage('User name must not exceed 100 characters');
-        $this->expectExceptionCode(ErrorCodes::USER_VALIDATION_NAME);
+        // Round-4 R3: the domain code travels via getErrorCode() (ValidationException),
+        // not the PHP \Exception::$code slot.
 
         UserName::fromString(str_repeat('A', 101));
+    }
+
+    public function test_validation_failures_carry_the_domain_error_code(): void
+    {
+        // Round-4 R3 contract: UserName throws ValidationException whose
+        // getErrorCode() carries USER_VALIDATION_NAME — previously the code
+        // was stuffed into \InvalidArgumentException's $code slot, which no
+        // error-mapping path reads.
+        try {
+            UserName::fromString('');
+            $this->fail('Expected ValidationException');
+        } catch (\App\Domain\Shared\Exceptions\ValidationException $e) {
+            $this->assertSame(ErrorCodes::USER_VALIDATION_NAME, $e->getErrorCode());
+        }
     }
 
     public function test_accepts_minimum_length_name(): void

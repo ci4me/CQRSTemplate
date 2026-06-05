@@ -49,7 +49,7 @@
                                 <td><?= esc($cookie->description) ?></td>
                                 <td><?= esc($cookie->formattedPrice) ?></td>
                                 <td>
-                                    <span class="badge bg-<?= $cookie->isOutOfStock() ? 'danger' : 'success' ?>">
+                                    <span class="badge bg-<?= $cookie->outOfStock ? 'danger' : 'success' ?>">
                                         <?= esc($cookie->stock) ?>
                                     </span>
                                 </td>

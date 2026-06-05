@@ -108,19 +108,6 @@ final readonly class CookiePrice
         return $this->toDecimalString();
     }
 
-    /**
-     * Format with the underlying currency's symbol.
-     *
-     * @deprecated Use {@see \App\Domain\Cookie\Services\PriceFormatter::format()}.
-     */
-    public function format(?string $currencySymbol = null): string
-    {
-        if ($currencySymbol === null) {
-            return $this->money->format();
-        }
-        return $currencySymbol . $this->toDecimalString();
-    }
-
     public function equals(self $other): bool
     {
         return $this->money->equals($other->money);

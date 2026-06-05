@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Domain\Cookie;
 
+use App\Domain\Cookie\Commands\AdjustCookieStock\AdjustCookieStockCommand;
+use App\Domain\Cookie\Commands\AdjustCookieStock\AdjustCookieStockHandler;
 use App\Domain\Cookie\Commands\CreateCookie\CreateCookieCommand;
 use App\Domain\Cookie\Commands\CreateCookie\CreateCookieHandler;
 use App\Domain\Cookie\Commands\DeleteCookie\DeleteCookieCommand;
@@ -122,6 +124,13 @@ final class CookieServiceProvider implements DomainServiceProviderInterface
         $commandBus->register(
             RestoreCookieCommand::class,
             new RestoreCookieHandler($repository, $logger)
+        );
+
+        // Register AdjustCookieStock command (round-4 R3 — makes the
+        // inventory-movement pattern executable end-to-end).
+        $commandBus->register(
+            AdjustCookieStockCommand::class,
+            new AdjustCookieStockHandler($repository, $logger)
         );
     }
 

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\User\ValueObjects;
 
+use App\Domain\Shared\Exceptions\ValidationException;
 use App\Domain\User\ErrorCodes;
 
 /**
@@ -48,32 +49,38 @@ final readonly class UserName
     /**
      * Create UserName from string with validation.
      *
+     * Round-4 R3: throws {@see ValidationException} carrying the domain
+     * error code via getErrorCode() — the previous implementation stuffed
+     * the code into \InvalidArgumentException's PHP $code argument, which
+     * none of the error-mapping paths read. ValidationException extends
+     * InvalidArgumentException, so legacy catch sites keep working.
+     *
      * @param string $name The user name to validate
      * @return self Valid UserName instance
-     * @throws \InvalidArgumentException If validation fails
+     * @throws ValidationException If validation fails
      */
     public static function fromString(string $name): self
     {
         $trimmed = trim($name);
 
         if ($trimmed === '') {
-            throw new \InvalidArgumentException(
+            throw new ValidationException(
                 'User name is required',
-                ErrorCodes::USER_VALIDATION_NAME
+                errorCode: ErrorCodes::USER_VALIDATION_NAME
             );
         }
 
         if (mb_strlen($trimmed) < self::MIN_LENGTH) {
-            throw new \InvalidArgumentException(
+            throw new ValidationException(
                 sprintf('User name must be at least %d characters', self::MIN_LENGTH),
-                ErrorCodes::USER_VALIDATION_NAME
+                errorCode: ErrorCodes::USER_VALIDATION_NAME
             );
         }
 
         if (mb_strlen($trimmed) > self::MAX_LENGTH) {
-            throw new \InvalidArgumentException(
+            throw new ValidationException(
                 sprintf('User name must not exceed %d characters', self::MAX_LENGTH),
-                ErrorCodes::USER_VALIDATION_NAME
+                errorCode: ErrorCodes::USER_VALIDATION_NAME
             );
         }
 
