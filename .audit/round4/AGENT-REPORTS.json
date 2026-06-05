@@ -1,0 +1,1194 @@
+{
+ "aggregate-entity": {
+  "dimension": "aggregate-entity",
+  "health_score": 4,
+  "summary": "The Cookie aggregate is in a substantially WORSE state than the round-3 RE-AUDIT claims: git history shows only E06 (PR #33, AggregateHydrator) merged into this branch, while PR #35 — which the RE-AUDIT marked as CLOSING F2/F3/F6/F7/F8/F9/F11 — was never merged. Verified against the live tree, none of those fixes exist: activate()/deactivate() raise no events, there is no softDelete()/restore() on the entity (lifecycle leaks through DeleteCookieHandler and RestoreCookieHandler+repository.restore()), CookieAccessors.php still exists with phantom @property ghosts, snapshot() is still a heterogeneous array, stock reason is still the stringly-typed method name, and CookieStockChangedEvent.cookieId is still ?int so the (int) cast in changeStock() is still wrong-direction. The one genuinely-landed improvement (E06 hydrator key + reconstitute version>=1 guard) IS coherent and correctly wired into CookieRepository::performSave. Beyond the stale-doc regression, the tree has live defects: a double-drain of pullEvents() between the repository and UpdateCookieHandler, an entire dead stock-mutation path (no DecreaseStock/IncreaseStock command handlers reach decreaseStock/increaseStock/assertPersisted), dead Shared/StateMachine code with zero call sites, and a User aggregate that diverges hard from Cookie (no AggregateRoot trait, no events, no optimistic-locking version, DateTimeImmutable vs string timestamps). This is the reference entity for dozens of ERP domains; cloning it today multiplies all of the above.",
+  "verified_fixed": [
+   "F4 (reconstitute version=0): VERIFIED FIXED. Cookie.php:127-132 throws InvalidArgumentException when version<1, no default on the parameter. Landed via the E06/PR#33 merge (commit b04adcf).",
+   "F10 (no implements clause): VERIFIED FIXED. Cookie.php:55 'final class Cookie implements AggregateRootInterface'; AggregateRootInterface.php defines pullEvents/peekEvents/hasPendingEvents/getId. Landed via PR#33.",
+   "F5 (assignId/bumpVersion publicly callable with no guard): PARTIALLY FIXED and VERIFIED as landed. Cookie.php:157 and 175 now require an AggregateHydrator $key; AggregateHydrator.php has a private constructor and only key() mints one; CookieRepository.php:438,445,465 are the only call sites. Still convention-only until the E05.5 PHPStan rule lands (rule does NOT exist).",
+   "E06 integration coherence: VERIFIED. performSave (CookieRepository.php:425-468) bumps version to 1 then assignId on insert, and updateWithOptimisticLock then bumpVersion on update; in-memory version and DB version move in lock-step. The hydrator key is genuinely used, not decorative."
+  ],
+  "findings": [
+   {
+    "id": "stale-reaudit-mass-regression",
+    "title": "Round-3 RE-AUDIT documents PR #35 fixes that were NEVER merged; F2/F3/F6/F7/F8/F9/F11 are all still open in the tree",
+    "severity": "high",
+    "classification": "regression",
+    "epic_ref": "E07",
+    "evidence": "git log (b04adcf 'feat: merge E06 AggregateHydrator (PR #33)' is the last commit touching Cookie.php; no PR #35 merge commit exists). grep across app/ for CookieActivated|CookieDeactivated|StockChangeReason|CookieSnapshot|CookieStateAssertions|CookieLifecycle => 'NONE OF THE PR#35 ARTIFACTS EXIST'. RE-AUDIT-01 lines 22-31 claim these CLOSED via PR#35. Live Cookie.php contradicts every one of those rows (see sibling findings).",
+    "impact": "Any planning that trusts .audit/round3/RE-AUDIT-01-entity-aggregate.md will assume the reference aggregate is clone-ready when it is not. The remediation backlog is undercounted by ~7 findings. This is the single most dangerous gap: docs say 'done', code says 'not started', and Cookie is about to be cloned into dozens of ERP domains.",
+    "fix": "Treat RE-AUDIT-01 as aspirational, not factual. Either (a) recover/rebase the PR #35 branch and merge it, or (b) re-implement E07 from scratch (it is the source of most of these fixes). Re-classify F2/F3/F6/F7/F8/F9/F11 as OPEN in POST-REVIEW-CONSOLIDATED.md. Add a CI check or audit-discipline note that a finding is only 'closed' when the fix is on the default/stabilization branch, not when a PR exists.",
+    "effort": "S"
+   },
+   {
+    "id": "lifecycle-leaks-into-handlers-repo",
+    "title": "softDelete()/restore() do not exist on the entity; delete & restore semantics live in handlers + repository",
+    "severity": "high",
+    "classification": "covered-by-planned-epic",
+    "epic_ref": "E07",
+    "evidence": "Cookie.php has no softDelete/restore methods (full file read, 332 lines; only isDeleted():bool at 328-331 and assertNotDeleted at 243-252). DeleteCookieHandler.php:92 dispatches new CookieDeletedEvent directly. RestoreCookieHandler.php:75 calls $this->repository->restore(...) then 95-101 dispatches new CookieRestoredEvent from the handler; its own docblock (lines 22-24) admits 'the entity does not yet expose a restore() lifecycle method'. CookieRepository.php:339-350 mutates deleted_at via a builder UPDATE.",
+    "impact": "The aggregate guards against the deleted state (assertNotDeleted) but cannot transition into or out of it — the core invariant 'who may change my lifecycle' is owned by the repository, not the aggregate. Every cloned ERP domain (invoice void, order cancel, inventory write-off) inherits this asymmetry: delete/restore events are raised from handlers, so audit trails depend on handler discipline rather than the aggregate. Soft-delete/restore cannot participate in the entity's event bag or outbox the way stock/update events do.",
+    "fix": "Implement E07: add softDelete(?Actor): void and restore(): void to Cookie that set/clear deletedAt and raiseEvent(CookieDeletedEvent / CookieRestoredEvent). restore() must reject a not-deleted entity (new ErrorCodes::COOKIE_STATE_NOT_DELETED). Rework DeleteCookieHandler/RestoreCookieHandler to call the entity method then repository.save() and let dispatchPendingEvents() drain — removing the manual dispatch and the bespoke repository.restore() builder UPDATE. Encode 'every lifecycle mutator raises >=1 event' in the domain-scaffolding skill so clones inherit it.",
+    "effort": "L"
+   },
+   {
+    "id": "activate-deactivate-no-events",
+    "title": "activate()/deactivate() flip isActive but raise no domain event",
+    "severity": "high",
+    "classification": "covered-by-planned-epic",
+    "epic_ref": "E07",
+    "evidence": "Cookie.php:306-316 — activate() and deactivate() each call assertNotDeleted() and set $this->isActive but never call raiseEvent(). No CookieActivatedEvent/CookieDeactivatedEvent classes exist (grep returned none). The class docblock (lines 36-39) only promises stock/update events are raised, so even the documentation no longer claims availability transitions emit events.",
+    "impact": "Activation/deactivation is exactly the business signal catalog/search/inventory consumers need. In a cloned ERP domain, the equivalent (publish/unpublish an item, enable/disable a price list) will silently toggle with no event, and the gap is rediscovered one consumer at a time. Also, these toggles are not idempotent-guarded (calling activate() on an already-active cookie would still no-op safely today only because no event fires).",
+    "fix": "As part of E07, route activate()/deactivate() through a single private setActive(bool) that, when the state actually changes, raises CookieActivatedEvent/CookieDeactivatedEvent (or one CookieAvailabilityChangedEvent). Make it a no-op (no event) when already at target state. Add the event class(es) under app/Domain/Cookie/Events/.",
+    "effort": "M"
+   },
+   {
+    "id": "double-drain-pullevents",
+    "title": "pullEvents() is drained twice for the same aggregate (repository AND UpdateCookieHandler), an ownership/ordering hazard",
+    "severity": "high",
+    "classification": "new",
+    "evidence": "CookieRepository::save() at line 124 calls dispatchPendingEvents(), which at line 177 does $events = $cookie->pullEvents() and then writes the outbox (185-190) + dispatches in-process (199-201). UpdateCookieHandler.php:120 calls repository->save($cookie) and THEN at 126 loops 'foreach ($cookie->pullEvents() as $event) $this->eventDispatcher->dispatch($event)'. Because pull-then-clear is single-shot (AggregateRoot.php:71-77), the handler's second pull returns [] today, so the handler loop is dead code.",
+    "impact": "Two layers both believe they own event dispatch. Today it works only by accident of ordering (repo drains first). If a future refactor makes the repo stop draining, or a handler calls pullEvents() before save(), events either double-fire (duplicate side effects across the ERP) or vanish. For the reference template this ambiguity is the worst kind: cloners will copy whichever pattern they notice. The outbox-first design in the repo is the correct owner; the handler loop contradicts it.",
+    "fix": "Pick ONE owner. Recommended: the repository's dispatchPendingEvents() is the single drain point (it already does outbox-first). Remove the pullEvents()/dispatch loop from UpdateCookieHandler.php:122-128 (and audit other handlers for the same pattern). If instead handlers must own dispatch, remove dispatchPendingEvents() from save() and have the repo only persist. Document the chosen owner in the AggregateRoot trait docblock and the cqrs-architecture skill.",
+    "effort": "M"
+   },
+   {
+    "id": "dead-stock-mutation-path",
+    "title": "decreaseStock()/increaseStock()/assertPersisted() are unreachable — no DecreaseStock/IncreaseStock command handlers exist",
+    "severity": "medium",
+    "classification": "new",
+    "evidence": "find app/Domain/Cookie/Commands -type d => only CreateCookie, DeleteCookie, RestoreCookie, UpdateCookie. grep for DecreaseStock*/IncreaseStock* command dirs => 'no such dirs'. Cookie.php:274-291 (decreaseStock/increaseStock) and :257-266 (assertPersisted) therefore have no application-layer caller; only tests can reach them. CookieStockChangedEvent (entity-raised) thus never fires from a real command flow.",
+    "impact": "The stock-change event path — the showcase example in AggregateRoot.php's own docblock (lines 22-30) — is dead at the application layer. A cloner studying Cookie sees stock mutation + event as the canonical pattern but there is no command demonstrating the end-to-end flow, so the reference for 'mutator + event + outbox' is incomplete. assertPersisted() (and its wrong error code, see next finding) is reachable only from these dead methods.",
+    "fix": "Either add ChangeStock/DecreaseStock/IncreaseStock command + handler that load the aggregate, call the mutator, save() (letting dispatchPendingEvents drain), to make the reference flow real; or, if stock is only ever changed via the bulk update path, delete decreaseStock/increaseStock/assertPersisted and CookieStockChangedEvent to remove the dead surface. Do not leave a half-wired showcase in the template.",
+    "effort": "M"
+   },
+   {
+    "id": "assertpersisted-wrong-error-code",
+    "title": "assertPersisted() throws with COOKIE_STATE_DELETED for a not-persisted (id null) condition",
+    "severity": "medium",
+    "classification": "covered-by-planned-epic",
+    "epic_ref": "E07",
+    "evidence": "Cookie.php:257-266 — assertPersisted() builds DomainException::invalidState('Cookie', '<op> requires a persisted entity (id is null)', ErrorCodes::COOKIE_STATE_DELETED). ErrorCodes.php:53-55 has only COOKIE_STATE_DELETED=401 and COOKIE_STATE_CONCURRENT_MODIFICATION=402; there is no COOKIE_STATE_NOT_PERSISTED. RE-AUDIT claimed this CLOSED (403) via PR#35 — not in tree.",
+    "impact": "Any log filter or alert that splits on error code conflates 'entity was soft-deleted' with 'entity has no id'. A copy-paste into a cloned domain replicates the wrong-code-for-wrong-state mismatch and there is no correct constant to point cloners at. Low blast radius today only because the method is dead (see previous finding).",
+    "fix": "Add COOKIE_STATE_NOT_PERSISTED = 403 to ErrorCodes.php in the 400-499 range and use it in assertPersisted(). Bundle with E07. If decreaseStock/increaseStock are deleted instead, this finding closes with them.",
+    "effort": "XS"
+   },
+   {
+    "id": "stockchanged-int-cast",
+    "title": "changeStock() casts $this->id to (int) and CookieStockChangedEvent.cookieId is still ?int (null -> 0)",
+    "severity": "medium",
+    "classification": "covered-by-planned-epic",
+    "epic_ref": "E04",
+    "evidence": "Cookie.php:299 — 'cookieId: (int) $this->id'. CookieStockChangedEvent.php:33 declares 'public ?int $cookieId' with a docblock (line 27) noting 'tightened in E04' (not yet done). assertPersisted runs before changeStock today, but the cast silently turns a null id into 0 if that guard is ever bypassed or copied without it.",
+    "impact": "A cloned domain that omits the persist guard ships stock-change events with cookieId=0, corrupting any downstream consumer keyed on the surrogate. The cast advertises a trust assumption rather than enforcing it. Combined with the dead-path finding, this code is both unreachable and unsafe.",
+    "fix": "Tighten CookieStockChangedEvent.cookieId to non-nullable int (E04). Drop the (int) cast in changeStock() and rely on assertPersisted() (or, better, a non-null id type once private(set)/PHP 8.4 lands) to guarantee non-null. Update the event docblock to drop the '?int / E04' caveat.",
+    "effort": "S"
+   },
+   {
+    "id": "cookieaccessors-phantom-properties",
+    "title": "CookieAccessors trait still exists and declares @property ghosts for fields it does not own",
+    "severity": "medium",
+    "classification": "covered-by-planned-epic",
+    "epic_ref": "E07",
+    "evidence": "app/Domain/Cookie/Entities/CookieAccessors.php still present (file read, 75 lines). Lines 18-27 declare @property ?int $id, CookieName $name, ... for state defined on Cookie, not the trait. RE-AUDIT line 28 claimed this file DELETED and inlined via PR#35 — false in tree (grep 'use CookieAccessors;' present at Cookie.php:58).",
+    "impact": "Rename drift: change a field name on Cookie (e.g. $isActive -> $active) and the trait's getters silently break only at the @property contract level, not at runtime, until a getter is called. Every cloned domain gets a parallel FooAccessors with a duplicated phantom-property contract — the worst-of-both-worlds pattern (split file + no real type safety). getId() also lives in the trait, so the AggregateRootInterface contract is satisfied from a trait whose property list is fictional.",
+    "fix": "Inline the 9 getters (~25 LOC) into Cookie.php and delete CookieAccessors.php (this is what PR#35 intended). The getters carry no logic. Ensure getId() remains and keep #[\\Override] off (PHP does not require it for interface impls). Update the domain-scaffolding skill so clones do NOT generate a *Accessors trait.",
+    "effort": "S"
+   },
+   {
+    "id": "snapshot-heterogeneous-array",
+    "title": "snapshot() returns a heterogeneous scalar map (bool/int/decimal-string/null) used as event payload",
+    "severity": "medium",
+    "classification": "covered-by-planned-epic",
+    "epic_ref": "E07",
+    "evidence": "Cookie.php:228-238 returns ['id'=>?int, 'name'=>string, 'description'=>?string, 'price'=>decimal-string, 'stock'=>int, 'is_active'=>bool]. This array is passed as previousState/newState into CookieUpdatedEvent (Cookie.php:216-222). RE-AUDIT line 31 claimed this replaced by a CookieSnapshot VO via PR#35 — not in tree.",
+    "impact": "Downstream audit consumers comparing two snapshots cross-domain need per-key type knowledge (string price vs int stock vs bool flag). Serialisation to the outbox/JSON is lossy/ambiguous (bool->0/1, decimal-as-string). Every cloned domain repeats the heterogeneity in its Updated event, making a generic audit-diff tool impossible.",
+    "fix": "Introduce a typed CookieSnapshot/CookieChangeSet readonly VO (E07/PR#35 design) with whitelisted keys and a stable serialisation, OR commit to an all-string representation. Use it in update() and CookieUpdatedEvent. Document the choice in the cloning skill so all domains use the same snapshot shape.",
+    "effort": "M"
+   },
+   {
+    "id": "stock-reason-stringly-typed",
+    "title": "decreaseStock/increaseStock pass the method name as the event reason (stringly-typed)",
+    "severity": "medium",
+    "classification": "covered-by-planned-epic",
+    "epic_ref": "E07",
+    "evidence": "Cookie.php:278 changeStock(..., 'decreaseStock') and :290 'increaseStock'; reason flows into CookieStockChangedEvent.reason which is a plain string (CookieStockChangedEvent.php:36). The event docblock (lines 23-30) even suggests free-text values like 'sale'/'manual_adjustment'. No StockChangeReason enum exists. RE-AUDIT line 29 claimed an enum landed via PR#35 — not in tree.",
+    "impact": "The reason encodes the operation (already implicit) rather than the business cause (SALE/RESTOCK/RETURN/ADJUSTMENT). Cross-domain analytics ('why did stock/quantity move?') cannot rely on a typed column. Cloned Order/Inventory domains will repeat method-name-as-reason. Low practical blast radius right now because the whole path is dead (see dead-stock-mutation-path).",
+    "fix": "Add a StockChangeReason backed enum (Sale|Restock|Return|Adjustment|InitialStock) under app/Domain/Cookie/ValueObjects (or Shared if generic), make changeStock accept it, require the (future) stock command handler to pass the business reason, and type CookieStockChangedEvent.reason as the enum. Bundle with the stock-handler work.",
+    "effort": "S"
+   },
+   {
+    "id": "statemachine-dead-code",
+    "title": "Shared/StateMachine (StateMachine + State + InvalidTransition) has zero call sites — unused scaffold not wired to Cookie",
+    "severity": "medium",
+    "classification": "new",
+    "evidence": "grep -rn 'StateMachine|new StateMachine|implements State|State::' app/ excluding the StateMachine dir => 'NO USAGES FOUND'. grep 'use App\\\\Domain\\\\Shared\\\\StateMachine' app/ => 'NO IMPORTS'. The three files (StateMachine.php 115 LOC, State.php 26 LOC, InvalidTransition.php 42 LOC) reference D5 and ERP lifecycles (draft/approved/posted) in docblocks but nothing implements State or constructs a StateMachine. Cookie's own lifecycle (active/inactive/deleted) is hand-rolled booleans + deletedAt, NOT a StateMachine.",
+    "impact": "The very abstraction meant to model ERP lifecycle states (draft -> posted -> cancelled — the prompt's stated target) is present but unproven: it has never been exercised by the reference aggregate, has no tests-via-usage, and Cookie demonstrates the opposite pattern (ad-hoc booleans). Cloners will either ignore StateMachine (and re-hand-roll states) or adopt an unvalidated abstraction. Either way the template gives two contradictory lifecycle stories.",
+    "fix": "Decide its fate before cloning: (a) PROVE it by modeling Cookie availability/deletion as a StateMachine (draft->active->inactive->deleted with allowed transitions) so the reference uses it end-to-end and E07 lifecycle mutators route through machine()->transition(); or (b) if Cookie's boolean+deletedAt model is the intended ERP pattern, delete Shared/StateMachine to avoid a misleading unused abstraction. Whatever is kept must be the single documented lifecycle pattern in the cqrs-architecture skill.",
+    "effort": "M"
+   },
+   {
+    "id": "user-aggregate-divergence",
+    "title": "User entity diverges hard from the Cookie aggregate contract (no trait/interface, no events, no version, DateTime vs string)",
+    "severity": "high",
+    "classification": "new",
+    "evidence": "User.php:58 'final class User' — no 'implements AggregateRootInterface', no 'use AggregateRoot' (grep for the trait returns only Cookie). User has no $version field and no optimistic locking; mutators update()/activate()/deactivate()/suspend()/changePassword() (lines 218-308) raise NO events — User events are dispatched from handlers (CreateUserHandler, UpdateUserHandler, DeleteUserHandler, ChangeUserPasswordHandler per grep). Timestamps are \\DateTimeImmutable (User.php:71-73) vs Cookie's ?string. suspend(string $reason) ignores $reason (line 271-275). No User repository drains pullEvents (only CookieRepository:177 and UpdateCookieHandler do).",
+    "impact": "Two reference aggregates contradict each other. A team cloning 'the template' may copy User (no events, no optimistic locking, raw DateTime) for an ERP domain and silently lose audit events and concurrency protection — the exact failures Cookie's E06/E07 work is meant to prevent. The divergence also means AggregateRootInterface guarantees nothing across the domain layer (only one implementer). For an ERP foundation this is architectural rot that compounds per cloned domain.",
+    "fix": "Bring User onto the Cookie contract (or explicitly retire User as a reference): make User implement AggregateRootInterface + use AggregateRoot, add a version field with the AggregateHydrator-guarded bumpVersion/assignId pattern and reconstitute version>=1 guard, raise events from its mutators, and have the User repository drain via the same dispatchPendingEvents pattern. Reconcile timestamp representation (string vs DateTimeImmutable) across both. If User is intentionally legacy, mark it clearly and exclude it from the 'reference to clone' set in the cqrs-architecture/domain-scaffolding skills.",
+    "effort": "L"
+   },
+   {
+    "id": "internal-handles-not-enforced",
+    "title": "AggregateHydrator key + reconstitute are enforced by convention only; the E05.5 PHPStan rule does not exist",
+    "severity": "medium",
+    "classification": "covered-by-planned-epic",
+    "epic_ref": "E07",
+    "evidence": "AggregateHydrator.php:38 '@internal', key() at 56 has private constructor so the type cannot be forged, BUT any namespace can still call AggregateHydrator::key() and then assignId/bumpVersion. The promised PHPStan rule (referenced at AggregateHydrator.php:24 and Cookie.php:48,151 as 'E05.5') is absent (grep for any such rule/usage returns only doc references). bumpVersion (Cookie.php:157-160) also has NO assertPersisted guard — it can increment version on an id-null entity.",
+    "impact": "The 'permission token' is documentation-grade safety today: a controller or handler can mint a key and drive identity/version. Cloners will replicate the pattern believing it is enforced. bumpVersion-before-assignId would push version 0->1, and reconstitute's version>=1 guard would then wrongly accept that object as persisted.",
+    "fix": "Land the E05.5 PHPStan custom rule that restricts AggregateHydrator::key() (and ideally assignId/bumpVersion) calls to *Repository namespaces, before scaffolding the next domain. Add 'if ($this->id === null) throw new \\LogicException(...)' to bumpVersion() symmetric with assignId(). Document in AggregateHydrator that the key is a fence only once the rule exists.",
+    "effort": "M"
+   },
+   {
+    "id": "update-prepersist-silent-no-event",
+    "title": "update() silently mutates and returns without an event when id is null, contradicting its own docblock",
+    "severity": "low",
+    "classification": "covered-by-open-pr",
+    "epic_ref": "E07",
+    "evidence": "Cookie.php:212-214 — 'if ($this->id === null) { return; }' after mutating name/description/price/stock/isActive (206-210), skipping the CookieUpdatedEvent raise at 216-222. assertPersisted() exists (257-266) but is NOT called by update() (only by the dead stock methods).",
+    "impact": "A legitimate create()->update()->save() flow (or any cloned domain doing the same) mutates state but loses the update event — audit trails silently incomplete. The behavior is inconsistent with stock mutators, which DO guard via assertPersisted.",
+    "fix": "Either gate update() with assertPersisted('update') so pre-persist update is a loud DomainException (consistent with stock and future lifecycle mutators), or queue the event and rewrite cookieId at persist time. Document the chosen rule in the class docblock. This is the residual of round-3 F1/N1.",
+    "effort": "S"
+   },
+   {
+    "id": "split-dispatch-created-event",
+    "title": "CookieCreatedEvent is dispatched by the handler, not the aggregate (split-dispatch model documented as canon)",
+    "severity": "low",
+    "classification": "covered-by-planned-epic",
+    "epic_ref": "E07",
+    "evidence": "Cookie.php docblock lines 40-41 state CookieCreatedEvent is dispatched by the create handler because the payload needs the freshly-allocated id. CreateCookieHandler.php:105 dispatches new CookieCreatedEvent after save. So the aggregate raises update/stock events but NOT created/deleted/restored — a split model.",
+    "impact": "Cloners read the docblock and conclude split dispatch is intentional/canonical. It stems from the ?int $id=null lifecycle (id only known post-insert). Across the ERP this means 'created' events always live in handlers, breaking the otherwise-uniform 'aggregate raises, repository drains' story and complicating a pure transactional-outbox guarantee for creation.",
+    "fix": "Pick an architectural exit and document it: (a) UUIDv7 identity generated pre-persist so create() can raiseEvent with a real id; (b) a deferred whenPersisted() callback on the aggregate that the repo invokes with the new id; or (c) explicitly bless split-dispatch in the cloning skill and standardise it. E07/E16 (UUID/PHP8.4) are the natural homes.",
+    "effort": "M"
+   },
+   {
+    "id": "now-not-memoized-microsecond-drift",
+    "title": "Mutators construct multiple DateTimeImmutable instances for the same domain moment (timestamp drift)",
+    "severity": "low",
+    "classification": "new",
+    "evidence": "User.php mutators each call 'new \\DateTimeImmutable()' independently (e.g. incrementFailedLoginAttempts at 248 plus lockAccount at 317 within the same call). RestoreCookieHandler.php:99 builds a fresh DateTimeImmutable for restoredAt unrelated to the DB write timestamp. Cookie currently has no nowUtc() helper at all (timestamps are repository-managed strings), so a future E07 softDelete must avoid the same drift.",
+    "impact": "The persisted timestamp (deletedAt/updatedAt) and the event's occurredAt/restoredAt can differ by microseconds, so 'when did X happen' has two slightly different answers. Trivial individually but compounds into audit reconciliation headaches across an ERP where events and rows are cross-referenced.",
+    "fix": "Compute the moment once per mutator: $now = new \\DateTimeImmutable(); reuse it for both the field write and the event payload. Provide a protected nowUtc() on the AggregateRoot trait (or a shared Clock) and standardise it so cloned domains and E07's softDelete/restore use a single timestamp per operation. A Clock abstraction also makes time testable.",
+    "effort": "S"
+   }
+  ],
+  "fix_plan": "ORDERED remediation plan for the aggregate/entity dimension. Execute top-to-bottom; each step is self-contained.\n\nSTEP 0 (XS, do first) — Correct the record. In .audit/round3/POST-REVIEW-CONSOLIDATED.md and the E06/E07 tracking, mark F2,F3,F6,F7,F8,F9,F11 as OPEN (not CLOSED): git history proves PR #35 never merged (last Cookie.php commit is b04adcf, the E06 merge). Decide whether to recover the PR #35 branch or re-implement E07 fresh. Do this before any planning trusts the round-3 RE-AUDIT.\n\nSTEP 1 (S) — Inline CookieAccessors (closes cookieaccessors-phantom-properties). Move the 9 getters from app/Domain/Cookie/Entities/CookieAccessors.php into Cookie.php (keep getId() to satisfy AggregateRootInterface), delete CookieAccessors.php, remove 'use CookieAccessors;' at Cookie.php:58. Update domain-scaffolding skill to stop emitting an *Accessors trait. No behavior change; unblocks a clean entity.\n\nSTEP 2 (XS) — Fix the error code (closes assertpersisted-wrong-error-code). Add 'public const int COOKIE_STATE_NOT_PERSISTED = 403;' to ErrorCodes.php in the 400-499 block; use it in Cookie::assertPersisted() instead of COOKIE_STATE_DELETED.\n\nSTEP 3 (L) — Implement E07 lifecycle on the aggregate (closes lifecycle-leaks-into-handlers-repo, activate-deactivate-no-events; refines assertpersisted/snapshot/reason). On Cookie.php: add softDelete(?Actor $actor): void and restore(): void (set/clear deletedAt, raiseEvent CookieDeletedEvent/CookieRestoredEvent; restore() rejects not-deleted via COOKIE_STATE_NOT_DELETED — add that constant too). Route activate()/deactivate() through a private setActive(bool) that raises CookieActivatedEvent/CookieDeactivatedEvent only on real change. Add the new event classes under app/Domain/Cookie/Events/. Memoize $now = new DateTimeImmutable() once per mutator (closes now-not-memoized-microsecond-drift for Cookie). Then rewire DeleteCookieHandler.php (drop direct new CookieDeletedEvent at :92 -> call $cookie->softDelete() then repository->save()) and RestoreCookieHandler.php (drop repository->restore() builder UPDATE at :75 and manual dispatch at :95 -> call entity restore() then save()). Remove the bespoke restore() builder from CookieRepository.php:339-350 once unused.\n\nSTEP 4 (M) — Resolve event-dispatch ownership (closes double-drain-pullevents). Choose the repository's dispatchPendingEvents() (CookieRepository.php:175-202, already outbox-first) as the SINGLE drain point. Delete the pullEvents()/dispatch loop in UpdateCookieHandler.php:122-128 and audit every other Cookie handler for the same pattern. Document the owner in AggregateRoot.php docblock and the cqrs-architecture skill so clones inherit one model.\n\nSTEP 5 (M) — Make the stock path real or remove it (closes dead-stock-mutation-path; enables stockchanged-int-cast + stock-reason fixes). If stock is a first-class operation: add a ChangeStockCommand + handler that loads the aggregate, calls decreaseStock/increaseStock, then repository->save() (letting Step-4's drain dispatch CookieStockChangedEvent). Introduce StockChangeReason enum and pass the business reason. Tighten CookieStockChangedEvent.cookieId to non-nullable int and drop the (int) cast at Cookie.php:299. If stock is only ever bulk-updated: delete decreaseStock/increaseStock/assertPersisted from Cookie.php and delete CookieStockChangedEvent. Do not leave the half-wired showcase.\n\nSTEP 6 (S) — update() pre-persist policy (closes update-prepersist-silent-no-event). Replace 'if ($id===null) return;' (Cookie.php:212-214) with assertPersisted('update'), making pre-persist update a loud DomainException consistent with stock/lifecycle; document in the class docblock.\n\nSTEP 7 (M) — StateMachine decision (closes statemachine-dead-code). Either model Cookie's lifecycle (active/inactive/deleted) through Shared/StateMachine so the reference proves the abstraction and Step-3 mutators route through machine()->transition(); or, if boolean+deletedAt is the intended ERP pattern, delete app/Domain/Shared/StateMachine/*. Whatever survives becomes the single documented lifecycle pattern.\n\nSTEP 8 (M) — Enforce the hydration fence (closes internal-handles-not-enforced). Implement the E05.5 PHPStan custom rule restricting AggregateHydrator::key()/assignId/bumpVersion to *Repository namespaces. Add 'if ($this->id===null) throw new LogicException' to Cookie::bumpVersion() symmetric with assignId(). Land before scaffolding the next domain.\n\nSTEP 9 (L) — Reconcile the User aggregate (closes user-aggregate-divergence). Bring User.php onto the Cookie contract: implement AggregateRootInterface + use AggregateRoot, add $version + AggregateHydrator-guarded assignId/bumpVersion + reconstitute version>=1, raise events from mutators (or drive via outbox), drain in the User repository, reconcile timestamp type (string vs DateTimeImmutable) with Cookie, and either use suspend()'s $reason or drop it. If User is intentionally legacy, mark it and exclude from the 'clone reference' set in the skills.\n\nSTEP 10 (M) — CookieCreatedEvent split-dispatch exit (closes split-dispatch-created-event). With E16 (PHP 8.4) / UUIDv7 on the table, pick: pre-persist UUID identity so create() raises its own event, OR a whenPersisted() callback the repo invokes post-insert, OR formally bless split-dispatch in the cloning skill. Document the decision.\n\nSequencing note: Steps 0-2 are safe quick wins independent of the rest. Step 3 (E07) is the keystone and should precede Steps 4-7. Steps 8-10 can proceed in parallel once the entity shape is stable.",
+  "quick_wins": [
+   "STEP 0: Re-classify F2/F3/F6/F7/F8/F9/F11 as OPEN in the round-3 consolidated report — git proves PR #35 never merged. Stops every downstream plan from trusting stale 'CLOSED' rows. (XS)",
+   "Add ErrorCodes::COOKIE_STATE_NOT_PERSISTED = 403 and use it in Cookie::assertPersisted() instead of the wrong COOKIE_STATE_DELETED (Cookie.php:263). (XS)",
+   "Inline the 9 getters from CookieAccessors.php into Cookie.php and delete the trait + its phantom @property block (CookieAccessors.php:18-27). Pure refactor, removes a clone-multiplying smell. (S)",
+   "Delete the dead pullEvents()/dispatch loop in UpdateCookieHandler.php:122-128 (repository already drains at CookieRepository.php:177) to remove the double-drain hazard. (S)",
+   "Replace 'if ($this->id===null) return;' in Cookie::update() (Cookie.php:212-214) with assertPersisted('update') so the documented 'every mutator raises an event' promise holds. (S)",
+   "Add an id-null guard to Cookie::bumpVersion() (Cookie.php:157-160) symmetric with assignId() to close the version-before-id loophole. (XS)"
+  ],
+  "erp_readiness_notes": "CLONEABILITY CAVEATS when copying Cookie into real ERP domains (invoices/orders/inventory): (1) The reference aggregate is NOT in the state the round-3 docs describe — clone from the code, never from .audit/round3/RE-AUDIT-01. Until E07 lands, copying Cookie clones lifecycle leakage: delete/restore/created events come from handlers/repository, not the aggregate, so audit completeness depends on handler discipline in every domain. (2) Two contradictory reference aggregates exist: Cookie (events, optimistic locking via E06 hydrator, string timestamps) vs User (no events, no version, DateTimeImmutable). Pick ONE as the canonical reference and mark the other; otherwise teams will clone the weaker one and silently lose concurrency protection and events. This is the single biggest cloneability risk and overlaps the cloneability auditor's lane — flagging here as cross-cutting. (3) The AggregateHydrator key is convention-only until the E05.5 PHPStan rule exists; do not advertise it as enforced. (4) Shared/StateMachine is unused — ERP lifecycle states (draft/posted/cancelled) currently have NO proven pattern in the template; either prove it on Cookie or delete it before cloners pick an unvalidated abstraction. (5) The ?int id-null lifecycle forces split-dispatch for created events and motivates the (int) cast hazard; if ERP domains need created/posted events from the aggregate, plan UUIDv7 identity (E16) early rather than per-domain. (6) Event-dispatch ownership is currently ambiguous (repo AND handler both pull); settle it before cloning so all domains share one drain point — this borders the events/outbox auditor's lane. (7) Timestamp representation is inconsistent (Cookie string vs User DateTimeImmutable, and multiple now() constructions per operation); standardise a Clock/now-once rule so cross-referencing events and rows in the ERP audit log is reliable — this touches the platform-services/logging lanes."
+ },
+ "value-objects": {
+  "dimension": "value-objects",
+  "health_score": 5,
+  "summary": "The shared Money/Currency kernel is genuinely strong (integer minor-units, mandatory currency at every factory, PHP_INT_MAX overflow guards on string/float ingestion, currency-mismatch rejection, JsonSerializable wire format) and is the right foundation for ERP money. The problem is the Cookie wrapper that rides on it: CookiePrice still applies USD-cents bounds (1..999,999) to every currency and reports errors via hard-coded /100 arithmetic, so JPY/BHD catalogues are silently mis-bounded and mis-messaged (F1, the existential money defect E09 must fix). All three factories still accept ?Currency=null and silently cascade to env/USD (F2), undoing the very guarantee Money was hardened to provide. Money::multiply has no overflow guard (the one ingestion path the kernel forgot), which CookiePrice::multiplyBy and order-total math inherit. Beyond money: CookieStock has no max/overflow guard and a public $value read across the aggregate boundary, its docblock advertises a value() method that does not exist, and it has no dedicated unit test; CookieName equality is split between case-sensitive equals() and a raw-string equalsIgnoreCase(); the deprecated CookiePrice::format() symbol-override footgun is actively used in the read repository. Cross-domain, User VOs diverge sharply from Cookie: UserName throws raw \\InvalidArgumentException (error code mis-passed as the PHP $code), so the error-code contract the HTTP layer relies on silently breaks for the User clone — a warning sign for every future domain. The Round-3 re-audit findings about CookieSnapshot/StockChangeReason/CookieChangeSet are verified fixed (those VOs were deleted).",
+  "verified_fixed": [
+   "RE-AUDIT-02 N2 (CookieSnapshot public constructor): verified fixed — app/Domain/Cookie/ValueObjects/ now contains only CookieName.php, CookiePrice.php, CookieStock.php; CookieSnapshot.php no longer exists (confirmed via directory listing and find).",
+   "RE-AUDIT-02 N3 (StockChangeReason enum under ValueObjects with no boundary parser): verified fixed — StockChangeReason.php no longer exists under app/Domain/Cookie/ValueObjects (find returned nothing).",
+   "RE-AUDIT-02 N4 (CookieSnapshot::fromArray throwing \\InvalidArgumentException via CookieChangeSet): verified fixed by removal — no CookieChangeSet / CookieSnapshot files remain in the Cookie VO tree.",
+   "Round-3 02 F1/F2 partial: CookiePrice now uses PHP 8.3 typed class constants (CookiePrice.php:22-23 `private const int MIN_MINOR_UNITS`), confirming the typed-const portion of the prior style work landed (the bounds-correctness portion did NOT — still open as vo-price-currency-blind-bounds)."
+  ],
+  "findings": [
+   {
+    "id": "vo-price-currency-blind-bounds",
+    "title": "CookiePrice bounds and error messages are USD-cents semantics applied to every currency",
+    "severity": "critical",
+    "classification": "covered-by-planned-epic",
+    "epic_ref": "E09",
+    "evidence": "app/Domain/Cookie/ValueObjects/CookiePrice.php:22-23 define MIN_MINOR_UNITS=1 / MAX_MINOR_UNITS=999_999 with comment '9,999.99 in 2-decimal currencies'. assertPositiveAndInRange (lines 195-214) compares the raw $money->amountMinor() with no reference to $money->currency->decimals, and emits error 'actual'/'min'/'max' as $minorUnits/100 (lines 200-201, 208-210). For JPY (0 decimals) the ceiling becomes ¥999,999 (~$6.7k) and a ¥10000 price is reported as '100.00'; for BHD (3 decimals) the ceiling becomes 999.999 BHD. CookiePriceTest.php has zero JPY/BHD cases (only USD/EUR which are both 2-decimal), so the defect is completely untested.",
+    "impact": "Money correctness is existential for an ERP. Every cloned monetary VO (InvoiceLinePrice, OrderUnitPrice, ...) inherits a multi-currency-shaped wrapper whose validator and error messages are silently single-currency. A 0-decimal or 3-decimal currency catalogue is mis-bounded and the rejection message states a wrong number, which will be read by support staff and logged.",
+    "fix": "In E09: (1) Replace the two int constants with currency-aware bounds computed per call, e.g. derive max from a decimal string ('9999.99') via Money::fromDecimalString($maxDecimal, $money->currency)->amountMinor() so the cap scales with $currency->decimals; min should be the smallest representable unit (Money::fromMinorUnits(1, $currency)). (2) In assertPositiveAndInRange, build a throwaway Money for the offending amount and emit error context via $offending->toDecimalString() instead of $minorUnits/100. (3) Add CookiePriceTest cases for Currency::fromIso('JPY') and 'BHD' asserting both bounds and the decimal-correct error text. Do this in app/Domain/Cookie/ValueObjects/CookiePrice.php and tests/Unit/Domain/Cookie/ValueObjects/CookiePriceTest.php.",
+    "effort": "M"
+   },
+   {
+    "id": "vo-price-implicit-usd-default",
+    "title": "All CookiePrice factories accept ?Currency=null and silently cascade env -> USD",
+    "severity": "high",
+    "classification": "covered-by-planned-epic",
+    "epic_ref": "E09",
+    "evidence": "app/Domain/Cookie/ValueObjects/CookiePrice.php:42 (fromString), 70 (fromMinorUnits), 81 (fromFloat) all default `?Currency $currency = null` and fall through to self::defaultCurrency() (line 220-223) -> Currency::default() (Currency.php:103-114) which reads getenv('DEFAULT_CURRENCY') and silently returns Currency::usd() on missing/invalid input. Money.php:46-52 documents the exact opposite intent ('an implicit USD default would silently convert 1500 yen into $15.00'). Call sites CreateCookieHandler.php:81 and UpdateCookieHandler.php:96 call CookiePrice::fromString($command->price) with no currency, so creation is always env/USD.",
+    "impact": "CookiePrice re-introduces, one layer up, the footgun Money was deliberately hardened against. Cloning this for an intrinsically multi-currency aggregate (Invoice, OrderLine) copies a 'null -> getenv -> USD' cascade hidden inside a VO, plus a getenv() call buried in the domain layer (an impurity that breaks deterministic tests and hexagonal boundaries).",
+    "fix": "In E09: make $currency a required parameter on fromString/fromMinorUnits/fromFloat; delete defaultCurrency() from the VO. Push the default-currency decision to the use-case boundary: have CreateCookieCommand/UpdateCookieCommand carry an explicit Currency (or ISO string) resolved from request/settings, and pass it into CookiePrice::fromString($price, $currency). If a tenant default is needed, inject it via a SettingsService at the handler, not via getenv() inside the VO. Update CreateCookieHandler.php:81, UpdateCookieHandler.php:96, CookieRepository.php:392, and CookieQueryRepository.php:202 to supply the stored/explicit currency.",
+    "effort": "L"
+   },
+   {
+    "id": "vo-money-multiply-no-overflow-guard",
+    "title": "Money::multiply (and CookiePrice::multiplyBy) has no PHP_INT_MAX overflow guard",
+    "severity": "high",
+    "classification": "new",
+    "epic_ref": "",
+    "evidence": "app/Domain/Shared/ValueObjects/Money.php:263-266 — `multiply(int $multiplier)` returns `new self($this->amountMinor * $multiplier, $this->currency)` with no bounds check. This contrasts with fromDecimalString (lines 89-104) and fromFloat (lines 133-138) which both explicitly guard PHP_INT_MAX. CookiePrice::multiplyBy (CookiePrice.php:161-167) and add/subtract delegate to Money, so a large quantity (e.g. line-item qty from a CSV import) silently wraps a 64-bit signed product into a small or negative amount.",
+    "impact": "Order/invoice line totals (price x quantity) are the single most common money operation in an ERP. A silent wrap to a negative total is a data-integrity/financial-loss bug that compounds across every domain that multiplies Money. The kernel guards ingestion but not the arithmetic path that actually overflows in practice.",
+    "fix": "In Money::multiply, after computing the product detect overflow before constructing: use a checked multiply (e.g. if $multiplier !== 0 && intdiv(PHP_INT_MAX, abs($multiplier)) < abs($this->amountMinor) then throw ValidationException::invalidFormat('amount', sprintf('a value within %s minor units', PHP_INT_MAX))). Add the analogous guard to add/subtract if totals can overflow. Add tests in tests/Unit/Domain/Shared/ValueObjects/MoneyTest.php for multiply overflow, and a CookiePrice::multiplyBy overflow test.",
+    "effort": "S"
+   },
+   {
+    "id": "vo-stock-no-max-overflow",
+    "title": "CookieStock has no maximum and incrementBy can overflow to negative stock",
+    "severity": "high",
+    "classification": "new",
+    "epic_ref": "",
+    "evidence": "app/Domain/Cookie/ValueObjects/CookieStock.php:39-46 fromInt only rejects $value < 0 (no upper bound); incrementBy (lines 71-76) does unguarded `new self($this->value + $quantity)`. There is no MAX_STOCK constant. Repeated increments or a single large fromInt can reach PHP_INT_MAX and wrap negative, at which point isOutOfStock() (line 78-81, `=== 0`) returns false and decrementBy (lines 52-66) would compute against a negative base. Money guards this exact risk on its factories; CookieStock does not.",
+    "impact": "CookieStock is THE template for ERP inventory/quantity VOs (Inventory, OrderQuantity, Allocation). A silent integer wraparound to negative stock is a correctness/oversell vulnerability that every cloned quantity VO inherits. Also note Round-3 F4 flagged this and it remains fully open.",
+    "fix": "Add `private const int MAX_STOCK = 1_000_000_000;` (pick a domain-sensible ceiling). In fromInt, reject $value > MAX_STOCK with ValidationException::outOfRange('stock', 0, MAX_STOCK, $value, ErrorCodes::COOKIE_VALIDATION_STOCK). In incrementBy, compute $sum = $this->value + $quantity and reject $sum > MAX_STOCK before constructing. File: app/Domain/Cookie/ValueObjects/CookieStock.php.",
+    "effort": "XS"
+   },
+   {
+    "id": "vo-stock-public-value-and-phantom-method",
+    "title": "CookieStock::$value is public (read across aggregate boundary) and its docblock advertises a non-existent value() method",
+    "severity": "medium",
+    "classification": "new",
+    "epic_ref": "",
+    "evidence": "app/Domain/Cookie/ValueObjects/CookieStock.php:32 `private function __construct(public int $value)`. The class docblock (lines 26-27) shows `$stock->value();  // 45` and `$stock->isOutOfStock();` as the usage contract, but no value() method exists in the file (grep for 'value()' returns only the docblock line 27). Callers read the property directly: app/Domain/Cookie/Entities/CookieAccessors.php:52 `return $this->stock->value;`, Cookie.php:235, Cookie.php:295, Cookie.php:301. CookieName (private + getValue()) and CookiePrice (private + getMinorUnits()) use the opposite encapsulation style.",
+    "impact": "Three sibling VOs present three encapsulation styles (public prop, private+getValue, private+getMinorUnits); cloners pattern-match the first they see. The docblock/code mismatch will make a cloner write $newQty->value() and get a fatal error, or copy the public-property leak. Direct $stock->value access also means a future invariant added to stock reads cannot be enforced.",
+    "fix": "Decide one convention for trivial VOs. Recommended: keep readonly but make $value private and add `public function value(): int { return $this->value; }` to match the docblock; then update CookieAccessors.php:52 and Cookie.php:235,295,301 to call ->value(). Alternatively, if public-readonly-prop is the chosen house style, fix the docblock (remove the () ) and apply the same style to CookieName/CookiePrice. Either way, document the rule in the cqrs-architecture skill.",
+    "effort": "S"
+   },
+   {
+    "id": "vo-name-split-equality",
+    "title": "CookieName equality split between case-sensitive equals() and raw-string equalsIgnoreCase()",
+    "severity": "high",
+    "classification": "covered-by-planned-epic",
+    "epic_ref": "E09",
+    "evidence": "app/Domain/Cookie/ValueObjects/CookieName.php:111-114 `equals(CookieName)` is strict `===`; lines 124-127 `equalsIgnoreCase(string $name)` lowercases both and re-trims the argument (receiver already trimmed at construction so that trim is dead). Docblock (line 119) says equalsIgnoreCase is 'useful for checking uniqueness', implying uniqueness is case-insensitive, yet the canonical equals() is case-sensitive. The string overload bypasses VO validation entirely (a 200-char or empty argument silently returns false instead of surfacing a malformed-name bug).",
+    "impact": "VO equality should be total and unambiguous. A cloner copies equals() believing it authoritative and ships records 'Chocolate Chip' and 'chocolate chip' as distinct. The raw-string overload leaks unvalidated input into business logic. Repository uniqueness semantics are split between two methods. (User domain's Email has the same shape via equalsString — UserName has none — so the inconsistency is already spreading.)",
+    "fix": "Pick one semantics. Recommended for names: case-fold on construction is risky for display, so keep display casing but make equals() compare a normalized fold (mb_convert_case($this->value, MB_CASE_LOWER)) and DELETE equalsIgnoreCase(); have the repository uniqueness check use equals() only. If a string overload must remain, route it through self::fromString($name) first so it cannot accept invalid input. File: app/Domain/Cookie/ValueObjects/CookieName.php plus the repository uniqueness call site.",
+    "effort": "S"
+   },
+   {
+    "id": "vo-price-deprecated-format-footgun-used",
+    "title": "Deprecated CookiePrice::format() with arbitrary symbol-override is actively used in the read repository",
+    "severity": "medium",
+    "classification": "new",
+    "epic_ref": "E10",
+    "evidence": "app/Domain/Cookie/ValueObjects/CookiePrice.php:125-131 `format(?string $currencySymbol = null)` is marked @deprecated (line 123, points at PriceFormatter::format) yet still concatenates an arbitrary $currencySymbol with toDecimalString() (line 130) — i.e. you can render a USD amount as '€2.99'. PriceFormatter.php:32-38 replicates the same override. app/Domain/Cookie/Repositories/CookieQueryRepository.php:202 calls `CookiePrice::fromString($decimalPrice)->format()` on the read path: it re-parses a stored decimal back into a CookiePrice (defaulting to env/USD, losing the row's real currency) purely to format it. CookiePriceTest.php:106-107,228-233 lock the override behavior into tests.",
+    "impact": "The read side mislabels currency: a stored non-USD price is reformatted with the env/USD symbol because the currency column is dropped during fromString. The deprecated symbol-override trapdoor will outlive its deprecation tag and get cloned. Presentation logic (symbol prefixing) is leaking back into the VO that PriceFormatter (E10) was supposed to own.",
+    "fix": "E10/E09: (1) Delete CookiePrice::format() entirely; route all formatting through the read model / a MoneyFormatter that takes amount_minor + currency from the projection row, not a re-parsed VO. (2) In CookieQueryRepository.php:202 format directly from the stored minor-units + currency (the projection should already carry both per E09's price_minor migration), not by rebuilding a CookiePrice. (3) Update/replace CookiePriceTest assertions on format(). Make PriceFormatter currency-faithful (never accept a symbol that contradicts the currency).",
+    "effort": "M"
+   },
+   {
+    "id": "vo-price-deadcode-getvalue-float",
+    "title": "CookiePrice::getValue(): float is dead code that re-introduces float drift",
+    "severity": "low",
+    "classification": "new",
+    "epic_ref": "",
+    "evidence": "app/Domain/Cookie/ValueObjects/CookiePrice.php:105-108 `getValue(): float` returns `$money->amountMinor() / (10 ** decimals)` — a float division that defeats minor-units arithmetic. Grep for `price->getValue()` / `->getValue()` filtered to price across app/ returns no production callers; only CookiePriceTest.php:24 asserts it. It is @deprecated (line 102).",
+    "impact": "A deprecated float escape hatch on the reference money VO will be cloned verbatim and called by developers who don't read the deprecation note, reintroducing rounding bugs in totals. Keeping dead code on the template normalizes float money access.",
+    "fix": "Delete getValue(): float from CookiePrice.php and remove the assertion at CookiePriceTest.php:24 (the line already asserts getMinorUnits() and toDecimalString() which fully cover the case). If any consumer truly needs a numeric, expose getMinorUnits(): int only.",
+    "effort": "XS"
+   },
+   {
+    "id": "vo-user-cookie-exception-divergence",
+    "title": "User VOs throw raw \\InvalidArgumentException with the error code mis-passed as the PHP $code, breaking the error-code contract",
+    "severity": "high",
+    "classification": "new",
+    "epic_ref": "",
+    "evidence": "app/Domain/User/ValueObjects/UserName.php:55-81 throws `new \\InvalidArgumentException('...message...', ErrorCodes::USER_VALIDATION_NAME)` — the second argument of \\InvalidArgumentException is the PHP $code (int), NOT a domain error code, and there is no getErrorCode()/getErrors() structure. By contrast every Cookie VO and the shared Money/Email throw ValidationException (app/Domain/Shared/Exceptions/ValidationException.php:51-56 stores a distinct $errorCode and $errors map). So a UserName validation failure cannot be routed by the HTTP/error layer the same way a CookieName failure can: there is no field-errors map and no getErrorCode() accessor. AccessToken/PasswordComplexity/Email (User) DO use ValidationException, so within the User domain itself the pattern is inconsistent.",
+    "impact": "The Cookie reference says 'every domain VO throws ValidationException with a machine-readable error code + field map'. The User clone already violates it. When the ERP clones domains, whichever reference an engineer copies (Cookie vs UserName) determines whether the API returns a structured problem-detail or a bare 500/uncoded message. This is exactly the User/Cookie divergence the audit was told to treat as signal.",
+    "fix": "Rewrite UserName::fromString to throw ValidationException::required / fieldTooShort / fieldTooLong with ErrorCodes::USER_VALIDATION_NAME, mirroring CookieName.php:53-72. Audit all User VOs for any remaining raw \\InvalidArgumentException throws and convert. Add a deptrac/PHPStan or test guard asserting domain VO factories throw ValidationException (or DomainException) — never bare \\InvalidArgumentException. File: app/Domain/User/ValueObjects/UserName.php.",
+    "effort": "S"
+   },
+   {
+    "id": "vo-kernel-exception-inconsistency",
+    "title": "Half the Shared VO kernel throws uncoded \\InvalidArgumentException instead of ValidationException",
+    "severity": "medium",
+    "classification": "new",
+    "epic_ref": "",
+    "evidence": "Within app/Domain/Shared/ValueObjects/: Currency.php:56-60 and 103-114, DocumentNumber.php:65-76, AttachmentRef.php:92-112, Actor.php:35-39, Permission.php:36-40, and RateLimitResult.php:33-39 all throw raw `\\InvalidArgumentException` with no domain error code and no field map. Money.php and Email.php (Shared) throw ValidationException. So the shared kernel itself is split: a currency-format failure (Currency::fromIso) yields an uncoded exception while a Money amount failure yields a coded ValidationException.",
+    "impact": "These are the most-cloned building blocks (Currency, Money, DocumentNumber for invoice numbering, AttachmentRef for D11). An ERP that catches ValidationException at the boundary to build problem-details will let Currency/DocumentNumber failures fall through uncoded. The inconsistency teaches cloners that 'shared VOs throw \\InvalidArgumentException' which contradicts the domain-VO contract.",
+    "fix": "Decide the kernel contract: either (a) all Shared VOs throw ValidationException with a shared error-code namespace (introduce App\\Domain\\Shared\\SharedErrorCodes for currency/document/attachment/permission codes), or (b) explicitly document that structural-invariant VOs (Currency shape, DocumentNumber series) throw \\InvalidArgumentException because they represent programmer errors not user-input. Recommended (a) for anything reachable from user input (Currency::fromIso, Permission::fromString), keep \\InvalidArgumentException only for reconstitute() paths. Files: Currency.php, DocumentNumber.php, AttachmentRef.php, Permission.php, RateLimitResult.php.",
+    "effort": "M"
+   },
+   {
+    "id": "vo-duplicate-email",
+    "title": "Two near-duplicate Email VOs (Shared and User) that have already diverged",
+    "severity": "medium",
+    "classification": "new",
+    "epic_ref": "",
+    "evidence": "app/Domain/Shared/ValueObjects/Email.php and app/Domain/User/ValueObjects/Email.php both exist. They differ: User/Email.php:55-65 throws ValidationException::required + invalidFormat WITH ErrorCodes::USER_VALIDATION_EMAIL; Shared/Email.php:49-51 throws invalidFormat WITHOUT any error code and has no empty-string required() branch (an empty string fails filter_var so the message is 'invalid format' not 'required'). User/Email has equalsString (line 135) and uses explode for getDomain; Shared/Email has getDomain via strpos and no string-equality. All User-domain code imports App\\Domain\\User\\ValueObjects\\Email (8 call sites incl. UserRepositoryInterface, User entity); the Shared Email appears unused by the User domain.",
+    "impact": "Duplicate VO with drifting validation/error-code behavior is exactly what the shared kernel is supposed to prevent. When an ERP domain needs an email (Customer, Supplier contact) the cloner must choose between two Emails with different error-code behavior; whichever is copied propagates its (in)consistency. The Shared/Email's missing error code also means generic email failures are uncoded.",
+    "fix": "Consolidate to one canonical Email in App\\Domain\\Shared\\ValueObjects. Give it a parameterizable or shared error code (or have it throw ValidationException with a Shared email code), add the required() empty-string branch, and the equals/equalsString surface. Repoint User imports (UserName-style 8 call sites) to the shared Email and delete app/Domain/User/ValueObjects/Email.php. Verify deptrac still passes (User -> Shared is allowed).",
+    "effort": "M"
+   },
+   {
+    "id": "vo-price-multiplyby-no-code",
+    "title": "CookiePrice::multiplyBy throws ValidationException without the price error code",
+    "severity": "medium",
+    "classification": "new",
+    "epic_ref": "",
+    "evidence": "app/Domain/Cookie/ValueObjects/CookiePrice.php:163-165 `throw ValidationException::tooSmall('quantity', 1, $quantity)` passes no $errorCode (defaults to 0). applyDiscount (line 174-181) correctly passes ErrorCodes::COOKIE_VALIDATION_PRICE. CookieStock::assertPositiveQuantity (CookieStock.php:88-90) has the identical omission. So within a single VO some throws carry a code and some carry 0.",
+    "impact": "Handlers and the HTTP layer route on getErrorCode(); a 0 code is indistinguishable from 'unset'. A cloned VO copying this mixed pattern produces partially-routable errors. Round-3 F5 flagged this and it is still open.",
+    "fix": "Add ErrorCodes::COOKIE_VALIDATION_PRICE to multiplyBy's throw (or introduce a dedicated COOKIE_VALIDATION_QUANTITY constant in ErrorCodes.php and use it in both CookiePrice::multiplyBy and CookieStock::assertPositiveQuantity). Files: CookiePrice.php:163, CookieStock.php:89, app/Domain/Cookie/ErrorCodes.php.",
+    "effort": "XS"
+   },
+   {
+    "id": "vo-no-cookiestock-test",
+    "title": "CookieStock has no dedicated unit test despite being the inventory-clone template",
+    "severity": "medium",
+    "classification": "new",
+    "epic_ref": "",
+    "evidence": "find tests -iname '*CookieStock*' returns nothing; grep -rln CookieStock tests/ matches only CookieTest.php (entity), CookieServiceProviderTest.php, CookieEventHandlersTest.php — i.e. CookieStock is exercised only transitively via the entity. There is tests/Unit/Domain/Cookie/ValueObjects/CookieNameTest.php and CookiePriceTest.php but no CookieStockTest.php. The decrementBy negative-stock business-rule path, the assertPositiveQuantity path, isOutOfStock, and (once added) the MAX_STOCK guard have no direct VO-level coverage.",
+    "impact": "CookieStock is the reference for every ERP quantity VO, yet its invariants (negative-decrement DomainException, positive-quantity rule, future overflow guard) are only indirectly tested. The 90% coverage gate can pass via the entity tests while leaving the VO contract under-specified, so a clone may silently weaken a stock rule and still go green.",
+    "fix": "Add tests/Unit/Domain/Cookie/ValueObjects/CookieStockTest.php covering: fromInt rejects negative (and >MAX_STOCK once added), decrementBy below zero throws DomainException with COOKIE_BUSINESS_RULE_STOCK_NEGATIVE, incrementBy/decrementBy reject non-positive quantity, incrementBy overflow rejected, isOutOfStock at 0. (Owned jointly with the tests dimension — flag there too.)",
+    "effort": "S"
+   },
+   {
+    "id": "vo-accesstoken-datetime-identity-equals",
+    "title": "AccessToken::equals compares \\DateTimeImmutable with === (object identity, not instant)",
+    "severity": "low",
+    "classification": "new",
+    "epic_ref": "",
+    "evidence": "app/Domain/User/ValueObjects/AccessToken.php:76-80 `equals` returns `$this->token === $other->token && $this->expiresAt === $other->expiresAt`. `===` on two DateTimeImmutable objects compares object identity, so two AccessTokens with the same token string and an equal-but-distinct expiry instant compare as not-equal. DateTimeValue.php:138-141 explicitly documents and fixes this exact pitfall by comparing getTimestamp(); AccessToken does not follow that lesson.",
+    "impact": "Latent equality bug; low blast radius today (token equality is rarely used) but it is a mis-pattern a cloner may copy into a VO where datetime equality matters. It also shows the DateTimeValue lesson hasn't been propagated.",
+    "fix": "Compare the expiry by instant: `&& $this->expiresAt->getTimestamp() === $other->expiresAt->getTimestamp()` (or wrap expiresAt in DateTimeValue and use its equals()). File: app/Domain/User/ValueObjects/AccessToken.php:78-79.",
+    "effort": "XS"
+   },
+   {
+    "id": "vo-no-identity-vo",
+    "title": "No identity value object for aggregates (Cookie/User use raw int ids)",
+    "severity": "low",
+    "classification": "new",
+    "epic_ref": "",
+    "evidence": "find app/Domain -iname '*Id*.php' returns no CookieId/UserId VO (only query/handler files named *ById). Cookie.php:60 stores `private ?int $id = null`; GetCookieByIdQuery and accessors pass raw int. The shared kernel has Money, Currency, Email, DateTimeValue, DocumentNumber, AttachmentRef, Actor, Permission but no typed identifier VO.",
+    "impact": "For an ERP with dozens of aggregates, raw int ids invite cross-aggregate id mix-ups (passing an OrderId where an InvoiceId is expected compiles fine). A shared EntityId / typed-id pattern is a common DDD safeguard the template currently lacks, so every cloned domain repeats the raw-int approach. Lower severity because int ids are functional and a refactor is invasive.",
+    "fix": "Optional/strategic: introduce an abstract shared IdentityId VO (App\\Domain\\Shared\\ValueObjects) or a per-aggregate readonly id VO (CookieId::fromInt) with equals(), and thread it through entity/commands/queries. Given the cost, scope this as its own epic rather than bundling into E09; document the decision either way so cloners know int ids are intentional.",
+    "effort": "L"
+   },
+   {
+    "id": "vo-style-inconsistency-typed-consts-naming",
+    "title": "Sibling VO style drift: typed-vs-untyped consts, factory naming, encapsulation",
+    "severity": "low",
+    "classification": "new",
+    "epic_ref": "",
+    "evidence": "CookiePrice.php:22-23 uses typed consts (`private const int`); CookieName.php:39-40 uses untyped (`private const MIN_LENGTH = 3;`); UserName.php:35-36 and PasswordComplexity.php:30-35 use typed consts. Factory naming is mixed: CookieName::fromString, CookiePrice::fromString/fromMinorUnits/fromFloat, CookieStock::fromInt (named after the primitive, not a semantic source). Encapsulation is mixed (see vo-stock-public-value). Round-3 N1/F10 flagged these and they remain.",
+    "impact": "Three VOs in the reference directory present three styles; cloners copy the first they see, multiplying review noise across every ERP domain. Type-named factories (fromInt) set a precedent for OrderId::fromInt, CustomerAge::fromInt that lose semantic meaning.",
+    "fix": "Adopt one house style: typed class constants everywhere (add `: int`/`: string` to CookieName.php:39-40), and either keep fromInt or rename CookieStock::fromInt -> fromQuantity/of with the type-named one as an alias. Document the convention in the cqrs-architecture / domain-scaffolding skills so scaffolding emits it. Files: CookieName.php, CookieStock.php.",
+    "effort": "XS"
+   }
+  ],
+  "fix_plan": "## Value Objects — ordered remediation plan\n\nExecute in this order. Phases 1-2 are correctness (money/stock); phase 3 is the error-code/exception contract; phase 4 is cloneability/style; phase 5 is strategic.\n\n### Phase 1 — Money correctness (existential; do first)\n1. **(S) Add overflow guard to Money::multiply** — `app/Domain/Shared/ValueObjects/Money.php:263-266`. Before constructing, checked-multiply: `if ($multiplier !== 0 && intdiv(PHP_INT_MAX, abs($multiplier)) < abs($this->amountMinor)) throw ValidationException::invalidFormat('amount', sprintf('a value within %s minor units', PHP_INT_MAX));`. Add MoneyTest cases (overflow on multiply). This protects every line-total in the ERP. (finding vo-money-multiply-no-overflow-guard)\n2. **(M) E09 — currency-aware CookiePrice bounds** — `app/Domain/Cookie/ValueObjects/CookiePrice.php:22-23,195-214`. Replace int constants with per-call bounds derived from `$money->currency` (max via Money::fromDecimalString('9999.99',$currency)->amountMinor(); min via Money::fromMinorUnits(1,$currency)). Emit error context through a throwaway Money's toDecimalString() instead of `/100`. Add JPY + BHD test cases to CookiePriceTest.php. (vo-price-currency-blind-bounds)\n3. **(L) E09 — require explicit Currency on CookiePrice factories** — `CookiePrice.php:42,70,81`; delete defaultCurrency() (lines 220-223). Thread currency from the command boundary: update CreateCookieHandler.php:81, UpdateCookieHandler.php:96, CookieRepository.php:392, CookieQueryRepository.php:202. Remove the getenv() impurity from the domain. (vo-price-implicit-usd-default)\n\n### Phase 2 — Stock correctness\n4. **(XS) Add MAX_STOCK + overflow guard to CookieStock** — `CookieStock.php:39-46,71-76`. Add `private const int MAX_STOCK`, reject in fromInt and post-sum in incrementBy. (vo-stock-no-max-overflow)\n5. **(S) Fix CookieStock encapsulation + docblock** — make `$value` private, add `value(): int` to match the docblock (lines 26-27), repoint CookieAccessors.php:52 and Cookie.php:235,295,301. (vo-stock-public-value-and-phantom-method)\n6. **(S) Add CookieStockTest.php** — `tests/Unit/Domain/Cookie/ValueObjects/CookieStockTest.php` covering negative reject, MAX_STOCK reject, decrement-below-zero DomainException + error code, non-positive-quantity reject, increment overflow, isOutOfStock. (vo-no-cookiestock-test)\n\n### Phase 3 — error-code / exception contract\n7. **(XS) Add error code to multiplyBy + assertPositiveQuantity** — CookiePrice.php:163, CookieStock.php:89; consider new ErrorCodes::COOKIE_VALIDATION_QUANTITY in app/Domain/Cookie/ErrorCodes.php. (vo-price-multiplyby-no-code)\n8. **(S) Convert UserName to ValidationException** — `app/Domain/User/ValueObjects/UserName.php:55-81`, mirror CookieName; add a test/PHPStan guard that domain VO factories never throw bare \\\\InvalidArgumentException. (vo-user-cookie-exception-divergence)\n9. **(M) Decide + apply Shared-kernel exception contract** — Currency.php, DocumentNumber.php, AttachmentRef.php, Permission.php, RateLimitResult.php. User-input-reachable factories (Currency::fromIso, Permission::fromString) -> ValidationException with a new Shared error-code namespace; keep \\\\InvalidArgumentException only on reconstitute() paths and document it. (vo-kernel-exception-inconsistency)\n\n### Phase 4 — cloneability / dedup / presentation\n10. **(M) Consolidate Email** — keep App\\\\Domain\\\\Shared\\\\ValueObjects\\\\Email (add required() branch + error code + equals/equalsString), repoint 8 User imports, delete User/Email.php, re-run deptrac. (vo-duplicate-email)\n11. **(S) Collapse CookieName equality** — make equals() case-insensitive (folded), delete equalsIgnoreCase() or route it through fromString(); repository uniqueness uses equals() only. (vo-name-split-equality)\n12. **(M) E10 — kill CookiePrice::format(), make formatting currency-faithful** — delete format() (CookiePrice.php:125-131), format from stored minor-units+currency in CookieQueryRepository.php:202 (not by re-parsing a VO), harden PriceFormatter, update CookiePriceTest. (vo-price-deprecated-format-footgun-used)\n13. **(XS) Delete dead getValue(): float** — CookiePrice.php:105-108 + remove CookiePriceTest.php:24 assertion. (vo-price-deadcode-getvalue-float)\n14. **(XS) Fix AccessToken datetime equality** — AccessToken.php:78-79 compare getTimestamp(). (vo-accesstoken-datetime-identity-equals)\n15. **(XS) Unify VO style** — typed consts on CookieName.php:39-40, consistent factory naming (CookieStock::fromInt -> add fromQuantity alias); record convention in cqrs-architecture/domain-scaffolding skills. (vo-style-inconsistency-typed-consts-naming)\n\n### Phase 5 — strategic\n16. **(L) Identity VO** — evaluate a shared/per-aggregate typed Id VO; scope as its own epic or formally document that raw int ids are intentional. (vo-no-identity-vo)",
+  "quick_wins": [
+   "Add MAX_STOCK constant + overflow guard to CookieStock::fromInt and incrementBy (CookieStock.php:39-46,71-76) — XS, closes a silent oversell/wraparound vuln in the inventory-clone template.",
+   "Add the missing error code to CookiePrice::multiplyBy (CookiePrice.php:163) and CookieStock::assertPositiveQuantity (CookieStock.php:89) — XS, restores the error-code routing contract.",
+   "Delete the dead getValue(): float on CookiePrice (CookiePrice.php:105-108) and its lone test assertion (CookiePriceTest.php:24) — XS, removes a float-drift escape hatch from the reference money VO.",
+   "Fix AccessToken::equals to compare expiry by getTimestamp() not === (AccessToken.php:78-79) — XS, removes a latent identity-vs-instant equality bug.",
+   "Add `: int` typing to CookieName's MIN_LENGTH/MAX_LENGTH consts (CookieName.php:39-40) to match CookiePrice/UserName — XS, removes one style-drift axis.",
+   "Fix CookieStock docblock (lines 26-27) which advertises a value() method that does not exist — XS, prevents a fatal-error trap for cloners."
+  ],
+  "erp_readiness_notes": "Money/Currency are the crown jewels here and are ERP-grade EXCEPT for three gaps that compound per domain: (1) Money::multiply has no overflow guard — price*quantity is the most common ERP money op and will silently wrap negative on large quantities; fix before any order/invoice domain is cloned. (2) CookiePrice mis-bounds and mis-messages every non-2-decimal currency (JPY/BHD) — do NOT clone CookiePrice for a multi-currency domain until E09 makes bounds currency-aware and removes the env/USD default cascade; the cloner will not notice the wrapper silently single-currencies their catalogue. (3) The error-code/exception contract is NOT uniform: Cookie VOs and Money/Email throw ValidationException with a code+field-map, but UserName and half the Shared kernel (Currency, DocumentNumber, AttachmentRef, Permission, RateLimitResult) throw uncoded \\\\InvalidArgumentException — whichever reference an ERP engineer copies determines whether the API returns a structured problem-detail or an uncoded error. Pick the canonical pattern and add a guard (PHPStan/test) before scaling domains. Cross-cutting watch-items for the entities/repositories/tests auditors: CookieStock::$value is read as a public property across the aggregate boundary (entity reads $stock->value directly) and has no dedicated VO test — both weaken the inventory clone. The read repository (CookieQueryRepository.php:202) re-parses a stored decimal into a CookiePrice purely to format it, dropping the row's real currency — this belongs to the read-side/E09 price_minor migration work, not the VO layer alone. Finally, there is no typed identity VO; for dozens of aggregates, raw int ids invite cross-aggregate id confusion — decide deliberately (typed Id epic vs documented intentional int) rather than letting each clone repeat the raw-int default by inertia."
+ },
+ "read-side": {
+  "dimension": "read-side",
+  "health_score": 4,
+  "summary": "The Cookie read path is functionally correct and well-typed at the contract level (precise array-shape on findPaginated, narrowed read port returning CookieDTO, soft-delete + tenant filtering applied consistently, total/lastPage math has no off-by-one), but it is not ERP-ready and it carries a regression versus the round-3 re-audit. RE-AUDIT-04 claimed F3 (typed QueryHandlerInterface adopted) and F12 (CSPRNG LogSampler) were CLOSED; in this working tree they are NOT: there is no app/Domain/Shared/Bus/, no AbstractQueryHandler, no LogSampler, the three Cookie handlers implement no interface and still sample with mt_rand(), and QueryBus still duck-types handle() via method_exists with a @phpstan-ignore. Those fixes exist only in the unmerged stacked PRs (E05/E08), so every queries-handler finding from round 3 is OPEN here. The DTO/read-model slice (E10) was never even opened: CookieView is dead code (only its own file + test reference it), PriceFormatter is bypassed by 100% of production callers while CookiePrice::format() is @deprecated-pointing-at-it, dates flow through as raw MySQL DATETIME despite the DTO docblock promising ISO-8601, and CookieDTO carries behaviour (isOutOfStock()) and a nullable id. For ERP scale the search is the sharpest edge: $builder->like('name', $term) emits LIKE '%term%' (leading wildcard, unindexable) against a cookies.name column that has no index at all, guaranteeing a full table scan per search on every cloned domain. GetAll is unbounded, page has no ceiling (deep-OFFSET scan), and no read-side caching is wired despite the Cache infra existing. The User domain — the comparison signal — diverges sharply: it has no read port and hydrates the full write-side aggregate for reads, the exact cost CQRS read DTOs exist to avoid.",
+  "verified_fixed": [
+   "Handlers return DTOs, not entities (round-1 CRITICAL): verified all three Cookie query handlers (GetCookieByIdHandler.php:54, GetAllCookiesHandler.php:52, GetCookiesPaginatedHandler.php:53) return CookieDTO/array<CookieDTO>/array-shape, never a Cookie entity. The read path goes through CookieQueryRepositoryInterface which returns DTOs only.",
+   "Read/write port split exists (round-1): CookieQueryRepositoryInterface (Ports/CookieQueryRepositoryInterface.php:27) exposes only findById/findAll/findPaginated returning DTOs; query handlers depend on it, not on the write-side CookieRepositoryInterface. NOTE: this is Cookie-only; User does NOT have this split.",
+   "findPaginated return shape is precise and total/lastPage are correct: CookieQueryRepository.php:157-163 returns array{data,total,page,perPage,lastPage} with $lastPage = max(1, ceil(total/perPage)); integration test CookieQueryRepositoryTest.php:76-79,128-134 pins total=5/lastPage=3 and empty=>lastPage=1. No off-by-one in the contract.",
+   "perPage is clamped to [1,100] in BOTH the query DTO (GetCookiesPaginatedQuery.php:43) and the repository (CookieQueryRepository.php:119); divide-by-zero on perPage is unreachable. Verified by tests test_find_paginated_clamps_per_page_to_one_when_zero / _to_one_hundred.",
+   "Soft-delete exclusion + tenant scoping applied on every read: findById/findAll/findPaginated all add where('deleted_at', null) and call applyTenantFilter() (CookieQueryRepository.php:70,90,123,129,72,97). Tenant isolation proven by CookieQueryRepositoryTest.php:158-195.",
+   "formatPrice swallows Throwable on malformed rows rather than 500-ing (CookieQueryRepository.php:199-208); proven by test_format_price_falls_back_to_raw_for_malformed_value."
+  ],
+  "findings": [
+   {
+    "id": "querybus-contract-regressed",
+    "title": "QueryHandlerInterface/LogSampler fixes claimed CLOSED in RE-AUDIT-04 are absent from this tree (regression vs re-audit)",
+    "severity": "high",
+    "classification": "covered-by-open-pr",
+    "epic_ref": "E05",
+    "evidence": "RE-AUDIT-04 closure matrix marks F3 'CLOSED' (interface adopted, method.notFound suppression gone) and F12 'CLOSED' (LogSampler/random_int). In the working tree none of that landed: `find app -path '*Shared/Bus*'` returns nothing; grep for AbstractQueryHandler/LogSampler across app/ returns nothing. QueryHandlerInterface exists only at app/Infrastructure/Bus/QueryHandlerInterface.php:20 as a marker (handle(object $query): mixed) and is implemented by NO Cookie handler. QueryBus.php:65 still does method_exists($handler,'handle') and QueryBus.php:96 still carries '@phpstan-ignore method.notFound'. git log --all shows AbstractQueryHandler/LogSampler live in commits 8a7a53b/34103df on the open E05 branch, not merged into stabilization/erp-foundation.",
+    "impact": "The structural guarantee that a cloned query handler cannot return a domain entity does not exist in the branch the ERP refactor builds on. A new domain can write handle(GetFooByIdQuery): Foo and the bus accepts it silently. The audit docs overstate the branch's maturity; an engineer trusting RE-AUDIT-04 would assume the seam exists.",
+    "fix": "Merge PR #34/#37 (E05) which add app/Domain/Shared/Bus/QueryHandlerInterface + AbstractQueryHandler, OR re-implement: (1) make QueryHandlerInterface generic (@template TQuery, @template-covariant TResult) and have all three Cookie handlers `implements QueryHandlerInterface`; (2) typehint it in QueryBus::register(string, QueryHandlerInterface) and delete the method_exists check + @phpstan-ignore at QueryBus.php:96. Resolve the stacked-PR conflicts first (base advanced).",
+    "effort": "M"
+   },
+   {
+    "id": "search-leading-wildcard-unindexed",
+    "title": "Paginated search uses LIKE '%term%' (leading wildcard) against an unindexed cookies.name column — full table scan per search",
+    "severity": "high",
+    "classification": "new",
+    "epic_ref": "",
+    "evidence": "CookieQueryRepository.php:136 calls $builder->like('name', $searchTerm). CI4 BaseBuilder::like (vendor/codeigniter4/framework/system/Database/BaseBuilder.php:1008) defaults $side='both', producing LIKE '%term%'. The canonical cookies table migration (2025-01-21-000001_CreateCookiesTable.php:130-134) indexes only tenant_id, is_active, deleted_at, and unique(tenant_id,name,deleted_at) — there is NO standalone or prefix index usable by the search, and a leading-% predicate cannot use a B-tree index anyway.",
+    "impact": "This is the canonical paginated-search shape every ERP domain (invoices, orders, inventory, customers) will clone. At ERP scale (100k-millions of rows) every search becomes a full scan; combined with countAllResults(false) the table is scanned twice per request. Direct production performance cliff multiplied across domains.",
+    "fix": "Decide the search semantics in the reference: (a) for prefix search use $builder->like('name', $searchTerm, 'after') => LIKE 'term%' and add an index on (tenant_id, name) so it is sargable; or (b) if substring search is a hard requirement, add a FULLTEXT index (MySQL) or a generated lowercased name_search column + index and document that the read model needs it. Add the index in a new migration; update CookieQueryRepository.php:136 and the class docblock. Document the chosen pattern in the cqrs-architecture skill so clones inherit a sargable search.",
+    "effort": "M"
+   },
+   {
+    "id": "cookieview-dead-code",
+    "title": "Two competing read DTOs: CookieView is dead code while CookieDTO is canonical",
+    "severity": "high",
+    "classification": "covered-by-planned-epic",
+    "epic_ref": "E10",
+    "evidence": "grep CookieView across app/ + tests/ returns exactly two files: app/Domain/Cookie/ReadModels/CookieView.php and tests/Unit/Domain/Cookie/ReadModels/CookieViewTest.php. Nothing in the production read path (controller -> handlers -> CookieQueryRepository) references it. CookieView.php:28 docblock calls itself 'the read-model DTO' while CookieDTO is the one actually wired. CookieView::detail()/summary() (lines 61,82) take a Cookie entity, so it is unusable from the row-based read repo anyway.",
+    "impact": "A cloner running the Cookie pattern produces both FooDTO and FooView and must guess which is canonical; the dead one accrues drift. The misleading 'read-model DTO' docblock points cloners at the wrong class. E10 is the planned fix but has not been opened, so this still ships.",
+    "fix": "Open E10. Pick CookieDTO as the single read DTO. Delete CookieView.php + CookieViewTest.php, or if its extra fields (version/deletedAt/isDeleted/isAvailable) are needed, fold them onto CookieDTO as precomputed fields and add a CookieDTO::fromRow(array) factory. Do not ship both. Update the cqrs-architecture/domain-scaffolding skills to scaffold exactly one read DTO per domain.",
+    "effort": "M"
+   },
+   {
+    "id": "priceformatter-bypassed",
+    "title": "PriceFormatter is dead-on-arrival: zero production callers while CookiePrice::format() is @deprecated pointing at it",
+    "severity": "high",
+    "classification": "covered-by-planned-epic",
+    "epic_ref": "E10",
+    "evidence": "grep 'PriceFormatter::' across app/ finds only docblock examples in PriceFormatter.php:19-20. Both real formatting sites call the deprecated VO method: CookieQueryRepository.php:202 (CookiePrice::fromString(...)->format()) and CookieDTO.php:62 ($cookie->getPrice()->format()). CookiePrice.php:123 marks format() '@deprecated Use PriceFormatter::format()'. PriceFormatter::format (Services/PriceFormatter.php:32) and CookiePrice::format (CookiePrice.php:125) are near-identical wrappers over Money::format() / symbol-prefix.",
+    "impact": "The deprecation arrow points at a service nobody uses; cloners generate FooPriceFormatter + an equivalent @deprecated on FooPrice::format() and wire neither. Two parallel formatting code paths per domain with the 'authoritative' one unused. Self-contradictory reference.",
+    "fix": "Resolve under E10. Either (a) route CookieQueryRepository::formatPrice() and CookieDTO::fromEntity() through PriceFormatter::format($price) and drop @deprecated from CookiePrice::format() once unused; or (b) delete PriceFormatter.php and remove the @deprecated tag (the VO formatting itself is fine for one currency). Combine with the MoneyFormatter lift (see money-formatter-not-shared).",
+    "effort": "S"
+   },
+   {
+    "id": "dto-dates-not-iso8601",
+    "title": "CookieDTO date fields are raw MySQL DATETIME, not ISO-8601 as the docblock claims",
+    "severity": "high",
+    "classification": "new",
+    "epic_ref": "E10",
+    "evidence": "CookieDTO.php:31-32 docblock states 'ISO-8601 timestamp'. The read repo passes the column through verbatim: CookieQueryRepository.php:191-192 sets createdAt/updatedAt to (is_string) $row['created_at'] with no conversion. The cookies migration declares created_at/updated_at/deleted_at as type 'DATETIME' (2025-01-21-000001_CreateCookiesTable.php:112-123), and the unit test fixture confirms the wire shape '2025-10-21 10:00:00' (GetCookiesPaginatedHandlerTest.php:228) — a space separator, no 'T', no timezone offset. So serialized JSON emits a non-ISO-8601 string while the contract promises ISO-8601.",
+    "impact": "Every ERP API consumer cloning this DTO gets timestamps that violate the documented contract and break clients that parse strict ISO-8601/RFC-3339. No timezone marker means cross-region ambiguity. Multiplied across every dated field in every domain (invoices/orders are timestamp-heavy).",
+    "fix": "Under E10, introduce a shared date-to-ISO helper (the repo already has App\\Domain\\Shared\\ValueObjects\\DateTimeValue — add/use a toIso8601() conversion) and apply it in CookieQueryRepository::toDto() so createdAt/updatedAt are emitted as deterministic ISO-8601 with offset. Either fix the values or correct the docblock — values preferred. Cover with a test asserting the 'T' + offset format.",
+    "effort": "S"
+   },
+   {
+    "id": "getallcookies-unbounded",
+    "title": "GetAllCookies/findAll is unbounded — no LIMIT, no MAX_RESULTS safety net",
+    "severity": "high",
+    "classification": "covered-by-open-pr",
+    "epic_ref": "E08",
+    "evidence": "GetAllCookiesQuery.php (whole file, lines 16-27) has no MAX_RESULTS constant. CookieQueryRepository::findAll (CookieQueryRepository.php:86-107) emits no limit() — it array_maps every matching row into a CookieDTO. Handler GetAllCookiesHandler.php:52-63 returns the full array.",
+    "impact": "Cookie is presented as the canonical 'small reference list', but the template gives no signal that GetAll is dangerous. A cloned domain (AuditLog, Orders) with 500k rows OOMs the PHP process on the first GetAll call. Latent DoS replicated per clone.",
+    "fix": "Either delete GetAllCookies from the template (force the paginated variant), or add a MAX_RESULTS constant on the query, enforce it via limit() in findAll(), and log+throw when the row count would exceed it. Document that GetAll is only safe for bounded reference data. RE-AUDIT-04 maps this to the AbstractQueryHandler work (E08) but it is unmerged.",
+    "effort": "S"
+   },
+   {
+    "id": "page-no-ceiling",
+    "title": "Page number has a floor but no ceiling — deep-OFFSET scan via one querystring param",
+    "severity": "medium",
+    "classification": "covered-by-open-pr",
+    "epic_ref": "E08",
+    "evidence": "GetCookiesPaginatedQuery.php:42 does $this->page = max(self::DEFAULT_PAGE, $page) with no upper bound. CookieQueryRepository.php:141 computes $offset = ($page-1)*$perPage and CookieQueryRepository.php:144 issues limit($perPage,$offset). page=999999999 yields LIMIT 20 OFFSET 19999999980; MySQL still walks the index to that offset.",
+    "impact": "Cheap DoS via ?page=, cloned into every paginated read in every ERP domain. LIMIT/OFFSET also degrades linearly with depth — already a problem before an attacker, for legitimately large lists.",
+    "fix": "Cap page at a sane absolute (e.g. MAX_PAGE = 10000) in the query constructor and throw ValidationException on overflow rather than silently clamping (surfaces client bugs). Longer term, document/provide keyset (seek) pagination for ERP-scale lists — see keyset-not-offered.",
+    "effort": "S"
+   },
+   {
+    "id": "slow-query-logged-info",
+    "title": "Slow queries are logged at info, not warning — defeats alerting (Cookie diverges from User)",
+    "severity": "medium",
+    "classification": "covered-by-open-pr",
+    "epic_ref": "E08",
+    "evidence": "All three Cookie handlers call $this->logger->info('Query executed', $context) even when $isSlowQuery===true, with slow_query only an extra context key: GetCookieByIdHandler.php:120, GetAllCookiesHandler.php:126, GetCookiesPaginatedHandler.php:136. By contrast the User domain does the correct thing: SearchUsersHandler.php:74-80 escalates to $this->logger->warning('Slow search query detected', ...). So the two reference domains disagree on the slow-query level.",
+    "impact": "Operators filtering level>=warning never see Cookie slow queries; the whole point of slow-query logging (alerting) is defeated. Cloned per-domain = silent perf cliff everywhere. The intra-repo inconsistency means cloners pick whichever reference they read first.",
+    "fix": "In each Cookie handler's logQuery, use $this->logger->{$isSlowQuery ? 'warning' : 'info'}(...). Best done once on AbstractQueryHandler (E08) so all clones inherit it. Align Cookie and User on the same level convention.",
+    "effort": "S"
+   },
+   {
+    "id": "search-analytics-bypasses-config",
+    "title": "Paginated search forces a log on every search regardless of queryLoggingLevel",
+    "severity": "medium",
+    "classification": "covered-by-open-pr",
+    "epic_ref": "E08",
+    "evidence": "GetCookiesPaginatedHandler.php:84 — if ($isSlowQuery || $isSearchQuery) logs unconditionally, short-circuiting the queryLoggingLevel() match below. test_search_queries_are_always_logged_for_analytics (GetCookiesPaginatedHandlerTest.php:80-98) pins this behaviour even when level='errors'.",
+    "impact": "Operators who set queryLoggingLevel='errors' to silence noise still get a log line per search — at ERP scale (search-heavy admin UIs) this floods the operational channel. Cloned per-domain = systemic noise. Conflates analytics with operational logging.",
+    "fix": "Route search analytics to a dedicated 'search-analytics' channel (LoggerFactory::create('cookie.search')) instead of the operational logger, or gate it behind a separate searchLoggingEnabled config switch. Lift to AbstractQueryHandler so the seam is uniform.",
+    "effort": "S"
+   },
+   {
+    "id": "no-read-side-caching",
+    "title": "No read-side caching wired despite Infrastructure/Cache existing; no cache seam on the query path",
+    "severity": "medium",
+    "classification": "covered-by-open-pr",
+    "epic_ref": "E08",
+    "evidence": "grep for Cache/remember/CacheInterface across app/Domain/Cookie + app/Controllers/Domain/Cookie returns nothing. app/Infrastructure/Cache contains only Services/CacheHealthCheck.php — no cache adapter, no decorator. The handlers have no cacheKey()/ttl hook (those exist only on the unmerged AbstractQueryHandler per RE-AUDIT-04). No event-driven invalidation path connects Cookie events to any cache.",
+    "impact": "GetCookieById and GetAll are obvious cache candidates for ERP reference data; adding caching later means touching every handler in every cloned domain. No documented invalidation contract (which event busts which key) means clones will either skip caching or invent incoherent ad-hoc caches.",
+    "fix": "Land AbstractQueryHandler's cacheKey()/cacheTtlSeconds() hooks (E08) and implement the cache check in the base; add a CachedQueryHandlerDecorator as the opt-in seam. Document the invalidation contract: CookieUpdated/Deleted/Restored/StockChanged events bust the per-id and list keys. Provide one worked example on Cookie so clones copy a coherent pattern.",
+    "effort": "M"
+   },
+   {
+    "id": "getbyid-notfound-no-contract",
+    "title": "GetCookieById null-on-miss has no structural contract; controller silently redirects",
+    "severity": "medium",
+    "classification": "covered-by-planned-epic",
+    "epic_ref": "E10",
+    "evidence": "GetCookieByIdHandler.php:54 returns ?CookieDTO with docblock 'Controller can decide how to handle not found cases' (lines 27-29). The controller chooses a flash-redirect: CookieController.php:89-92 (show) and :176-179 (edit) redirect('/cookies')->with('error',...). No 404/NotFoundException is raised; nothing in the template commits to a single not-found semantic.",
+    "impact": "The reference leaves the most common read decision (what does 'not found' mean?) unanswered structurally. Cloned domains will each choose differently (404 vs redirect vs empty view), producing inconsistent API/UX across the ERP. An API clone returning a flash redirect for a missing resource is wrong.",
+    "fix": "Pick one in the template: keep nullable DTO AND show an API controller throwing PageNotFoundException()/returning 404 for the JSON path, plus the web redirect for the HTML path; document the split. Resolve under E10 alongside the ReadDTOInterface so the API envelope has a defined not-found shape.",
+    "effort": "S"
+   },
+   {
+    "id": "dto-id-nullable",
+    "title": "CookieDTO::id is nullable though the read path always produces an int id",
+    "severity": "medium",
+    "classification": "covered-by-planned-epic",
+    "epic_ref": "E10",
+    "evidence": "CookieDTO.php:35 declares public ?int $id. The read repo always casts (int) $row['id'] (CookieQueryRepository.php:184), so a read-reconstituted DTO never has null id. Views render $cookie->id directly into URLs (index.php:47,65,66). The nullable type permits a /cookies/ (empty) URL without a static-analysis warning. fromEntity (CookieDTO.php:55-67) passes $cookie->getId() which is the only legitimate null source (unpersisted entity).",
+    "impact": "A cloner can ship a read DTO whose id is null and only discover it at runtime when a URL renders empty. Read DTOs reconstituted from a row always have an id; declaring it nullable creates a contract that does not match the read reality and weakens link-building safety across every cloned listing/detail view.",
+    "fix": "Under E10, make the read DTO id non-nullable (public int $id). If a pre-persistence preview path genuinely needs null, give it a separate UnpersistedCookieDTO or only allow int|null at that construction site, not on the canonical read DTO. fromEntity then asserts getId() !== null before constructing.",
+    "effort": "S"
+   },
+   {
+    "id": "dto-carries-behavior",
+    "title": "CookieDTO exposes a domain predicate (isOutOfStock()), blurring the DTO boundary",
+    "severity": "medium",
+    "classification": "covered-by-planned-epic",
+    "epic_ref": "E10",
+    "evidence": "CookieDTO.php:77-80 defines isOutOfStock(): bool returning $this->stock === 0, contradicting the class docblock 'Prevents domain entities from leaking into the presentation layer' (CookieDTO.php:11). Both views call it: index.php:52 and show.php:47.",
+    "impact": "Cloners see the precedent and add isLowStock()/isExpensive()/isOnSale() to FooDTO, growing it into a parallel entity and defeating the decoupling claim. The DTO/entity boundary the read side exists to keep clean is already leaking in the reference.",
+    "fix": "Replace the method with a precomputed public bool $outOfStock populated in CookieQueryRepository::toDto()/CookieDTO::fromEntity(); update the two views to read $cookie->outOfStock. Document in the skill that read DTOs carry data, not behaviour. Bundle into E10.",
+    "effort": "S"
+   },
+   {
+    "id": "no-shared-serialization-contract",
+    "title": "No shared read-DTO serialization contract (toArray/JsonSerializable, snake_case, ISO dates)",
+    "severity": "medium",
+    "classification": "covered-by-planned-epic",
+    "epic_ref": "E10",
+    "evidence": "CookieDTO has no toArray() and does not implement JsonSerializable (CookieDTO.php whole file) — JSON would fall back to public-property reflection emitting camelCase keys (formattedPrice, isActive). CookieView::toArray() emits snake_case (is_active, is_deleted) (CookieView.php:103-119) but is dead. grep confirms no ReadDTOInterface and no JsonSerializable anywhere under app/Domain/Cookie. The CookieView docblock references an 'ApiResponse envelope' (CookieView.php:26) that does not exist in the read path.",
+    "impact": "A cloner copying CookieDTO ships camelCase JSON; copying CookieView ships snake_case; copying both ships both. No shared key-case or date convention means every ERP domain's API drifts. The referenced ApiResponse envelope is vapor.",
+    "fix": "Create app/Domain/Shared/DTOs/ReadDTOInterface with toArray(): array<string,scalar|null> + jsonSerialize(): array; standardize snake_case at the JSON boundary and ISO-8601 dates (reuse the date helper from dto-dates-not-iso8601). Have CookieDTO implement it. This is the explicit E10 scope (CookieDTO + JsonSerializable + ReadDTOInterface + MoneyFormatter).",
+    "effort": "M"
+   },
+   {
+    "id": "money-formatter-not-shared",
+    "title": "Price formatting is symbol-prefix only (no locale/Intl) and not lifted to a shared MoneyFormatter",
+    "severity": "medium",
+    "classification": "covered-by-planned-epic",
+    "epic_ref": "E10",
+    "evidence": "Money::format() (app/Domain/Shared/ValueObjects/Money.php:167-171) is $sign . $currency->symbol . $absStr — no NumberFormatter, no thousands separator, no locale. PriceFormatter::format (Services/PriceFormatter.php:32-38) and CookiePrice::format (CookiePrice.php:125-131) both reduce to that. Output is 'R$1234.5' rather than 'R$ 1.234,50'. PriceFormatter is Cookie-scoped (final, not even readonly) so each cloned domain gets its own copy.",
+    "impact": "Cloners assume PriceFormatter is locale-aware and ship it to production; ERP money display for BR/EU customers is wrong. Per-domain copies of an 8-line static method instead of one shared formatter; multiplied across invoices/orders/inventory.",
+    "fix": "Under E10, lift to app/Domain/Shared/Services/MoneyFormatter::format(Money $m, ?string $symbol=null); either upgrade to IntlNumberFormatter::CURRENCY with locale + currency code, or rename to honestly reflect symbol-prefix. Route CookieDTO/CookieQueryRepository through it and retire the Cookie-local PriceFormatter + CookiePrice::format() deprecation. Document the formatter as the canonical money-display seam for all domains.",
+    "effort": "M"
+   },
+   {
+    "id": "keyset-not-offered",
+    "title": "Read side offers only LIMIT/OFFSET pagination; no keyset/cursor option for ERP-scale lists",
+    "severity": "medium",
+    "classification": "new",
+    "epic_ref": "",
+    "evidence": "CookieQueryRepository.php:141-144 implements offset pagination only (orderBy('id','ASC')->limit($perPage,$offset)); grep for cursor/keyset/seek across app/Domain/Cookie + app/Infrastructure returns nothing. The fixed orderBy('id','ASC') is stable (good for keyset) but no after-id seek path is exposed on the port or query.",
+    "impact": "OFFSET pagination scans+discards all preceding rows; on million-row ERP tables, page 5000 is a multi-second scan. The reference gives clones no keyset example, so every large-list domain inherits a pattern that degrades linearly with depth. countAllResults on every page compounds it.",
+    "fix": "Add an optional keyset variant to the read port (e.g. findAfter(?int $afterId, int $limit, ...)) returning {data, nextCursor} and demonstrate it once on Cookie; keep offset for small/admin lists. Document when to use which (offset for bounded reference data, keyset for unbounded transactional tables) in the cqrs-architecture skill. Decouple total-count from the hot path (lazy/approximate count).",
+    "effort": "L"
+   },
+   {
+    "id": "user-read-side-hydrates-aggregate",
+    "title": "User read side hydrates the full write-aggregate (no read port) — opposite of Cookie's CQRS read split",
+    "severity": "high",
+    "classification": "new",
+    "epic_ref": "",
+    "evidence": "User has no UserQueryRepositoryInterface and no query repository (find app/Domain/User/Ports + Repositories shows only UserRepositoryInterface/UserRepository). GetUserByIdHandler.php:31-39 injects the WRITE port UserRepositoryInterface, calls findById returning a full User entity, then maps UserDTO::fromEntity($user) in the handler. SearchUsersHandler.php:63-90 calls the write repo's findPaginated (returns array<User> entities) and array_maps to UserDTO in the handler; it also mutates the result array shape (rename totalPages->lastPage at :92-93). Cookie's interface returns DTOs straight from rows (Ports/CookieQueryRepositoryInterface.php:27).",
+    "impact": "The template ships TWO contradictory read-side reference implementations: Cookie (separate read port, DTOs from rows, skips reconstitution) and User (write port, full aggregate reconstitution per row, map-in-handler). A cloner copying User inherits the exact entity-hydration-for-lists cost CQRS read DTOs exist to avoid, plus the SearchUsers result-shape munging. This is architectural rot that compounds per cloned domain.",
+    "fix": "Designate Cookie as THE read-side reference and bring User into line: add UserQueryRepositoryInterface returning UserDTO from rows, point GetUserById/GetAllUsers/SearchUsers handlers at it, and stop reconstituting User aggregates for reads. Standardize the paginated return shape (lastPage, not totalPages) across both domains. Until then, document loudly that User's read side is NOT the pattern to clone.",
+    "effort": "L"
+   },
+   {
+    "id": "getall-docblock-misleading",
+    "title": "GetAllCookiesQuery docblock contradicts its includeInactive parameter",
+    "severity": "low",
+    "classification": "covered-by-open-pr",
+    "epic_ref": "E08",
+    "evidence": "GetAllCookiesQuery.php:10-13 docblock says 'Returns all cookies that are: Active (is_active = true), Not deleted' while the constructor (line 23-25) takes bool $includeInactive = false. The 'Active' claim is false when includeInactive=true.",
+    "impact": "Cloners copy the docblock and forget to update it for includeArchived/includeInactive variants; the reference's own docs lie about behaviour. Low but it is the reference everyone reads first.",
+    "fix": "Rewrite to: 'Returns all non-deleted cookies. Excludes inactive by default; pass includeInactive=true to include is_active=false rows.' Trivial edit to GetAllCookiesQuery.php.",
+    "effort": "XS"
+   },
+   {
+    "id": "hardcoded-domain-query-strings",
+    "title": "Logging context hard-codes 'Cookie' domain and query-class strings (two sources of truth)",
+    "severity": "low",
+    "classification": "covered-by-open-pr",
+    "epic_ref": "E08",
+    "evidence": "GetCookieByIdHandler.php:109-110, GetAllCookiesHandler.php:115-116, GetCookiesPaginatedHandler.php:119-120 all set 'domain' => 'Cookie' and 'query' => 'GetXxxQuery' as string literals. The query name duplicates the class name. shouldSample() at GetCookieByIdHandler.php:130 (and the two siblings) still uses mt_rand()/mt_getrandmax() rather than a CSPRNG.",
+    "impact": "sed s/Cookie/Foo/g clones the strings but a class rename can desync the literal from the actual class. mt_rand sampling bias is copied verbatim into every cloned handler.",
+    "fix": "Derive 'query' from $query::class (short name) and define a DOMAIN constant once on AbstractQueryHandler (E08); move sampling to the base using random_int via LogSampler. Eliminates both the duplication and the mt_rand idiom across clones.",
+    "effort": "S"
+   },
+   {
+    "id": "projection-pattern-aspirational",
+    "title": "Projection infrastructure is wired but feeds zero real projections; only a .php.example exists",
+    "severity": "low",
+    "classification": "new",
+    "epic_ref": "",
+    "evidence": "ProjectionRegistry + ProjectionInterface are real, instantiated code: Services.php:171-189 builds projectionRegistry and ensureProvidersRegistered() triggers it (Services.php:250). But projectionRegistry(false) registers nothing (the body is a comment, Services.php:181-187). The only Cookie projection is app/Domain/Cookie/Projections/CookieReadModelProjection.php.example (inactive). ProjectionRegistryTest.php only exercises anonymous dummy projections. CookieServiceProvider has no registerProjections() hook, yet the .example's re-enable instructions (lines 28-31) tell you to register in registerEvents().",
+    "impact": "For Cookie the read model is collapsed into the cookies table, so this is acceptable — but a cloner who genuinely needs a denormalised projection finds an executable-but-unwired registry, an example that references a registration hook that does not exist on the service provider, and no end-to-end test of a live projection. The projection story is aspirational for the reference domain.",
+    "fix": "If projections are part of the ERP story, add a registerProjections(ProjectionRegistry) method to DomainServiceProviderInterface + CookieServiceProvider (even if Cookie registers none), wire it in ensureProvidersRegistered, and ship one integration test that drives a real projection end-to-end (the .example reactivated under a different domain or a test double). Otherwise, document the projection infra as opt-in scaffolding and remove the stale registerEvents() instruction from the .example.",
+    "effort": "M"
+   },
+   {
+    "id": "cookieview-extra-dropped",
+    "title": "CookieView::$extra is dead state — toArray() silently drops it",
+    "severity": "low",
+    "classification": "covered-by-planned-epic",
+    "epic_ref": "E10",
+    "evidence": "CookieView.php:49 accepts array $extra = [] in the constructor; toArray() (CookieView.php:103-119) returns a fixed key set and never spreads $extra. Since CookieView is dead code anyway, the param is doubly inert.",
+    "impact": "If CookieView is ever revived (or its pattern cloned), a caller passing extra:['tenant_id'=>7] never sees it in the payload and wastes time debugging. Misleading dead state in a reference template.",
+    "fix": "Resolve as part of the CookieView deletion under E10 (preferred). If any extra-field mechanism survives onto CookieDTO, spread ...$this->extra in toArray() or drop the parameter.",
+    "effort": "XS"
+   }
+  ],
+  "fix_plan": "## Read-side remediation plan (ordered)\n\nPremise: this branch lacks the E05/E08 query-handler infrastructure that RE-AUDIT-04 assumed merged, and E10 (read DTO/serialization) was never opened. Sequence below resolves the regression first, then the ERP-scale performance edges, then the DTO/serialization consolidation, then cross-domain alignment.\n\n### Phase A — restore the query-handler contract (regression first)\n1. Resolve merge conflicts on PR #34/#37 (E05) and merge, OR re-add by hand:\n   - Create `app/Domain/Shared/Bus/QueryHandlerInterface.php` generic (`@template TQuery`, `@template-covariant TResult`).\n   - Make GetCookieByIdHandler / GetAllCookiesHandler / GetCookiesPaginatedHandler `implements QueryHandlerInterface`.\n   - In `app/Infrastructure/Bus/QueryBus.php:57` typehint `register(string, QueryHandlerInterface)`; delete the `method_exists` check (lines 65-69) and the `@phpstan-ignore method.notFound` at line 96.\n   - Effort: M.\n2. Merge/re-add E08 `AbstractQueryHandler` + `LogSampler` (PR #36) and migrate the three Cookie handlers onto it. This single base then resolves, in one place:\n   - slow-query escalation to `warning` (replaces the `info` calls at GetCookieByIdHandler.php:120 / GetAllCookiesHandler.php:126 / GetCookiesPaginatedHandler.php:136),\n   - `random_int` sampling (replaces `mt_rand()` at GetCookieByIdHandler.php:130 + siblings),\n   - derive `'query'` from `$query::class` + a `DOMAIN` const (removes literals at lines 109-110/115-116/119-120),\n   - `cacheKey()` / `cacheTtlSeconds()` seam,\n   - bounded `GetAll` via a `MAX_RESULTS` hook.\n   - Move the search-analytics force-log (GetCookiesPaginatedHandler.php:84) to a dedicated channel/flag on the base.\n   - Effort: M-L.\n\n### Phase B — ERP-scale read performance (do before cloning)\n3. Fix search sargability: change `CookieQueryRepository.php:136` to prefix search (`like('name',$term,'after')`) and add an index on `(tenant_id, name)` in a new migration; or commit to FULLTEXT/`name_search` generated column + index if substring search is required. Update the class docblock and the cqrs-architecture skill. Effort: M.\n4. Cap `page` in `GetCookiesPaginatedQuery.php:42` (add `MAX_PAGE`, throw `ValidationException` on overflow). Effort: S.\n5. Add a keyset/cursor read path on the port (`findAfter(?int $afterId, int $limit, ...)`) and demonstrate it once on Cookie; document offset-vs-keyset guidance. Decouple total-count from the hot path. Effort: L.\n6. Wire read-side caching: implement `AbstractQueryHandler::cacheKey()` against a cache adapter, add a `CachedQueryHandlerDecorator`, and document event-driven invalidation (CookieUpdated/Deleted/Restored/StockChanged bust per-id + list keys). Effort: M.\n\n### Phase C — read DTO + serialization consolidation (open E10)\n7. Delete `CookieView.php` + `CookieViewTest.php` (dead). If version/deletedAt/isDeleted/isAvailable are needed, fold them as precomputed fields onto CookieDTO and add `CookieDTO::fromRow(array)`. Effort: M.\n8. Create `app/Domain/Shared/DTOs/ReadDTOInterface` (`toArray(): array<string,scalar|null>` + `jsonSerialize()`); have CookieDTO implement it; standardize snake_case JSON. Effort: M.\n9. Add a shared date-to-ISO helper (extend `App\\Domain\\Shared\\ValueObjects\\DateTimeValue`) and apply it in `CookieQueryRepository::toDto()` (CookieQueryRepository.php:191-192) so createdAt/updatedAt are ISO-8601 with offset; fixes the false docblock at CookieDTO.php:31-32. Effort: S.\n10. Make CookieDTO::id non-nullable (CookieDTO.php:35); assert in fromEntity. Effort: S.\n11. Replace CookieDTO::isOutOfStock() (CookieDTO.php:77) with a precomputed `public bool $outOfStock`; update views index.php:52 / show.php:47. Effort: S.\n12. Lift price formatting to `app/Domain/Shared/Services/MoneyFormatter` (Intl currency or honest rename); route CookieDTO + CookieQueryRepository::formatPrice through it; delete Cookie-local PriceFormatter and remove the `@deprecated` on CookiePrice::format() (CookiePrice.php:123). Effort: M.\n13. Commit a single not-found semantic for GetCookieById (404 for API, redirect for HTML) and document it. Effort: S.\n\n### Phase D — cross-domain alignment (cloneability)\n14. Bring User's read side onto the Cookie pattern: add `UserQueryRepositoryInterface` returning UserDTO from rows; repoint GetUserById/GetAllUsers/SearchUsers handlers; stop reconstituting User aggregates for reads; standardize the paginated shape on `lastPage` (remove the totalPages rename at SearchUsersHandler.php:92-93). Until done, annotate User handlers as NOT the reference pattern. Effort: L.\n15. Decide the projection story: add a `registerProjections(ProjectionRegistry)` hook to the service-provider interface (even if Cookie registers none) and one end-to-end projection test, OR document the projection infra as opt-in and remove the stale `registerEvents()` re-enable note from the .example. Effort: M.\n\n### Phase E — verification\n16. Run phpstan L8 + phpcs + phpunit (90% gate) and deptrac after each phase. Update RE-AUDIT-04/07 closure matrices to reflect actual tree state (the regression note).",
+  "quick_wins": [
+   "Fix the misleading GetAllCookiesQuery docblock (GetAllCookiesQuery.php:10-13) to match the includeInactive parameter — XS.",
+   "Fix or correct the CookieDTO ISO-8601 date claim: either convert dates in CookieQueryRepository::toDto() (lines 191-192) or fix the docblock (CookieDTO.php:31-32) — S.",
+   "Change CookieQueryRepository.php:136 search to prefix (like(..,'after')) to stop the guaranteed leading-wildcard full scan, even before adding the index — XS code change, big perf win.",
+   "Make CookieDTO::id non-nullable (CookieDTO.php:35) — the read path never produces null — S.",
+   "Cap page in GetCookiesPaginatedQuery.php:42 with a MAX_PAGE constant to kill the cheap deep-OFFSET DoS — S.",
+   "Delete dead CookieView.php + CookieViewTest.php (only self-references) to remove the two-competing-DTOs trap before anyone clones it — S."
+  ],
+  "erp_readiness_notes": "When cloning Cookie's read side into real ERP domains, watch these: (1) The CookieQueryRepository read-port-returns-DTOs pattern is the GOOD reference — clone that, NOT User's GetUserById/SearchUsers which hydrate the full write aggregate via the write port; the two diverge and only one is CQRS-correct. (2) The search is the single most dangerous thing to clone: LIKE '%term%' on an unindexed name column is a full scan that will melt at invoice/order scale — fix the reference before it propagates. (3) Offset-only pagination + countAllResults on every page does not scale to transactional tables; provide a keyset path before cloning into high-volume domains. (4) Dates emitted as raw MySQL DATETIME (not ISO-8601) will break strict API consumers across every cloned domain — establish the shared ISO date + ReadDTOInterface (snake_case) contract first so all domains serialize identically. (5) Slow-query log level is inconsistent between Cookie (info, wrong) and User (warning, right) — pick warning and bake it into the shared base so clones inherit alerting. (6) The projection registry is wired but feeds nothing; it is fine that Cookie collapsed its read model, but the .example references a registerProjections hook that does not exist — any ERP domain that truly needs a denormalised read model has no executable, tested path to follow yet. Cross-cutting items outside my lane noted for the owning auditors: the read-side schema lacks a search index (schema auditor); CookieView vs CookieDTO and DateTimeValue/Money serialization belong jointly to the entities/VO auditors; the QueryBus duck-typing + @phpstan-ignore is a write/bus-infra concern; tenant filtering correctness should be confirmed by the auth/security auditor."
+ },
+ "supporting-sweep": {
+  "dimension": "supporting-sweep",
+  "health_score": 6,
+  "summary": "Breadth-first sweep of all nine supporting dimensions (A-I). The single most damaging issue is in LOGGING/TESTS: integration tests run against a live SQLite DB with logging pointed at the real writable/logs/, and the UsersEmailUniqueWithSoftDelete migration's dropKey('users','users_email') throws \"no such index: users_email\" on SQLite, which the CI4 exception handler logs at ERROR on every test that migrates — producing a 389MB log-2026-05-22.log with ~92,746 copies of that one exception, plus a parallel 76MB Monolog app-*.json stream. Two complete logging stacks run in parallel (CI4-native log-*.log at threshold=9, and Monolog app-*.json), neither isolated under CI_ENVIRONMENT=testing. The good news: PR #42 (E18) explicitly targets \"logger isolation + sleep removal\", so the critical item is already in flight (with conflicts). SCHEMA, AUTH, and PLATFORM-DI are in much better shape than round-3 implied: the cookies table already carries tenant_id/version/created_by, the event_outbox DDL matches the E12 plan, the documented JWT/rate-limit/authorization security gaps are FIXED (prod startup guard, real .env secret, wired middleware, gitleaks job in CI), and tenancy is genuinely injected into Cookie repos in production via #[AutoBind]. The dominant remaining theme is HYGIENE-THAT-CLONES: empty app/Filters with three competing middleware homes, Commands+Helpers outside PHPStan/coverage scope, a duplicate dual test tree (PascalCase real + lowercase stubs), tenancy untested at the integration-base level, document numbering not tenant-scoped, and two tracked root audit .md files. DEPTH NOTE: this was a breadth sweep — areas C (views/i18n), F-mechanism, and E-service-ranking were spot-checked not exhaustively traced, so they are NOT certified clean; the write/read/event core is owned by the six deep auditors.",
+  "verified_fixed": [
+   "SECURITY_AUDIT #2 Weak default JWT secret (CVSS 9.3): .env JWT_SECRET_KEY is NOT the documented default string (grep for 'your-secret-key-here-change-in-production' returns 0 matches in .env), and a production startup guard exists in app/Config/Events.php:67-70 and app/Infrastructure/Auth/Services/JwtService.php:42 that aborts boot if the secret is unset/<32 chars.",
+   "SECURITY_AUDIT #1 No rate limiting (CVSS 9.1): RateLimitMiddleware exists (app/Infrastructure/Auth/Middleware/RateLimitMiddleware.php) and is aliased as 'ratelimit' in app/Config/Filters.php:46.",
+   "SECURITY_AUDIT #3 No authorization enforcement (JWT filter not registered): 'jwt', 'permission', 'role', 'web_auth' are all registered aliases in app/Config/Filters.php:45-51 and web_auth is applied by default in the $filters block (Filters.php:134-141).",
+   "RE-AUDIT-11 F3/F13 (CookieModel::existsByName scope + LOWER() defeating index): closed by PR #41 (epic/e11-repository-hygiene), confirmed open in PR list as #41.",
+   "Round3 11/F2 mis-stated as 'table omits tenant/version/audit': the cookies TABLE has tenant_id (CreateCookiesTable.php:51), version (:87), created_by (:94) and composite UNIQUE(tenant_id,name,deleted_at) (:130). The real F2 gap is the SEEDER bypassing them, not the schema.",
+   "Gitleaks secret-scan IS gated in real CI: .github/workflows/ci.yml has a dedicated 'secrets' job using gitleaks/gitleaks-action with .gitleaks.toml (the composer.json skip-if-not-installed script is only a local convenience, not the gate).",
+   "E01 MySQL CI lane + E02 gates are wired: ci.yml runs a [sqlite,mysql] matrix against mysql:8.0.36, plus phpstan L8, phpcs, deptrac, docblocks:audit, and a merged-clover >=90% coverage gate (coverage-merge job).",
+   "Tenancy is actually injected in production: ServiceProviderRegistry::resolveKnownDependency() maps App\\Infrastructure\\Tenancy\\TenantContext -> Services::tenantContext(), so #[AutoBind] Cookie repos receive a real TenantContext (default tenant 1) rather than the null no-op default.",
+   ".history/ directory is NOT tracked by git (git ls-files count 0) despite the audit brief's hint; it is a 2.4MB local VS Code artifact only.",
+   "temp/ security reports are NOT tracked by git (git ls-files temp/ count 0); they are local-only artifacts, not a committed-repo hygiene violation."
+  ],
+  "findings": [
+   {
+    "id": "logging/tests-write-real-logs-and-spam-index-exception",
+    "title": "Integration tests log to real writable/logs and spam 92,746 'no such index: users_email' ERRORs -> 389MB/day log",
+    "severity": "critical",
+    "classification": "covered-by-open-pr",
+    "epic_ref": "E18",
+    "evidence": "writable/logs/log-2026-05-22.log is 389MB for one day; `grep -c users_email` = 92,746 and sample line: 'ERROR ... SQLite3Exception: no such index: users_email in vendor/.../SQLite3/Connection.php:175'. Root cause: app/Database/Migrations/2026-05-20-210000_UsersEmailUniqueWithSoftDelete.php:40 calls $this->forge->dropKey('users','users_email',false) but on SQLite the column-level UNIQUE from CreateUsersTable.php:23 ('unique'=>true) is NOT named users_email, so the drop emits a failing statement the CI4 handler logs at ERROR. tests/Support/IntegrationTestCase.php:32,39 set $migrate=true/$refresh=true (migrate every test) and :60-62 build a LoggerFactory logger; LoggerFactory::getLogDirectory() (app/Infrastructure/Logging/LoggerFactory.php:75-82) keys only off WRITEPATH, never CI_ENVIRONMENT, so logs land in the real writable/logs even under testing. Config\\Logger::$threshold=9 in non-prod (app/Config/Logger.php:42) captures everything.",
+    "impact": "Every cloned ERP domain that copies IntegrationTestCase will (a) pollute real logs during CI/local runs, (b) inherit the same per-test migration cost, and (c) bury genuine errors under hundreds of thousands of benign exception lines. A 389MB/76MB-per-day log pair will fill disks on CI runners and dev machines and makes the Monolog 'AI-readable logs' premise unusable. The dropKey-on-nonexistent-index pattern also re-fires on every clone that adds a soft-delete-unique migration.",
+    "fix": "1) In a test-only logging path, route Monolog + CI4 logs to a throwaway/null sink under CI_ENVIRONMENT=testing (PR #42 already does 'logger isolation' — land it). 2) Make LoggerFactory::getLogDirectory() honor an env override (e.g. write to sys_get_temp_dir() or /dev/null when ENVIRONMENT==='testing'). 3) Fix the migration: detect the SQLite autoindex name (or guard the dropKey behind a platform check / try existence) so it never emits a failing statement. 4) Lower Config\\Logger::$threshold for the testing environment to <=4 (error) or route through a NullHandler. 5) Truncate the committed-working-tree logs locally.",
+    "effort": "M"
+   },
+   {
+    "id": "logging/dual-logging-stacks",
+    "title": "Two parallel logging stacks (CI4-native log-*.log + Monolog app-*.json) with only Monolog rotating",
+    "severity": "high",
+    "classification": "new",
+    "epic_ref": "",
+    "evidence": "writable/logs shows both families: log-2026-05-*.log (CI4 FileHandler, driven by app/Config/Logger.php) AND app-2026-05-*.json (Monolog via app/Infrastructure/Logging/LoggerFactory.php:90-100 RotatingFileHandler maxFiles=30). LoggerFactory rotates+caps at 30 files; the CI4-native .log stream has NO maxFiles cap in Logger.php and produced the 389MB single-day file. Both run simultaneously in the same process.",
+    "impact": "Cloned domains get two sources of truth for logs with divergent formats and retention. The MCP/AI tooling (.claude/documentation/LOGGING_BEST_PRACTICES.md) assumes the JSON stream, but exceptions land in the unbounded .log stream. Duplicate write cost on every request, and the uncapped .log stream is the disk-filler.",
+    "fix": "Pick one stack. Recommended: keep Monolog (JSON, rotating, redacting) as the only handler and disable the CI4-native FileHandler by trimming app/Config/Logger.php $handlers to a Monolog bridge (or set CI4 to delegate to PSR-3). If both must coexist, add maxFiles/rotation + a sane threshold to the CI4 handler. Document the single canonical path in LOGGING_BEST_PRACTICES.md.",
+    "effort": "M"
+   },
+   {
+    "id": "tests/dual-tree-lowercase-stubs",
+    "title": "Duplicate test tree: PascalCase real suites + lowercase CI4-example stubs (tests/unit, _support, _skipped, session, database) shipped alongside",
+    "severity": "high",
+    "classification": "covered-by-planned-epic",
+    "epic_ref": "E18",
+    "evidence": "tests/ contains BOTH Unit/ (real, 40+ dirs) and unit/ (only HealthTest.php); BOTH Support/ (5 files: IntegrationTestCase, FeatureTestCase, UnitTestCase, Factories) and _support/ (5 files: bootstrap_libraries.php, ExampleModel, ConfigReader, ExampleSeeder, a .php.bak migration); plus tests/_skipped/AbiSageIntacct (foreign Sage Intacct client leftover, 10+ files), tests/session/ExampleSessionTest.php, tests/database/ExampleDatabaseTest.php.bak. phpstan.neon:22-26 and phpcs.xml:34 explicitly exclude the lowercase trees as 'example stubs, not our project tests', and phpunit.xml.dist:30 excludes only _skipped. composer.json autoload-dev maps both Tests\\Support\\=>tests/Support and Tests\\=>tests/.",
+    "impact": "Cloners cannot tell which test base to extend. The foreign AbiSageIntacct suite is dead weight that confuses domain scaffolding. The dual _support/Support split means new domains may extend the wrong (stub) base. Tooling-scope drift: every gate config must individually re-list the lowercase exclusions, and any new lowercase-pathed test silently escapes PHPStan/PHPCS.",
+    "fix": "Delete tests/unit, tests/_support, tests/_skipped, tests/session, tests/database, and the *.bak files; consolidate on tests/Unit, tests/Integration, tests/Feature, tests/Support. Remove the now-redundant exclude lines from phpstan.neon, phpcs.xml, phpunit.xml.dist. Keep one canonical UnitTestCase/IntegrationTestCase/FeatureTestCase. E18 is the natural home.",
+    "effort": "S"
+   },
+   {
+    "id": "ci/commands-helpers-outside-phpstan-and-coverage",
+    "title": "app/Commands and app/Helpers are outside PHPStan scope and excluded from coverage denominator — ERP-critical relay/worker unchecked",
+    "severity": "high",
+    "classification": "new",
+    "epic_ref": "",
+    "evidence": "phpstan.neon:8-13 paths = app/Domain, Infrastructure, Libraries, Models, Controllers only — app/Commands and app/Helpers are NOT analyzed. phpunit.xml.dist <source> exclude (lines 42-67) drops app/Commands, app/Views, app/Config, Migrations, Seeds, Language plus specific adapters. app/Commands contains RelayOutboxEvents.php, WorkJobs.php, RebuildProjections.php — the outbox relay and job worker that ERP correctness depends on. app/Helpers/auth_ui_helper.php (the can()/current_actor() gates deptrac escape-hatches) is also unanalyzed.",
+    "impact": "The transactional-outbox relay and projection rebuild — the exact infrastructure every ERP domain leans on for eventual consistency — get neither PHPStan L8 nor the 90% coverage gate. The 90% number is computed on a denominator that excludes the riskiest async code. Cloned domains inherit unverified background processing.",
+    "fix": "Add app/Commands and app/Helpers to phpstan.neon paths (fix any L8 findings that surface). Move app/Commands out of the phpunit <source> exclude and write coverage for RelayOutboxEvents/WorkJobs (at least happy-path + retry). If some commands are genuinely thin CLI shells, keep them excluded but explicitly extract their logic into Infrastructure classes that ARE covered.",
+    "effort": "M"
+   },
+   {
+    "id": "tests/tenancy-untested-at-integration-base",
+    "title": "IntegrationTestCase builds Cookie repos WITHOUT TenantContext, so tenant-scoping WHERE clause (most ERP-critical behavior) is never exercised by the base",
+    "severity": "high",
+    "classification": "new",
+    "epic_ref": "",
+    "evidence": "tests/Support/IntegrationTestCase.php:60-62 constructs `new CookieRepository($logger, $loggingConfig)` — no third TenantContext arg. CookieQueryRepository.php:229-232 makes the tenant filter a NO-OP when tenantContext===null ('legacy single-tenant tests, this is a no-op'); CookieRepository.php:458-459 only stamps tenant_id when tenantContext!==null. Production DOES inject it (ServiceProviderRegistry::resolveKnownDependency maps TenantContext->Services::tenantContext()), so the integration base tests a different code path than prod.",
+    "impact": "Cross-tenant isolation — the property that prevents ERP customer A from reading customer B's invoices — is validated only by whatever unit tests pass a context explicitly, not by the shared integration base every cloned domain inherits. A regression that drops the WHERE tenant_id clause would pass the integration suite. The reference entity ships its single most important guard untested at the base layer.",
+    "fix": "Have IntegrationTestCase construct repos WITH a TenantContext (default tenant 1) and add an explicit cross-tenant isolation test (seed tenant 1 + tenant 2, assert tenant-1 reads never return tenant-2 rows; assert save() stamps the active tenant). Make TenantContext a first-class, non-nullable repo dependency in the canonical pattern so cloners can't accidentally null it.",
+    "effort": "M"
+   },
+   {
+    "id": "platform/numbering-not-tenant-scoped",
+    "title": "DocumentNumberingService keys sequences on (series, scope) with no tenant_id — gapless numbers collide across tenants",
+    "severity": "high",
+    "classification": "new",
+    "epic_ref": "",
+    "evidence": "app/Infrastructure/Numbering/DocumentNumberingService.php:55-91 allocate() locks/queries document_sequences purely on (series, scope) (fetchOrCreateRow :151-153 WHERE series=? AND scope=?). No tenant_id column participates. The class is otherwise production-grade (SELECT ... FOR UPDATE on MySQL/Postgres :141-148, transaction-wrapped, SQLite-aware).",
+    "impact": "In multi-tenant ERP, two tenants requesting series='invoice' share one counter unless every caller manually overloads `scope` with the tenant id — an easy-to-forget convention that, when missed, leaks one tenant's invoice volume to another and risks duplicate legal document numbers. This is the kind of subtle cross-tenant defect that compounds across every numbered ERP document (invoices, POs, credit notes).",
+    "fix": "Add tenant_id to the document_sequences migration + unique key (tenant_id, series, scope), inject TenantContext into DocumentNumberingService, and include tenant_id in the FOR UPDATE/WHERE/INSERT. Provide a documented escape for genuinely global series. Add a concurrency test (two tenants, same series, assert independent counters).",
+    "effort": "M"
+   },
+   {
+    "id": "http/empty-filters-dir-three-middleware-homes",
+    "title": "app/Filters is empty while middleware lives in THREE infrastructure subdirs; deptrac Filters layer is vacuous",
+    "severity": "medium",
+    "classification": "covered-by-planned-epic",
+    "epic_ref": "E13",
+    "evidence": "`ls app/Filters/` returns nothing (empty). Middleware is split across app/Infrastructure/Auth/Middleware (6: Jwt, Permission, RateLimit, RoleAuthorization, SessionAuth, SessionRole), app/Infrastructure/Http/Middleware (1: Idempotency), and app/Infrastructure/Logging (CorrelationIdMiddleware). All are wired via aliases in app/Config/Filters.php:45-52, so none is dead — but deptrac.yaml defines a Filters layer (collector app/Filters/.*) and a Controllers->Filters rule that match zero classes.",
+    "impact": "A cloner asking 'where do filters go?' finds an empty canonical CI4 directory and three competing real homes, with no rule explaining which to use. The deptrac Filters layer gives false assurance it is governing a directory that is empty. New cross-cutting concerns will be placed inconsistently, and the Auth/ vs Http/ split has no principled boundary.",
+    "fix": "Pick ONE canonical home. Either (a) move all HTTP middleware to app/Filters (CI4-idiomatic) and update Config/Filters.php aliases + deptrac, or (b) formally retire app/Filters, delete the empty dir + its deptrac layer, and document app/Infrastructure/Http/Middleware as canonical with Auth-specific ones under Auth/Middleware. Document the rule in the scaffolding skill. E13 (provider/HTTP wiring) is the home.",
+    "effort": "S"
+   },
+   {
+    "id": "schema/dropkey-nonexistent-index-clones",
+    "title": "Soft-delete-unique migration pattern emits a failing dropKey('users_email') that every cloned domain will copy",
+    "severity": "medium",
+    "classification": "new",
+    "epic_ref": "E12",
+    "evidence": "app/Database/Migrations/2026-05-20-210000_UsersEmailUniqueWithSoftDelete.php:39-43 wraps dropKey('users','users_email',false) in try/catch but the statement still reaches SQLite and throws the logged 'no such index: users_email' (see logging finding). The index name 'users_email' never existed on SQLite (the column-level UNIQUE autoindex has a different name). The author's own comment (:35-38) acknowledges the name varies by engine but the code still issues the failing drop.",
+    "impact": "This is the canonical 'replace global unique with composite soft-delete-aware unique' migration that cloners WILL copy for every ERP entity (the cookies table already uses the composite pattern). Each clone re-introduces the same failing-statement-logged-as-ERROR behavior, multiplying the log spam across domains.",
+    "fix": "Rewrite the pattern to be name-safe: on SQLite skip the drop entirely (the autoindex is a strictly-stronger backstop, as the docblock notes), and on MySQL query information_schema for the actual index name before dropping. Bake the corrected pattern into the scaffolding skill / property-addition protocol so clones inherit the safe version.",
+    "effort": "S"
+   },
+   {
+    "id": "schema/createcookietable-read-model-pair-and-no-fk",
+    "title": "Create-then-Drop CookieReadModel migration pair + no FKs on tenant_id/audit columns remain in canonical migration set",
+    "severity": "medium",
+    "classification": "covered-by-planned-epic",
+    "epic_ref": "E09",
+    "evidence": "Both app/Database/Migrations/2026-05-20-200000_CreateCookieReadModelTable.php and 2026-05-21-120000_DropCookieReadModelTable.php are present (RE-AUDIT-11 F4). CreateCookiesTable.php has tenant_id/created_by/updated_by/deleted_by columns but no addForeignKey (RE-AUDIT-11 F6). cookies.price is still DECIMAL(10,2) discarding the Currency the Money/CookiePrice VO carries (RE-AUDIT-11 F1, blocked on E09 not-yet-opened).",
+    "impact": "Cloners running `migrate --all` execute two no-op read-model migrations back-to-back and, on a single rollback, resurrect an orphaned table whose projection is only a .php.example. The money/currency mismatch is copied into every priced ERP entity. Missing FKs mean tenant/audit referential integrity is unenforced template-wide.",
+    "fix": "Squash the read-model Create/Drop pair into a single no-read-model end state (or delete both since the projection is .example). Open E09 to migrate cookies.price -> price_minor (INT/BIGINT) + price_currency (CHAR(3)). Add FKs (or a documented decision to omit them for sharding) to the canonical migration so clones inherit the choice consciously.",
+    "effort": "M"
+   },
+   {
+    "id": "i18n/pt-br-missing-validation-and-hardcoded-view-strings",
+    "title": "pt-BR locale missing Validation.php entirely; cookie views hardcode English strings instead of lang() keys",
+    "severity": "medium",
+    "classification": "covered-by-planned-epic",
+    "epic_ref": "E14",
+    "evidence": "app/Language has en/App.php (40 keys), en/Validation.php (0 `=>` entries — empty stub), pt-BR/App.php (40 keys) — but NO pt-BR/Validation.php. Cookie views (app/Views/cookies/*.php) contain hardcoded literals ('Cancel', 'No description', etc.) with zero lang() calls observed in the esc-coverage scan. The system reminder lists pt-BR support as a goal.",
+    "impact": "A cloner enabling Portuguese gets untranslated validation messages and English-only UI chrome from the reference views. Every cloned domain's views copy the hardcoded-string pattern, so i18n debt scales linearly. en/Validation.php being an empty stub means even English validation falls back to framework defaults.",
+    "fix": "Add pt-BR/Validation.php mirroring en. Populate en/Validation.php (or document reliance on framework defaults). Convert cookie-view literals to lang('App.*') keys and have the scaffolding skill emit lang() calls rather than literals. E14 (views/i18n) owns this.",
+    "effort": "M"
+   },
+   {
+    "id": "views/formattedprice-id-unescaped",
+    "title": "A few dynamic view outputs (formattedPrice, numeric id) bypass esc(); name/description ARE escaped",
+    "severity": "low",
+    "classification": "covered-by-planned-epic",
+    "epic_ref": "E14",
+    "evidence": "app/Views/cookies/index.php:50 and show.php:41 emit `<?= $cookie->formattedPrice ?>` without esc(); index.php:47 / show.php:28 emit `<?= $cookie->id ?>`. The high-risk free-text fields ARE escaped: show.php:21,32 `esc($cookie->name)`, :36 `esc($cookie->description)`.",
+    "impact": "Low: formattedPrice is server-formatted from a DECIMAL and id is an int, so neither is realistically attacker-controlled today. But the inconsistency (esc() on some outputs, not others) is the pattern cloners copy; a future formattedPrice that interpolates tenant/locale data, or an id rendered as a slug, would become reflected-XSS surface.",
+    "fix": "Wrap all dynamic echoes in esc() uniformly for consistency, even server-controlled ones, and have the scaffolding skill enforce esc() on every `<?= $var`. Cheap and removes the foot-gun. E14.",
+    "effort": "XS"
+   },
+   {
+    "id": "ci/docblocks-audit-scope-cookie-only",
+    "title": "docblocks:audit gate covers only app/Domain/Cookie; placeholder docblocks elsewhere pass CI",
+    "severity": "low",
+    "classification": "covered-by-planned-epic",
+    "epic_ref": "E02",
+    "evidence": "composer.json:68 `docblocks:audit` = `bin/docblocks-audit app/Domain/Cookie` and .github/workflows/ci.yml runs `composer docblocks:audit`. The bin/docblocks-audit header (:50,55) notes it walks the directory passed and that the gate intentionally covers only the actively-cleaned scope (today Cookie). DocumentNumberingService.php:44-54 shows single-word placeholder docblocks ('* allocate.', '* format.') that this gate would catch if scoped wider.",
+    "impact": "The docblock-quality gate the template advertises only governs the reference domain. Auto-generated single-word placeholder docblocks survive across Infrastructure/User/Auth, so cloned domains inherit a gate that does not actually police them until their epic widens scope (E18 for User/Auth per the script note).",
+    "fix": "Widen docblocks:audit toward app/ incrementally as planned (E04-E08 Shared, E18 User/Auth), with the end state walking all of app/. Track the remaining placeholder count so the scope expansion is measurable.",
+    "effort": "S"
+   },
+   {
+    "id": "repo/tracked-root-audit-markdown",
+    "title": "Two tracked root-level audit markdown files (ERP_TEMPLATE_AUDIT.md, FINAL_AUDIT.md) violate the no-root-md convention",
+    "severity": "low",
+    "classification": "new",
+    "epic_ref": "",
+    "evidence": "`git ls-files` includes ERP_TEMPLATE_AUDIT.md (52KB) and FINAL_AUDIT.md (16KB) at repo root, alongside the allowed README.md and SETUP.md. (temp/ reports and .history/ and the strategic-planner venv are NOT tracked — verified 0 git files each — so they are local clutter only, not repo violations.)",
+    "impact": "Cloners forking the template inherit stale audit narratives at the root, which read as authoritative project docs. Minor, but the no-root-md rule exists precisely so clones start clean; these two files are the only tracked violations.",
+    "fix": "Move ERP_TEMPLATE_AUDIT.md and FINAL_AUDIT.md into .audit/ (or delete — their content is superseded by .audit/round3/*). Optionally add a CI guard that fails on unexpected tracked *.md at repo root.",
+    "effort": "XS"
+   },
+   {
+    "id": "platform/strategic-planner-venv-on-disk",
+    "title": "192MB Python virtualenv inside .claude/skills/strategic-planner (untracked but present; gitleaks special-cases it)",
+    "severity": "low",
+    "classification": "new",
+    "epic_ref": "",
+    "evidence": "du -sh .claude/skills/strategic-planner/venv = 192M; git ls-files count = 0 (correctly gitignored). .gitleaks.toml:18 even has a dedicated allowlist path for '.claude/skills/strategic-planner/venv/'. A committed venv was clearly contemplated.",
+    "impact": "Local-only today, so low. But the existence of a 192MB tool venv inside the repo working tree (and the gitleaks special-case for it) signals a fragile setup: if .gitignore is ever loosened or a cloner copies the working tree wholesale (not via git), the bloat and its bundled pip cacert/secrets-shaped files travel with them.",
+    "fix": "Confirm the venv stays gitignored; move skill Python deps to a setup script that builds the venv on demand rather than keeping it in-tree. Remove the gitleaks special-case once the venv is out of the working tree.",
+    "effort": "S"
+   }
+  ],
+  "fix_plan": "## Ordered remediation plan — supporting dimensions (grouped by area)\n\n### F + G first (the bleed): logging isolation & test-tree cleanup\n1. **(F, M) Isolate test logging.** Land PR #42 (E18) 'logger isolation'. In parallel: make `app/Infrastructure/Logging/LoggerFactory.php::getLogDirectory()` honor `ENVIRONMENT==='testing'` (write to a temp/null sink); lower `app/Config/Logger.php::$threshold` to <=4 under testing or bridge CI4 logging to a NullHandler. Verify a full `phpunit` run produces <1MB of logs.\n2. **(A/F, S) Fix the index-drop pattern.** Rewrite `2026-05-20-210000_UsersEmailUniqueWithSoftDelete.php` to skip dropKey on SQLite and look up the real index name on MySQL — eliminates the 92,746-row exception source. Bake the safe pattern into the scaffolding/property-addition skill.\n3. **(F, M) Collapse dual logging stacks.** Make Monolog the single handler (or add maxFiles+threshold to the CI4-native FileHandler). Update `.claude/documentation/LOGGING_BEST_PRACTICES.md` to the one canonical path.\n4. **(G, S) Delete the duplicate/lowercase/foreign test trees:** `tests/unit`, `tests/_support`, `tests/_skipped` (AbiSageIntacct), `tests/session`, `tests/database`, all `*.bak`. Then strip the now-redundant exclusions from `phpstan.neon:22-26`, `phpcs.xml:34`, `phpunit.xml.dist:30`.\n\n### G + E: close the coverage/scope honesty gaps\n5. **(H, M) Add `app/Commands` + `app/Helpers` to `phpstan.neon` paths**; fix surfacing L8 errors. Remove `app/Commands` from the `phpunit.xml.dist` `<source>` exclude and cover `RelayOutboxEvents`/`WorkJobs` (happy path + retry).\n6. **(G, M) Tenancy integration test.** Change `tests/Support/IntegrationTestCase.php:60-62` to inject a `TenantContext`; add a cross-tenant isolation test (seed tenants 1+2, assert reads never cross, assert save() stamps active tenant). Make `TenantContext` a non-nullable dependency in the canonical repo pattern.\n\n### E + A: ERP-critical service hardening\n7. **(E/A, M) Tenant-scope `DocumentNumberingService`.** Add `tenant_id` to `document_sequences` (migration + unique key (tenant_id,series,scope)), inject `TenantContext`, include it in FOR UPDATE/WHERE/INSERT. Concurrency test for two tenants on one series.\n8. **(A, M) Schema follow-ups.** Open E09: migrate `cookies.price` DECIMAL(10,2) -> price_minor + price_currency. Squash the CookieReadModel Create/Drop pair (or delete both; projection is .example). Add FKs (or a documented omission) on tenant/audit columns in the canonical migration.\n\n### B + C: HTTP boundary & i18n consistency (E13/E14)\n9. **(B, S) Resolve the three middleware homes.** Choose one canonical location; if retiring `app/Filters`, delete the empty dir + its deptrac layer; otherwise move HTTP middleware there. Update `Config/Filters.php` aliases + deptrac + scaffolding doc.\n10. **(C, M) i18n.** Add `pt-BR/Validation.php`, populate `en/Validation.php`, convert cookie-view literals to `lang()` keys, and have the scaffolding skill emit `lang()` + uniform `esc()` on every dynamic echo (covers the formattedPrice/id low-risk gaps too).\n\n### H + I: toolchain + repo hygiene (low effort, high clone value)\n11. **(H, S) Widen `docblocks:audit`** scope per the E02/E18 roadmap toward all of `app/`.\n12. **(H, XS) Remove tracked root audit MDs** (`ERP_TEMPLATE_AUDIT.md`, `FINAL_AUDIT.md`) into `.audit/`; add a CI guard against unexpected tracked root `*.md`.\n13. **(E/I, S) De-bloat the working tree:** move the 192MB `strategic-planner/venv` to an on-demand setup script; drop the gitleaks special-case once removed. Confirm `.history/` and `temp/` stay gitignored.",
+  "quick_wins": [
+   "Truncate/clear the committed-working-tree logs in writable/logs (389MB+76MB single-day files) — pure local disk reclaim, no code risk.",
+   "Delete tests/unit, tests/_support, tests/_skipped (foreign AbiSageIntacct), tests/session, tests/database and all *.bak files; then remove their now-dead exclusion lines from phpstan.neon/phpcs.xml/phpunit.xml.dist (S).",
+   "Move ERP_TEMPLATE_AUDIT.md + FINAL_AUDIT.md out of repo root into .audit/ (XS).",
+   "Wrap the remaining unescaped view outputs (cookies/index.php:50, show.php:41 formattedPrice; id outputs) in esc() for uniformity (XS).",
+   "Add pt-BR/Validation.php and populate en/Validation.php so non-English validation isn't an empty stub (XS-S)."
+  ],
+  "erp_readiness_notes": "Cross-cutting observations for cloning Cookie into real ERP domains: (1) TENANCY is the highest-leverage correctness property and it is currently OPT-IN via a nullable ctor arg — production injects it correctly through #[AutoBind], but tests don't, and DocumentNumberingService ignores it entirely. Before cloning, make TenantContext a NON-NULLABLE, always-injected dependency across repositories AND numbering, and add a cross-tenant isolation test to the integration base so every clone inherits the guard tested, not just present. (2) The transactional outbox (event_outbox DDL + RelayOutboxEvents command) is well-designed and matches the E12 plan, but the relay lives in app/Commands which is outside both PHPStan and the coverage denominator — the async backbone every ERP domain relies on is unverified; fix scope before scaling. (3) MISSING ERP PATTERNS at template level: there is NO aggregate-to-aggregate composition example (Invoice->Lines / Order->Items) — Cookie is a flat single-table aggregate, so cloners get no reference for child-collection persistence, cascade, or transactional consistency across a parent+children write. Document-numbering integration exists as a service but is not demonstrated end-to-end in a command handler, and it is not tenant-scoped. (4) The clone touchpoint surface is large: 95 cookie/Cookie occurrences outside app/Domain/Cookie (migrations, seeds, 4 views, sidebar/breadcrumbs partials, 2 model traits, language files, a .php.example projection, ServiceProviderRegistry's hardcoded resolveKnownDependency map). Note resolveKnownDependency (ServiceProviderRegistry.php:532-548) hardcodes CookieModel — every new domain must hand-edit this match arm, an easy-to-miss step that should be in the scaffolding checklist. (5) Shared layer is CLEAN of real Cookie coupling — the cookie mentions in app/Domain/Shared are docblock examples only (AggregateRoot.php:20, Permission.php:10), so the DDD boundary holds; keep it that way. DEPTH CAVEAT: this was a breadth-first sweep — areas C (full view audit), F (exact per-test log attribution beyond the dominant exception), and the per-service production-readiness ranking for the ~21 Infrastructure subsystems were spot-checked, not exhaustively traced, and are NOT certified clean."
+ },
+ "write-side": {
+  "dimension": "write-side",
+  "health_score": 3,
+  "summary": "Write side functional but fragmented; round-3 RE-AUDIT-03 is materially stale (several CLOSED/E07-landed claims false here). The four Cookie handlers use three event-dispatch patterns: Create/Delete/Restore hand-build and dispatch events, only Update raises via the entity. CommandBus still duck-types via method_exists with a dead second check; no handler implements CommandHandlerInterface; the E05 AbstractCommandHandler/AbstractQueryHandler/ClockInterface/SystemClock do not exist anywhere in the tree. RestoreCookieHandler is still the outlier (raw RuntimeException, snake_case keys, cookieId field, COOKIE_NOT_FOUND for not-deleted, leaked actor id) and the COOKIE_STATE_NOT_DELETED code it supposedly got does not exist. Optimistic locking is weaker than documented: the repo builds WHERE version from the freshly-loaded entity version, not the client expectedVersion. The Logging-Transaction-Audit pipeline is the strongest part. User write handlers diverge from Cookie even harder.",
+  "verified_fixed": [
+   "UpdateCookieCommand carries Actor + expectedVersion (UpdateCookieCommand.php:48-49).",
+   "Optimistic-lock UPDATE is scoped WHERE id AND version and throws concurrentModification on zero rows (CookieRepository.php:483-523; DomainException.php:119-136).",
+   "TransactionMiddleware strict-rethrow rolls back on sync-listener failure (TransactionMiddleware.php:67-110; EventDispatcher.php:90-147).",
+   "AuditMiddleware shields the business commit from audit-insert failure via transException/transStatus toggling (AuditMiddleware.php:111-155).",
+   "Return-type convention holds: Create int, others void.",
+   "Repository translates duplicate-key SQL into businessRuleViolation (CookieRepository.php:127-164)."
+  ],
+  "findings": [
+   {
+    "id": "three-event-dispatch-patterns",
+    "title": "Three competing event-dispatch patterns across the four Cookie write handlers",
+    "severity": "critical",
+    "classification": "covered-by-planned-epic",
+    "epic_ref": "E08",
+    "evidence": "CreateCookieHandler.php:105-110 hand-builds+dispatches CookieCreatedEvent; DeleteCookieHandler.php:92-96 hand-builds CookieDeletedEvent (snapshot :72-79)+dispatches; RestoreCookieHandler.php:95-101 hand-builds CookieRestoredEvent+dispatches; only Update relies on the entity (Cookie.php:216-222 raises, repo drains CookieRepository.php:124,175-202). Cookie.php has create (:90-98) but NO softDelete/restore method, so 3 of 4 lifecycle events are not entity-raised. RE-AUDIT claim that E07 moved them into the entity is false here.",
+    "impact": "Cloning Cookie propagates three write models per ERP domain; outbox/async consumers must handle every shape and audit completeness differs per operation.",
+    "fix": "Add Cookie.markDeleted/Cookie.restore that raiseEvent; make create raise once id exists; delete direct dispatch at CreateCookieHandler.php:105, DeleteCookieHandler.php:92, RestoreCookieHandler.php:95; single drain point; document in AggregateRoot.php.",
+    "effort": "L"
+   },
+   {
+    "id": "commandbus-still-ducktyped",
+    "title": "CommandBus still duck-types via method_exists; interface unused; dead second check remains",
+    "severity": "high",
+    "classification": "regression",
+    "epic_ref": "E05",
+    "evidence": "CommandBus.php:83 register uses method_exists and accepts object handler (:75); dispatch :111-115 keeps the dead second method_exists (F16). Zero implements CommandHandlerInterface in Cookie/User Commands. RE-AUDIT marked F5/F16 CLOSED citing a CommandBus.php:95 typehint that does not exist; git log shows last functional change was commit 34a71d9. QueryBus.php:65 same.",
+    "impact": "A cloned handler with a typo or wrong param type registers cleanly and only fails at first dispatch; the interface is documentation theatre; PHPStan cannot reason about handlers.",
+    "fix": "Type register(string, CommandHandlerInterface) and delete dead method_exists :111-115; make all Cookie+User+Auth handlers implement it; mirror on QueryBus; land the E05.5 PHPStan rule.",
+    "effort": "M"
+   },
+   {
+    "id": "abstract-bases-do-not-exist",
+    "title": "E05 shared bases AbstractCommandHandler/AbstractQueryHandler/ClockInterface/SystemClock do not exist",
+    "severity": "high",
+    "classification": "covered-by-open-pr",
+    "epic_ref": "E05",
+    "evidence": "grep for AbstractCommandHandler in app and tests returns nothing; app/Domain/Shared/Bus does not exist; grep for ClockInterface/SystemClock returns nothing. RE-AUDIT claims PR #34 created app/Domain/Shared/Bus/AbstractCommandHandler.php (246 lines); not on this branch. All four Cookie handlers still inline the full log/try/catch scaffold (CreateCookieHandler.php:65-139 ~75 lines; UpdateCookieHandler.php:56-149 ~93 lines).",
+    "impact": "Every cloned ERP domain starts with ~80-line handle methods violating the 20-line ceiling and four divergent log shapes; the PR that fixes this is stacked behind conflicts and unmerged.",
+    "fix": "Land E05 (AbstractCommandHandler with template-method hooks + timing via ClockInterface + dispatchPulledEvents; ClockInterface; SystemClock); then E08 migrate the four handlers; resolve PR #34/#36 conflicts.",
+    "effort": "L"
+   },
+   {
+    "id": "restore-handler-non-parity",
+    "title": "RestoreCookieHandler still violates every convention its siblings honour",
+    "severity": "high",
+    "classification": "covered-by-planned-epic",
+    "epic_ref": "E08",
+    "evidence": "RestoreCookieHandler.php throws raw RuntimeException :83-86; no startTime/duration_ms; no try/catch; snake_case keys cookie_id/restored_by :81,91-92; leaks restoredBy.id :92; uses COOKIE_NOT_FOUND for not-deleted :71; docblock :30-31 defers the RuntimeException conversion; RestoreCookieCommand.php:24 still names the field cookieId.",
+    "impact": "Controller exception mapper has no RuntimeException case so a torn restore is a 500; a clone of Restore is unlike its siblings and command.id breaks on it.",
+    "fix": "Rewrite to mirror DeleteCookieHandler: startTime, full try/catch, businessRuleViolation+COOKIE_STATE_NOT_DELETED instead of RuntimeException, camelCase keys, drop restoredBy.id; rename cookieId to id; update provider/controller/tests.",
+    "effort": "M"
+   },
+   {
+    "id": "missing-not-deleted-errorcode",
+    "title": "COOKIE_STATE_NOT_DELETED does not exist; Restore mis-reuses COOKIE_NOT_FOUND",
+    "severity": "medium",
+    "classification": "new",
+    "epic_ref": "",
+    "evidence": "ErrorCodes.php has COOKIE_NOT_FOUND=201 (:45), COOKIE_STATE_DELETED=401 (:54), COOKIE_STATE_CONCURRENT_MODIFICATION=402 (:55) and no COOKIE_STATE_NOT_DELETED; RestoreCookieHandler.php:71 passes COOKIE_NOT_FOUND for the not-deleted case. RE-AUDIT claimed F10 CLOSED via Cookie.restore throwing this code; both absent.",
+    "impact": "Restore surfaces a misleading not-found on an existing record; every clone inherits the wrong code; front-ends cannot tell gone from already-active.",
+    "fix": "Add COOKIE_STATE_NOT_DELETED=403 and use it at RestoreCookieHandler.php:67-72 and in Cookie.restore; document double-restore semantics.",
+    "effort": "XS"
+   },
+   {
+    "id": "optimistic-lock-ignores-client-version",
+    "title": "Optimistic lock WHERE uses the freshly-loaded version, not the client expectedVersion",
+    "severity": "high",
+    "classification": "covered-by-planned-epic",
+    "epic_ref": "E08",
+    "evidence": "UpdateCookieHandler.php:72 loads, mutates, saves :120; CookieRepository.updateWithOptimisticLock :475 sets expectedVersion=cookie.getVersion (the value just loaded) and builds WHERE id AND version=expectedVersion :484-486; command.expectedVersion is used ONLY for a handler pre-flight check :84-92 and never reaches SQL; when null (default :49) the pre-flight is skipped.",
+    "impact": "The documented contract overstates safety: a read-modify-write that loaded v5 where the row is now v7 still overwrites if no write occurs in the handler window - silent lost update; every cloned domain inherits this.",
+    "fix": "Thread command.expectedVersion into the repo WHERE (new param or updateWithVersion); make the field required or hard-document last-writer-wins; add an integration test (load v5, write v6 out-of-band, submit v5, assert concurrentModification).",
+    "effort": "M"
+   },
+   {
+    "id": "update-handler-dead-drain",
+    "title": "UpdateCookieHandler pullEvents drain is dead code; repository already drained",
+    "severity": "medium",
+    "classification": "new",
+    "epic_ref": "",
+    "evidence": "UpdateCookieHandler.php:120 calls save which drains via CookieRepository.php:124->177; the handler then loops pullEvents :126-128 over an empty buffer; comment :122-125 admits the loop only fires under mocks. Update dispatches from the repo (in the transaction) while Create/Delete/Restore dispatch from the handler.",
+    "impact": "Inconsistent dispatch ownership; tests assert handler-drains behaviour that never runs in production; E08 removing either drain silently changes Update dispatch.",
+    "fix": "Single drain layer for all operations (repo drains save/delete/restore; delete UpdateCookieHandler.php:126-128); add a test asserting dispatch count equals pullEvents count.",
+    "effort": "S"
+   },
+   {
+    "id": "create-error-code-string-match",
+    "title": "CreateCookieHandler.determineErrorCode still maps codes from English exception substrings",
+    "severity": "high",
+    "classification": "covered-by-planned-epic",
+    "epic_ref": "E08",
+    "evidence": "CreateCookieHandler.php:155-161 keeps match-true with str_contains on name must be unique/stock/name/price; UpdateCookieHandler.determineErrorCode :159-170 already relies solely on getErrorCode; F4 fix never applied to Create.",
+    "impact": "Any wording/localisation change silently re-maps to COOKIE_REPOSITORY_SAVE_FAILED; the substrings are domain-specific so a renamed clone reports bogus codes.",
+    "fix": "Reduce to the getErrorCode-only form from UpdateCookieHandler.php:159-170; delete the str_contains block.",
+    "effort": "XS"
+   },
+   {
+    "id": "failure-log-shape-drift",
+    "title": "Four handlers, four failure-log shapes",
+    "severity": "medium",
+    "classification": "covered-by-planned-epic",
+    "epic_ref": "E08",
+    "evidence": "Create :127-135 logs exceptionClass+name+duration_ms; Delete :108-117 omits duration_ms; Update :139-145 omits exceptionClass+duration_ms; Restore :78-82 logs only on the not-restored branch.",
+    "impact": "Per-domain dashboards must handle 4+ schemas; alerting on duration_ms/exceptionClass silently misses Update/Restore.",
+    "fix": "Centralise failure logging in AbstractCommandHandler (E05) emitting a fixed shape.",
+    "effort": "S"
+   },
+   {
+    "id": "timer-source-divergence",
+    "title": "Three timer sources across handlers (microtime, hrtime, none)",
+    "severity": "low",
+    "classification": "covered-by-planned-epic",
+    "epic_ref": "E05",
+    "evidence": "Create :67 and Update :58 use microtime; Delete :52,98 uses hrtime; Restore has none; no ClockInterface exists.",
+    "impact": "duration_ms mixes wall vs monotonic and is absent for Restore; latency comparisons are unreliable.",
+    "fix": "Inject ClockInterface into AbstractCommandHandler and compute duration uniformly.",
+    "effort": "S"
+   },
+   {
+    "id": "hardcoded-domain-string",
+    "title": "Hard-coded domain Cookie literal in about 12 log payloads",
+    "severity": "low",
+    "classification": "covered-by-planned-epic",
+    "epic_ref": "E08",
+    "evidence": "domain Cookie at Create :70,115,129; Update :61,133,141; Delete :55,82,102,109; Restore :79,89; LoggingMiddleware already records command_class (:47-49).",
+    "impact": "Ceremony duplicated 12x per domain; one missed replace logs the wrong domain forever.",
+    "fix": "Compute from static::class in AbstractCommandHandler or drop the field.",
+    "effort": "XS"
+   },
+   {
+    "id": "command-id-actor-field-drift",
+    "title": "Command DTO id/actor field naming diverges within Cookie and across User",
+    "severity": "medium",
+    "classification": "covered-by-planned-epic",
+    "epic_ref": "E08",
+    "evidence": "Cookie uses createdBy / id+updatedBy / id+deletedBy / cookieId+restoredBy (RestoreCookieCommand.php:24); User uses userId everywhere (DeleteUser/UpdateUser/ChangeUserPassword). Same logical id is id, cookieId, userId; actor is per-verb.",
+    "impact": "No cross-cutting middleware can reflect on a uniform id/actor; a unified mapper breaks; AuditMiddleware.normaliseForJson special-cases public id (:299) by luck.",
+    "fix": "Standardise to public int id + public Actor actor; keep verb-tense on events; rename cookieId and userId fields; add a convention check.",
+    "effort": "M"
+   },
+   {
+    "id": "no-command-level-idempotency",
+    "title": "No idempotency/dedup at the command-bus layer for non-HTTP dispatchers",
+    "severity": "medium",
+    "classification": "new",
+    "epic_ref": "",
+    "evidence": "CommandBus.dispatch :99-128 has no dedup; idempotency exists only at the HTTP edge (Infrastructure/Http/Middleware/IdempotencyMiddleware.php + idempotency_keys migration 2026-05-19-200100); AuditMiddleware stores payload_digest (:216-230) but never reads it back.",
+    "impact": "Async/queued/retried command processing double-executes create/charge/adjust-stock commands; the HTTP guard does not cover internal dispatch.",
+    "fix": "Add a CommandBus IdempotencyMiddleware keyed on a caller-supplied commandId backed by idempotency_keys, or document dispatcher responsibility; align with E12.5 ProcessedEventStore.",
+    "effort": "M"
+   },
+   {
+    "id": "create-toctou-comment-gap",
+    "title": "Create read-then-write TOCTOU relies on the DB index but the handler comment is silent",
+    "severity": "low",
+    "classification": "covered-by-planned-epic",
+    "epic_ref": "E08",
+    "evidence": "CreateCookieHandler.php:84 existsByName then :102 save; Update :100 then :120; TransactionMiddleware.php:74 transBegin no isolation; save backstops via duplicate-key translation (CookieRepository.php:132-139) but the handler check has no caveat.",
+    "impact": "A cloned Create for a table missing the composite UNIQUE index silently corrupts on concurrent creates.",
+    "fix": "Comment existsByName as best-effort UX; require the index + translation in the clone checklist.",
+    "effort": "XS"
+   },
+   {
+    "id": "redundant-handler-marker-interfaces",
+    "title": "Overlapping/unused bus contracts: HandlerInterface and CommandMiddlewareInterface vs BusMiddlewareInterface",
+    "severity": "low",
+    "classification": "new",
+    "epic_ref": "",
+    "evidence": "Infrastructure/Bus defines HandlerInterface (:10), CommandHandlerInterface (:22), QueryHandlerInterface, EventHandlerInterface, CommandMiddlewareInterface (:16, used by the real middlewares) AND Middleware/BusMiddlewareInterface (:15) which the pipeline middlewares do NOT implement.",
+    "impact": "A cloner must guess the interface; unused contracts are dead surface copied into new domains.",
+    "fix": "Keep CommandMiddlewareInterface, delete BusMiddlewareInterface; make handler interfaces extend HandlerInterface or delete it; document the canonical set.",
+    "effort": "S"
+   },
+   {
+    "id": "per-handler-log-channel-docblock-theatre",
+    "title": "Handler docblocks claim a per-command log channel but DI injects a generic logger",
+    "severity": "low",
+    "classification": "covered-by-planned-epic",
+    "epic_ref": "E08",
+    "evidence": "Create :49/Update :41/Delete :35 docblocks name per-command channels; CookieServiceProvider.php:101-121 constructs all four with the same generic logger and the constructors accept a plain PSR logger.",
+    "impact": "Operators find no per-command channel; clones copy the false promise.",
+    "fix": "Wire per-command channels in the provider or change the docblocks to provider-assigned.",
+    "effort": "S"
+   }
+  ],
+  "fix_plan": "ORDERED write-side remediation (top to bottom; exact files named).\n\nPHASE A correctness:\n1. [M] Honour client expectedVersion. In CookieRepository.php thread command.expectedVersion into updateWithOptimisticLock (new param or updateWithVersion) so WHERE at :484-486 uses the client version; in UpdateCookieCommand.php make expectedVersion required (drop null :49) or document last-writer-wins; add a concurrency integration test (load v5, write v6 out-of-band, submit v5, assert concurrentModification).\n2. [XS] Add COOKIE_STATE_NOT_DELETED=403 to ErrorCodes.php; use it at RestoreCookieHandler.php:71; document double-restore semantics.\n3. [S] Single drain point. Repository drains in save/delete/restore (add drain to delete :307-331 and restore :339-363 after step 5); delete the handler loop UpdateCookieHandler.php:126-128; add a dispatch-count==pullEvents-count test.\n\nPHASE B unify events (closes the CRITICAL):\n4. [M] Add Cookie.markDeleted (raises CookieDeletedEvent with snapshot) and Cookie.restore (clears deletedAt, raises CookieRestoredEvent, throws businessRuleViolation+COOKIE_STATE_NOT_DELETED when not deleted) to Cookie.php; raise CookieCreatedEvent after id assignment.\n5. [M] Delete direct dispatch: CreateCookieHandler.php:105-110, DeleteCookieHandler.php:92-96 (+ snapshot :72-79), RestoreCookieHandler.php:95-101; handlers only invoke entity methods.\n\nPHASE C bus + abstraction (E05/E08):\n6. [L] Create app/Domain/Shared/Bus/ClockInterface.php + SystemClock.php + AbstractCommandHandler.php (timing, uniform logs, dispatchPulledEvents); resolve PR #34/#36 conflicts.\n7. [M] Type CommandBus.register(string, CommandHandlerInterface) and delete dead method_exists :111-115; same on QueryBus.php:57-65; make all four Cookie handlers + User/Auth handlers implement the interface and extend AbstractCommandHandler.\n8. [XS] Reduce CreateCookieHandler.determineErrorCode :155-161 to the getErrorCode-only form; delete str_contains block.\n\nPHASE D Restore parity + DTO standardisation:\n9. [M] Rewrite RestoreCookieHandler to mirror Delete; rename RestoreCookieCommand.cookieId to id; update CookieServiceProvider.php:119-121, controller, tests.\n10. [M] Standardise DTOs to public int id + public Actor actor; rename User userId fields; update providers/controllers/tests.\n\nPHASE E guardrails + polish:\n11. [M] Command-level idempotency: optional commandId + CommandBus IdempotencyMiddleware on idempotency_keys, or document dispatcher responsibility; coordinate with E12.5.\n12. [S] Delete unused Middleware/BusMiddlewareInterface.php and generic HandlerInterface.php or wire them in.\n13. [XS] Remove domain literals on base migration; add the existsByName caveat comment; fix the per-command log-channel docblocks.\n14. [S] Land the E05.5 PHPStan rule (Handler implements interface; DTO readonly; handle param matches command); move rules into tools/PHPStan/Rules and wire phpstan.neon.",
+  "quick_wins": [
+   "Add COOKIE_STATE_NOT_DELETED=403 to ErrorCodes.php and use it in RestoreCookieHandler.php:71 (XS).",
+   "Delete the dead second method_exists in CommandBus::dispatch at CommandBus.php:111-115 (XS).",
+   "Reduce CreateCookieHandler.determineErrorCode to the getErrorCode-only form used by UpdateCookieHandler; drop the str_contains block (XS).",
+   "Delete the now-empty pullEvents drain loop in UpdateCookieHandler.php:126-128 (XS).",
+   "Delete the unused Middleware/BusMiddlewareInterface.php and generic HandlerInterface.php (S).",
+   "Wire or correct the per-command log-channel docblocks in the four handlers (XS)."
+  ],
+  "erp_readiness_notes": "Trust code over docs: RE-AUDIT-03 marks F5/F10/F15/F16 CLOSED and asserts E05 abstract bases + ClockInterface + entity-owned Restore landed - none of that is true on stabilization/erp-foundation; verify before trusting any CLOSED. Cloneability: the User domain is the cautionary tale for a careless Cookie clone - UpdateUserHandler.php:56-148 has NO optimistic version guard, throws raw RuntimeException with the error code stuffed into the exception code arg (vs Cookie DomainException+getErrorCode), hand-builds+dispatches UserUpdatedEvent with no entity events, calls a separate repository.update method, and uses userId fields. So clone-Cookie today means cloning a 3-of-4-inconsistent reference, and the second domain already drifted further. Lock the canonical command/handler shape (single drain point, AbstractCommandHandler base, DomainException-only failures, id+actor DTO fields, expectedVersion threaded to SQL) BEFORE scaffolding any new ERP domain, and bring User back to that shape as a regression test. Cross-cutting (other lanes own delivery): the repo dispatches events INSIDE the transaction (CookieRepository.php:199-201) outbox-first - the outbox auditor owns whether sync-inside + relay-after-commit is intended. AuditMiddleware uses reflection to toggle CI4 private transException/transStatus (:161-206) - fragile against CodeIgniter internals changes (relevant to E16 PHP 8.4 / CI bump). Authorization in the write path is ad hoc (UpdateUserHandler.assertRoleAndStatusChangesAllowed) with no command-bus authz middleware; for the ERP every money/stock command needs a uniform authz hook, which the per-verb DTO naming makes hard to introspect."
+ },
+ "repositories-persistence": {
+  "dimension": "repositories-persistence",
+  "health_score": 5,
+  "summary": "Good hexagonal split; E06 hydrator and E03 envelope verified merged. E11 epic PR 41 NOT merged so existsByName restore delete LIKE trusted-reconstitution defects are live; User and Cookie adapters diverge; soft-delete reuse contract contradictory.",
+  "verified_fixed": [
+   "E06 AggregateHydrator PR 33 merged, performSave 438 445 465, reconstitute guard Cookie 127",
+   "E03 envelope PR 31 merged: FQCN driver Database 59, sessionVariables 84-92, reconnect 53-62, closes 18 F-C1 F-C2 F-C3",
+   "18 F-T2 DBPrefix fixed Database 283"
+  ],
+  "findings": [
+   {
+    "id": "e11-not-merged",
+    "title": "E11 repository-hygiene epic PR 41 is NOT in the working tree",
+    "severity": "high",
+    "classification": "covered-by-open-pr",
+    "epic_ref": "E11",
+    "evidence": "merge-base not-merged for 35a26c5 b89e3f3 e67c2a4; grep purge fromTrusted lastAffectedRows RawSql in port/repo/CookieName empty",
+    "impact": "E11 depends on unstarted E09 so PR 41 is stacked-base conflicted; every defect is live in the clone base",
+    "fix": "add CookiePrice fromTrusted string to decouple from E09, rebase, merge PR 41",
+    "effort": "M"
+   },
+   {
+    "id": "existsbyname-withdeleted",
+    "title": "existsByName withDeleted reserving soft-deleted names contradicts the migration reuse contract",
+    "severity": "high",
+    "classification": "covered-by-open-pr",
+    "epic_ref": "E11",
+    "evidence": "CookieModel 93-115 withDeleted, CreateCookieHandler 84, migration 128-130 reuse B16 B17, port docblock 56-63 opposite, PR 41 keeps withDeleted plus LOWER",
+    "impact": "clones get a rule disagreeing with their index; first soft-delete makes a name un-recreatable",
+    "fix": "drop withDeleted from both methods, fix docblock, add exclude-soft-deleted test",
+    "effort": "S"
+   },
+   {
+    "id": "restore-no-version-bump",
+    "title": "restore bumps no version and returns raw bool true even on zero rows",
+    "severity": "high",
+    "classification": "covered-by-open-pr",
+    "epic_ref": "E11",
+    "evidence": "CookieRepository 339-363 no WHERE version no deleted_at guard, BaseBuilder update 2489 true regardless, PR 41 fixes via RawSql version+1 lastAffectedRows",
+    "impact": "restore bypasses optimistic locking; a stale Cookie overwrites a restored row; boolean lies",
+    "fix": "WHERE id AND deleted_at IS NOT NULL, version+1 via RawSql, lastAffectedRows equals 1",
+    "effort": "S"
+   },
+   {
+    "id": "traits-hardcode-literals",
+    "title": "Logging/metrics traits hard-code Cookie literals and error codes, survive sed, misattribute every clone",
+    "severity": "high",
+    "classification": "new",
+    "epic_ref": "",
+    "evidence": "RepositoryLogging 25-56 Cookie/CookieRepository/COOKIE_REPOSITORY codes, BusinessMetricsLogging metricsThresholds cookie 47 54, PR 41 untouched, unowned",
+    "impact": "a sed clone reads the wrong metrics slice and logs as Cookie",
+    "fix": "constructor-set domainName and metricsSliceKey, reference in traits, cloned-namespace test",
+    "effort": "M"
+   },
+   {
+    "id": "two-reference-repos-diverge",
+    "title": "User adapter lacks Cookie locking hydrator outbox audit and uses a different model layer",
+    "severity": "high",
+    "classification": "new",
+    "epic_ref": "",
+    "evidence": "UserRepository 45-74 141-164 no version, reconstitute 339 no version, UserModel in app Infrastructure Persistence Models vs CookieModel in app Models Cookie, PasswordHistoryRepository db table directly",
+    "impact": "three incompatible repository idioms and two model locations; cloning User inherits no durability guarantees",
+    "fix": "pick Cookie canonical, upgrade or deprecate User, unify the model-layer location and scaffolder",
+    "effort": "L"
+   }
+  ],
+  "fix_plan": "Merge PR 41 first; then drop withDeleted/LOWER and mark CookieModel final, de-hardcode trait literals, reconcile schema. Remaining 13 findings (file:line) are listed in erp_readiness_notes.",
+  "quick_wins": [
+   "Merge PR 41",
+   "Drop withDeleted and LOWER from CookieModel existsByName",
+   "Mark CookieModel final"
+  ],
+  "erp_readiness_notes": "Clone Cookie not User; merge fromTrusted before cloning. Additional findings beyond the array, all file:line this session: delete-select-then-update MED-E11 CookieRepository 307-331 (one conditional UPDATE); like-unescaped MED-E11 136/572 (strtr); reconstitute-revalidates MED-E11 386-400 (fromTrusted); read-concerns-on-write-port MED-E11 port 44/49-54/99 + trackPopularCookie 221; model-not-final-lower-dup-validation MED-E11 CookieModel 28/96/112/56-61; leaky-model-db LOW-E11 488/319/356/534/564; port-existsbyname-scalar LOW-E11 64/74; no-purge LOW-E11; paginate-sort-divergence MED-new 586 vs 143 (PR 41 keeps id ASC b89e3f3 147); unique-null-two-live-rows MED-E09 addUniqueKey 130 NULL-distinct (add name_active generated column + unique index); repo-imports-config-not-port MED-new deptrac yaml 30-31 38-39 (inject LogConfigPort 23/68/90); dup-key-substring LOW-new isDuplicateKey 158-164 (use SQLSTATE 23000/1062); outbox-shared-connection LOW-new TransactionMiddleware 59/74 + EventOutboxWriter 103/190-191 share Database connect by coincidence (inject same BaseConnection, rollback test). Cross-lane: outbox writes no event_uuid/tenant_id (E12); price single-currency DECIMAL (E09); event_outbox status VARCHAR 16 hard-ERRORs on unsupported_schema once strict mode is live (sequence PR 31 with/after E12); confirm CI runs the FQCN MySQLi driver since the envelope test skips on SQLite."
+ },
+ "events-outbox": {
+  "dimension": "events-outbox",
+  "health_score": 4,
+  "summary": "Write path broken; envelope pre-E04 (RE-AUDIT-05 stale). Only UpdateCookie uses the outbox; double-delivery live; CookieStockChanged dead; no in_flight reaper; User has no outbox.",
+  "verified_fixed": [
+   "05/F6 docblocks fixed.",
+   "CookieRestored handler subscribed.",
+   "05/F10 projection .example."
+  ],
+  "findings": [
+   {
+    "id": "outbox-bypassed-cdr",
+    "title": "Outbox same-tx guarantee only covers UpdateCookie; Create/Delete/Restore bypass it",
+    "severity": "critical",
+    "classification": "new",
+    "epic_ref": "",
+    "evidence": "dispatchPendingEvents appends only in save() (CookieRepository.php:175-202); delete()/restore()(307/339) raw model; handlers hand-dispatch (CreateCookieHandler:105/Delete:92/Restore:95); entity never raises Created (Cookie.php:90).",
+    "impact": "Outbox guarantee false for 3/5 events; sync-only, lost on crash, untested.",
+    "fix": "Aggregate raises all events; delete()/restore() persist via dispatchPendingEvents() in-tx; remove 3 hand dispatches; add in-tx test.",
+    "effort": "L"
+   },
+   {
+    "id": "double-delivery",
+    "title": "Outbox rows also dispatched in-process then re-delivered by relay; no dedup",
+    "severity": "critical",
+    "classification": "covered-by-planned-epic",
+    "epic_ref": "E12",
+    "evidence": "dispatchPendingEvents appends(185)+dispatches(199); RelayOutboxEvents:60 uses shared dispatcher with Cookie handlers; relay dispatch(194) re-fires; no event_uuid/ProcessedEventStore.",
+    "impact": "Every outbox event delivers twice; email/webhook handlers (CookieUpdatedEventHandler:55) double-send.",
+    "fix": "Outbox-only: drop the sync dispatch; land E12 event_uuid UNIQUE + ProcessedEventStore.",
+    "effort": "L"
+   },
+   {
+    "id": "abstractdomainevent-absent",
+    "title": "E04 envelope NOT in tree despite RE-AUDIT-05 RESOLVED",
+    "severity": "high",
+    "classification": "covered-by-planned-epic",
+    "epic_ref": "E04",
+    "evidence": "app/Domain/Shared/Events has only 2 interfaces; grep AbstractDomainEvent/eventId/CookieChangeSet in Cookie/Events=0; no uuid lib; RE-AUDIT-05:20-34 claims present.",
+    "impact": "Cloned events have no id/occurred-at/actor/base; blocks E12; docs misleading.",
+    "fix": "Add AbstractDomainEvent (eventId/occurredAt/actorId; JsonSerializable); extend 5 events; eventId->event_uuid.",
+    "effort": "L"
+   },
+   {
+    "id": "stockchanged-dead",
+    "title": "CookieStockChangedEvent unreachable; update() changes stock without emitting it",
+    "severity": "high",
+    "classification": "new",
+    "epic_ref": "",
+    "evidence": "Only raise-site changeStock()(Cookie.php:293) via decrease/increaseStock(274); no caller, no stock command; update()(209) bulk-replaces stock silently.",
+    "impact": "A subscribed event (provider 203) can never fire; no inventory delta event.",
+    "fix": "Add an AdjustCookieStock command through the outbox, or delete event/handler/subscription.",
+    "effort": "M"
+   },
+   {
+    "id": "no-reaper",
+    "title": "Relay has no stuck-in_flight reaper; a crash after claim() strands the row",
+    "severity": "high",
+    "classification": "covered-by-planned-epic",
+    "epic_ref": "E12",
+    "evidence": "claim()(277) sets in_flight; fetchPending(106) selects only pending; no lease cols; a crash between claim and mark = in_flight forever.",
+    "impact": "Relay crash permanently loses claimed events.",
+    "fix": "Add lease cols; reclaim expired in_flight; spark events:reap; SKIP LOCKED on MySQL.",
+    "effort": "M"
+   },
+   {
+    "id": "schema-unhardened",
+    "title": "event_outbox lacks event_uuid UNIQUE, JSON, status width, tenant_id",
+    "severity": "high",
+    "classification": "covered-by-planned-epic",
+    "epic_ref": "E12",
+    "evidence": "Migration 2026-05-19-200300: status VARCHAR(16) but relay writes 18-char unsupported_schema (relay:439); payload LONGTEXT; no event_uuid/lease/tenant_id.",
+    "impact": "status truncation breaks dead-letter on MySQL; no event_uuid UNIQUE = no DB idempotency.",
+    "fix": "HardenEventOutboxTable: status VARCHAR(32), event_uuid UNIQUE, lease cols, tenant_id, payload JSON; DESTRUCTIVE, after E04.",
+    "effort": "L"
+   }
+  ],
+  "fix_plan": "A(FIRST): outbox sole dispatcher; route Create/Delete/Restore via aggregate+repo drain; in-tx test. B: E04, then E12 hardening. D: lower-severity items in erp_readiness_notes.",
+  "quick_wins": [
+   "@internal EventDispatcher (38).",
+   "Correlation after claim() (relay:137).",
+   "Remove dispatch loop (199-201).",
+   "Drop restoredAt (29)."
+  ],
+  "erp_readiness_notes": "Do not clone as-is: durability false for 3/5 events + double-delivery; no eventId/occurredAt/actorId (E04 unmerged); enforce ONE delivery model; keep EventId VO in Domain. Extra lower-severity: serialization no toArray (EventOutboxWriter:168) MED; User in-process dispatch (RegisterUserHandler:76) MED; tx-connection invariant (writer:194) MED; restoredAt string (RestoreCookieHandler:99) MED; cookiePrice no currency (CookieCreatedEvent:45) LOW; PII snapshots (CookieUpdatedEvent:32) LOW; dispatcher non-final (EventDispatcher:38) LOW; correlation-before-claim (EventOutboxRelay:137) LOW."
+ }
+}
