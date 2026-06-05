@@ -27,7 +27,6 @@
     <testsuites>
         <testsuite name="App">
             <directory>./tests</directory>
-            <exclude>./tests/_skipped</exclude>
         </testsuite>
     </testsuites>
     <logging>

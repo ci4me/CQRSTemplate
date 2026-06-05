@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\User\Commands\CreateUser;
 
+use App\Domain\Shared\Bus\CommandHandlerInterface;
 use App\Domain\Shared\Events\EventDispatcherInterface;
 use App\Domain\Shared\Exceptions\DomainException;
 use App\Domain\User\Entities\User;
@@ -25,7 +26,7 @@ use Psr\Log\LoggerInterface;
  *
  * @package App\Domain\User\Commands\CreateUser
  */
-final readonly class CreateUserHandler
+final readonly class CreateUserHandler implements CommandHandlerInterface
 {
     /**
      * __construct.

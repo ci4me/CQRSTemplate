@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Auth\Commands\LogoutUser;
 
+use App\Domain\Shared\Bus\CommandHandlerInterface;
 use App\Domain\User\Ports\TokenBlacklistInterface;
 use App\Infrastructure\Auth\Services\SessionManagementService;
 use Psr\Log\LoggerInterface;
@@ -11,7 +12,7 @@ use Psr\Log\LoggerInterface;
 /**
  * LogoutUserHandler.
  */
-final readonly class LogoutUserHandler
+final readonly class LogoutUserHandler implements CommandHandlerInterface
 {
     /**
      * __construct.

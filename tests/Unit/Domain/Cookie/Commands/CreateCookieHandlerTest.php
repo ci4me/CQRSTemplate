@@ -5,12 +5,12 @@ declare(strict_types=1);
 namespace Tests\Unit\Domain\Cookie\Commands;
 
 use App\Domain\Cookie\Commands\CreateCookie\CreateCookieCommand;
-use App\Domain\Shared\ValueObjects\Actor;
 use App\Domain\Cookie\Commands\CreateCookie\CreateCookieHandler;
 use App\Domain\Cookie\Entities\Cookie;
 use App\Domain\Cookie\Ports\CookieRepositoryInterface;
 use App\Domain\Shared\Exceptions\DomainException;
 use App\Domain\Shared\Exceptions\ValidationException;
+use App\Domain\Shared\ValueObjects\Actor;
 use App\Infrastructure\Logging\LoggerFactory;
 use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 use Tests\Support\UnitTestCase;
@@ -45,7 +45,7 @@ final class CreateCookieHandlerTest extends UnitTestCase
             price: '2.99',
             stock: 100,
             createdBy: Actor::system('test'),
-        isActive: true
+            isActive: true
         );
 
         $this->repository
@@ -72,7 +72,7 @@ final class CreateCookieHandlerTest extends UnitTestCase
             price: '2.99',
             stock: 100,
             createdBy: Actor::system('test'),
-        isActive: true
+            isActive: true
         );
 
         $this->repository
@@ -99,7 +99,7 @@ final class CreateCookieHandlerTest extends UnitTestCase
             price: '2.99',
             stock: 100,
             createdBy: Actor::system('test'),
-        isActive: true
+            isActive: true
         );
 
         $this->expectException(\Exception::class);
@@ -115,7 +115,7 @@ final class CreateCookieHandlerTest extends UnitTestCase
             price: '0.00',
             stock: 100,
             createdBy: Actor::system('test'),
-        isActive: true
+            isActive: true
         );
 
         $this->expectException(\Exception::class);
@@ -131,7 +131,7 @@ final class CreateCookieHandlerTest extends UnitTestCase
             price: '2.99',
             stock: -10,
             createdBy: Actor::system('test'),
-        isActive: true
+            isActive: true
         );
 
         $this->expectException(\Exception::class);
@@ -147,7 +147,7 @@ final class CreateCookieHandlerTest extends UnitTestCase
             price: '3.50',
             stock: 75,
             createdBy: Actor::system('test'),
-        isActive: true
+            isActive: true
         );
 
         $this->repository
@@ -180,7 +180,7 @@ final class CreateCookieHandlerTest extends UnitTestCase
             price: '1.99',
             stock: 50,
             createdBy: Actor::system('test'),
-        isActive: true
+            isActive: true
         );
 
         $this->repository
@@ -204,7 +204,7 @@ final class CreateCookieHandlerTest extends UnitTestCase
             price: '2.99',
             stock: 0,
             createdBy: Actor::system('test'),
-        isActive: false
+            isActive: false
         );
 
         $this->repository

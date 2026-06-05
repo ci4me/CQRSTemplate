@@ -82,9 +82,11 @@ final class ProjectionRegistryTest extends UnitTestCase
 
             public function apply(object $event): void
             {
-                if ($this->onApply !== null) {
-                    ($this->onApply)($event);
+                if ($this->onApply === null) {
+                    return;
                 }
+
+                ($this->onApply)($event);
             }
 
             public function truncate(): void

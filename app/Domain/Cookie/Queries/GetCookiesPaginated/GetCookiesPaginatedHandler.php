@@ -6,6 +6,7 @@ namespace App\Domain\Cookie\Queries\GetCookiesPaginated;
 
 use App\Domain\Cookie\DTOs\CookieDTO;
 use App\Domain\Cookie\Ports\CookieQueryRepositoryInterface;
+use App\Domain\Shared\Bus\QueryHandlerInterface;
 use App\Domain\Shared\Ports\LogConfigPort;
 use Psr\Log\LoggerInterface;
 
@@ -28,7 +29,7 @@ use Psr\Log\LoggerInterface;
  *
  * @package App\Domain\Cookie\Queries\GetCookiesPaginated
  */
-final readonly class GetCookiesPaginatedHandler
+final readonly class GetCookiesPaginatedHandler implements QueryHandlerInterface
 {
     /**
      * Create a new GetCookiesPaginatedHandler.

@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Domain\User\ValueObjects;
 
-use App\Domain\User\ValueObjects\HashedPassword;
 use App\Domain\Shared\Exceptions\ValidationException;
+use App\Domain\User\ValueObjects\HashedPassword;
 use CodeIgniter\Test\CIUnitTestCase;
 
 final class HashedPasswordTest extends CIUnitTestCase

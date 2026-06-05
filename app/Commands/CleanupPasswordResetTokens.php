@@ -79,17 +79,18 @@ final class CleanupPasswordResetTokens extends BaseCommand
 
         if ($dryRun) {
             // Show sample of what would be deleted
-            $sampleTokens = $db->table('password_reset_tokens')
+            $sampleResult = $db->table('password_reset_tokens')
                 ->select('user_id, created_at, expires_at')
                 ->where('expires_at <', date('Y-m-d H:i:s'))
                 ->limit(10)
-                ->get()
-                ->getResultArray();
+                ->get();
+            // PHPStan L8 (round-4 R2): get() may return false on failure.
+            $sampleRows = $sampleResult === false ? [] : $sampleResult->getResultArray();
 
-            if (count($sampleTokens) > 0) {
+            if (count($sampleRows) > 0) {
                 CLI::newLine();
                 CLI::write('Sample tokens that would be deleted:', 'cyan');
-                CLI::table($sampleTokens, ['user_id', 'created_at', 'expires_at']);
+                CLI::table($sampleRows, ['user_id', 'created_at', 'expires_at']);
             }
 
             CLI::newLine();

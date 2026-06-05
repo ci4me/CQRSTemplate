@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\User\Commands\DeleteUser;
 
+use App\Domain\Shared\Bus\CommandHandlerInterface;
 use App\Domain\Shared\Events\EventDispatcherInterface;
 use App\Domain\User\ErrorCodes;
 use App\Domain\User\Events\UserDeleted\UserDeletedEvent;
@@ -28,7 +29,7 @@ use Psr\Log\LoggerInterface;
  *
  * @package App\Domain\User\Commands\DeleteUser
  */
-final readonly class DeleteUserHandler
+final readonly class DeleteUserHandler implements CommandHandlerInterface
 {
     /**
      * __construct.

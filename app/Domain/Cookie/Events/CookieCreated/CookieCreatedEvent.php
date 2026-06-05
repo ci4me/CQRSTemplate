@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Cookie\Events\CookieCreated;
 
-use App\Domain\Shared\Events\DomainEventInterface;
+use App\Domain\Shared\Events\AbstractDomainEvent;
 
 /**
  * Event fired when a new Cookie is created.
@@ -29,21 +29,27 @@ use App\Domain\Shared\Events\DomainEventInterface;
  *
  * @package App\Domain\Cookie\Events\CookieCreated
  */
-final readonly class CookieCreatedEvent implements DomainEventInterface
+final readonly class CookieCreatedEvent extends AbstractDomainEvent
 {
     /**
      * Create a new CookieCreatedEvent.
      *
-     * @param int    $cookieId     The ID of the created cookie
-     * @param string $cookieName   The name of the created cookie
-     * @param string $cookiePrice  Decimal price string for the created cookie
-     * @param int    $initialStock The initial stock quantity
+     * Envelope fields (eventId/occurredAt — E04) are minted by the parent;
+     * pass `actorId` when the creating actor is known.
+     *
+     * @param int      $cookieId     The ID of the created cookie
+     * @param string   $cookieName   The name of the created cookie
+     * @param string   $cookiePrice  Decimal price string for the created cookie
+     * @param int      $initialStock The initial stock quantity
+     * @param int|null $actorId      Actor that created the cookie (null = system)
      */
     public function __construct(
         public int $cookieId,
         public string $cookieName,
         public string $cookiePrice,
-        public int $initialStock
+        public int $initialStock,
+        ?int $actorId = null
     ) {
+        parent::__construct(actorId: $actorId);
     }
 }

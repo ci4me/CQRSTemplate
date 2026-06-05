@@ -54,6 +54,14 @@ final class EventOutboxRelay
     private const array BACKOFF_SECONDS = [30, 120, 600, 3600, 21600, 86400];
 
     /**
+     * How long a claimed (`in_flight`) row stays leased before the reaper
+     * may return it to `pending` (E12). Generous enough for slow listeners
+     * (webhooks, email), short enough that a crashed worker's rows are
+     * retried within minutes.
+     */
+    private const int LEASE_SECONDS = 300;
+
+    /**
      * @param EventDispatcher                                                   $dispatcher
      * @param LoggerInterface                                                   $logger
      * @param BaseConnection<object|resource|false, object|resource|false>|null $db
@@ -79,6 +87,11 @@ final class EventOutboxRelay
         $failed = 0;
         $now = date('Y-m-d H:i:s');
 
+        // E12 (round-4 R2): reclaim rows whose worker died mid-flight.
+        // Without this, a crash between claim() and the terminal UPDATE
+        // stranded the row as `in_flight` forever.
+        $this->reclaimExpiredLeases($now);
+
         foreach ($this->fetchPending($batchSize, $now) as $row) {
             $processed++;
             $result = $this->processRow($row);
@@ -96,6 +109,40 @@ final class EventOutboxRelay
             'retried' => $retried,
             'failed' => $failed,
         ];
+    }
+
+    /**
+     * Return expired `in_flight` rows to the `pending` pool (E12 reaper).
+     *
+     * A row is reclaimable when its lease has lapsed — the claiming worker
+     * crashed (or stalled) without reaching a terminal status. Re-running
+     * the listener is safe: delivery is at-least-once and rows carry an
+     * `event_uuid` consumers can deduplicate on.
+     *
+     * @param string $now Current wall-clock time (Y-m-d H:i:s)
+     * @return int Number of rows reclaimed
+     */
+    public function reclaimExpiredLeases(string $now): int
+    {
+        $connection = $this->connection();
+        $connection->table('event_outbox')
+            ->where('status', 'in_flight')
+            ->where('lease_expires_at IS NOT NULL')
+            ->where('lease_expires_at <', $now)
+            ->update([
+                'status' => 'pending',
+                'lease_expires_at' => null,
+            ]);
+
+        $reclaimed = $connection->affectedRows();
+        if ($reclaimed > 0) {
+            $this->logger->warning('Outbox reaper reclaimed expired in_flight rows', [
+                'component' => 'EventOutboxRelay',
+                'reclaimed' => $reclaimed,
+            ]);
+        }
+
+        return $reclaimed;
     }
 
     /**
@@ -286,7 +333,13 @@ final class EventOutboxRelay
         $db->table('event_outbox')
             ->where('id', $id)
             ->where('status', 'pending')
-            ->update(['status' => 'in_flight']);
+            ->update([
+                'status' => 'in_flight',
+                // E12: lease the claim so a worker crash is recoverable —
+                // reclaimExpiredLeases() returns the row to `pending` once
+                // the lease lapses.
+                'lease_expires_at' => date('Y-m-d H:i:s', time() + self::LEASE_SECONDS),
+            ]);
 
         return $db->affectedRows() === 1;
     }

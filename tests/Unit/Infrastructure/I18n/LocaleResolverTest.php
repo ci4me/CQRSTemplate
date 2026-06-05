@@ -9,8 +9,6 @@ use CodeIgniter\HTTP\IncomingRequest;
 use CodeIgniter\HTTP\SiteURI;
 use CodeIgniter\HTTP\UserAgent;
 use CodeIgniter\Test\CIUnitTestCase;
-use CodeIgniter\Test\Mock\MockSession;
-use CodeIgniter\Session\Handlers\ArrayHandler;
 use Config\App;
 use Config\Services;
 

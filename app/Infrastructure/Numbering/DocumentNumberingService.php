@@ -36,9 +36,36 @@ final class DocumentNumberingService
 {
     /**
      * @param BaseConnection<object|resource|false, object|resource|false>|null $db
+     * @param \App\Infrastructure\Tenancy\TenantContext|null                    $tenantContext Partitions sequences per tenant (E19)
      */
-    public function __construct(private readonly ?BaseConnection $db = null)
+    public function __construct(
+        private readonly ?BaseConnection $db = null,
+        private readonly ?\App\Infrastructure\Tenancy\TenantContext $tenantContext = null
+    ) {
+    }
+
+    /**
+     * Fold the active tenant into the sequence scope key (round-4 R2 / E19).
+     *
+     * The `scope` column was DESIGNED to carry tenancy ("tenant:7") but it
+     * was opt-in — a caller that forgot meant gapless invoice numbers
+     * COLLIDED across tenants. With a TenantContext injected, the tenant
+     * partition is automatic and callers keep using their business scope
+     * ("2026" -> "tenant:1:2026"). Null context preserves single-tenant
+     * behaviour for legacy callers/tests.
+     *
+     * @param string $scope Caller-supplied business scope ("" or e.g. "2026")
+     * @return string Tenant-partitioned scope key
+     */
+    private function tenantScopedKey(string $scope): string
     {
+        if ($this->tenantContext === null) {
+            return $scope;
+        }
+
+        $tenantKey = 'tenant:' . $this->tenantContext->currentTenantId();
+
+        return $scope === '' ? $tenantKey : $tenantKey . ':' . $scope;
     }
 
     /**
@@ -65,6 +92,8 @@ final class DocumentNumberingService
         if ($padLength < 1 || $padLength > 20) {
             throw new \InvalidArgumentException('padLength must be between 1 and 20.');
         }
+
+        $scope = $this->tenantScopedKey($scope);
 
         $db = $this->connection();
         $db->transBegin();
@@ -103,7 +132,7 @@ final class DocumentNumberingService
         $result = $this->connection()
             ->table('document_sequences')
             ->where('series', $series)
-            ->where('scope', $scope)
+            ->where('scope', $this->tenantScopedKey($scope))
             ->get();
 
         if ($result === false) {

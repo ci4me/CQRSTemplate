@@ -79,17 +79,18 @@ final class CleanupExpiredSessions extends BaseCommand
 
         if ($dryRun) {
             // Show sample of what would be deleted
-            $sampleSessions = $db->table('sessions')
+            $sampleResult = $db->table('sessions')
                 ->select('id, user_id, ip_address, created_at, expires_at')
                 ->where('expires_at <', date('Y-m-d H:i:s'))
                 ->limit(10)
-                ->get()
-                ->getResultArray();
+                ->get();
+            // PHPStan L8 (round-4 R2): get() may return false on failure.
+            $sampleRows = $sampleResult === false ? [] : $sampleResult->getResultArray();
 
-            if (count($sampleSessions) > 0) {
+            if (count($sampleRows) > 0) {
                 CLI::newLine();
                 CLI::write('Sample sessions that would be deleted:', 'cyan');
-                CLI::table($sampleSessions, ['id', 'user_id', 'ip_address', 'created_at', 'expires_at']);
+                CLI::table($sampleRows, ['id', 'user_id', 'ip_address', 'created_at', 'expires_at']);
             }
 
             CLI::newLine();

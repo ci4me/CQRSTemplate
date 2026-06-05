@@ -96,17 +96,45 @@ final class EventOutboxWriter
         ?\DateTimeImmutable $availableAt = null
     ): int {
         $now = new \DateTimeImmutable();
-        $available = $availableAt ?? $now;
-        $correlationId = CorrelationIdService::get();
-
-        $payload = $this->buildEnvelope($event, $now, $correlationId);
 
         $connection = $this->connection();
-        $connection->table('event_outbox')->insert([
+        $connection->table('event_outbox')->insert(
+            $this->buildRow($event, $aggregateType, $aggregateId, $availableAt ?? $now, $now)
+        );
+
+        return (int) $connection->insertID();
+    }
+
+    /**
+     * Assemble the outbox row for one event.
+     *
+     * @param object             $event
+     * @param string             $aggregateType
+     * @param int|string|null    $aggregateId
+     * @param \DateTimeImmutable $available
+     * @param \DateTimeImmutable $now
+     * @return array<string, int|string|null>
+     */
+    private function buildRow(
+        object $event,
+        string $aggregateType,
+        int|string|null $aggregateId,
+        \DateTimeImmutable $available,
+        \DateTimeImmutable $now
+    ): array {
+        $correlationId = CorrelationIdService::get();
+
+        return [
             'aggregate_type' => $aggregateType,
             'aggregate_id' => $aggregateId === null ? null : (string) $aggregateId,
             'event_class' => $event::class,
-            'payload' => $payload,
+            // E12: dedup anchor. The UNIQUE index on event_uuid makes a
+            // double-append of the same domain event impossible, and gives
+            // consumers a stable key for at-least-once deduplication.
+            'event_uuid' => $event instanceof \App\Domain\Shared\Events\AbstractDomainEvent
+                ? $event->eventId
+                : null,
+            'payload' => $this->buildEnvelope($event, $now, $correlationId),
             'correlation_id' => $correlationId,
             'status' => 'pending',
             'attempts' => 0,
@@ -114,9 +142,7 @@ final class EventOutboxWriter
             'available_at' => $available->format('Y-m-d H:i:s'),
             'occurred_at' => $now->format('Y-m-d H:i:s'),
             'delivered_at' => null,
-        ]);
-
-        return (int) $connection->insertID();
+        ];
     }
 
     /**

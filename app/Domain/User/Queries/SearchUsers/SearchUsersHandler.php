@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\User\Queries\SearchUsers;
 
+use App\Domain\Shared\Bus\QueryHandlerInterface;
 use App\Domain\Shared\Ports\LogConfigPort;
 use App\Domain\User\DTOs\UserDTO;
 use App\Domain\User\Ports\UserRepositoryInterface;
@@ -29,7 +30,7 @@ use Psr\Log\LoggerInterface;
  *
  * @package App\Domain\User\Queries\SearchUsers
  */
-final readonly class SearchUsersHandler
+final readonly class SearchUsersHandler implements QueryHandlerInterface
 {
     /**
      * __construct.

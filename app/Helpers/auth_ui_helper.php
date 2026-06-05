@@ -33,7 +33,9 @@ if (!function_exists('current_actor')) {
     {
         $resolver = new ActorResolver();
         $request = Services::request();
-        return $resolver->resolve($request instanceof \CodeIgniter\HTTP\RequestInterface ? $request : null);
+        // Services::request() always returns a RequestInterface implementation;
+        // the old instanceof guard was statically always-true (round-4 R2).
+        return $resolver->resolve($request);
     }
 }
 

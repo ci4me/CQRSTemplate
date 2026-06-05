@@ -11,19 +11,18 @@ parameters:
         - app/Libraries
         - app/Models
         - app/Controllers
+        # Round-4 R2 (gate honesty): app/Commands hosts the outbox relay and
+        # job worker — ERP-critical code that previously sat outside Level 8
+        # analysis entirely. app/Helpers joins for the same reason. The
+        # legacy framework-scaffold test trees (tests/_support, _skipped,
+        # unit, session, database) were DELETED in the same change, so their
+        # excludePaths entries are gone too.
+        - app/Commands
+        - app/Helpers
         - tests
     excludePaths:
         - app/Config/Constants.php
         - app/Views
-        # CodeIgniter scaffolded test directories shipped with the framework
-        # template (tests/_support, tests/_skipped, tests/session, tests/database,
-        # tests/unit). They are example stubs, not our project tests; our
-        # tests live under tests/Unit, tests/Integration, tests/Feature.
-        - tests/_support
-        - tests/_skipped
-        - tests/session
-        - tests/database
-        - tests/unit
     # BASELINE POLICY (E02): do NOT introduce `phpstan-baseline.neon` in any
     # subsequent epic without (a) generating it via `--generate-baseline`,
     # (b) committing it in the same PR as the offending change, and
@@ -46,6 +45,18 @@ parameters:
     # (phpVersion: 80300) above is the load-bearing E02 change.
     reportUnmatchedIgnoredErrors: false
     ignoreErrors:
+        # RebuildProjections keeps a resolveProjection() seam that returns
+        # null until the first real projection registers (Phase 2 collapsed
+        # the Cookie read model into the canonical table, so the registry is
+        # empty TODAY by design). PHPStan correctly proves the rebuild body
+        # unreachable; the seam + body stay so the next domain only has to
+        # add one registry entry. Round-4 R2; revisit when a projection lands.
+        -
+            identifier: identical.alwaysTrue
+            path: app/Commands/RebuildProjections.php
+        -
+            identifier: deadCode.unreachable
+            path: app/Commands/RebuildProjections.php
         -
             identifier: trait.unused
             path: app/Models/Cookie/Traits/

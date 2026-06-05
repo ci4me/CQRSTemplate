@@ -17,9 +17,15 @@ final class IdempotencyMiddlewareTest extends CIUnitTestCase
     use DatabaseTestTrait;
 
     /** @var bool */
+    /** @var bool */
+    /** @var bool */
     protected $migrate = true;
     /** @var bool */
+    /** @var bool */
+    /** @var bool */
     protected $refresh = true;
+    /** @var string|null */
+    /** @var string|null */
     /** @var string|null */
     protected $namespace = null;
 

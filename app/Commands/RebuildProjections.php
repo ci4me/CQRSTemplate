@@ -35,7 +35,7 @@ final class RebuildProjections extends BaseCommand
     /** @var string */
     protected $usage = 'projections:rebuild <projection-name>';
 
-    /** @var array<int, string> */
+    /** @var array<string, string> */
     protected $arguments = [
         'name' => 'Projection name (e.g. "cookie")',
     ];
@@ -79,10 +79,14 @@ final class RebuildProjections extends BaseCommand
     /**
      * resolveProjection.
      *
+     * Always null today: Phase 2 collapsed the Cookie read model into the
+     * canonical table, so no projection is wired. The seam stays so the
+     * next domain that ships a real projection only edits this method.
+     *
      * @param string $name
-     * @return ProjectionInterface|null
+     * @return null
      */
-    private function resolveProjection(string $name): ?ProjectionInterface
+    private function resolveProjection(string $name): null
     {
         // For now we wire projections by name to avoid coupling the
         // rebuild command to the dispatcher boot path. Each domain adds

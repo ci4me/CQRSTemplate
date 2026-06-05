@@ -6,6 +6,7 @@ namespace Tests\Support;
 
 use App\Domain\Cookie\Repositories\CookieRepository;
 use App\Infrastructure\Logging\LoggerFactory;
+use App\Infrastructure\Tenancy\TenantContext;
 use CodeIgniter\Test\CIUnitTestCase;
 use CodeIgniter\Test\DatabaseTestTrait;
 
@@ -48,6 +49,16 @@ abstract class IntegrationTestCase extends CIUnitTestCase
     protected CookieRepository $cookieRepository;
 
     /**
+     * Tenant context every integration test runs under (round-4 R2 / E19).
+     *
+     * The base case pins tenant 1 explicitly so the tenant-scoping WHERE
+     * clause — the single most ERP-critical behaviour — is exercised by
+     * EVERY repository test instead of silently no-opping on a null
+     * context (the pre-round-4 behaviour).
+     */
+    protected TenantContext $tenantContext;
+
+    /**
      * Setup before each test.
      */
     protected function setUp(): void
@@ -56,10 +67,20 @@ abstract class IntegrationTestCase extends CIUnitTestCase
         $this->resetServices();
         \Config\Services::resetProviders();
 
-        // Create repository with dependencies
+        $this->tenantContext = new TenantContext();
+        $this->tenantContext->set(TenantContext::DEFAULT_TENANT_ID);
+
+        // Create repository with dependencies (tenant-scoped — E19)
         $logger = LoggerFactory::create('test.cookie.repository');
         $loggingConfig = config('Logging');
-        $this->cookieRepository = new CookieRepository($logger, $loggingConfig);
+        $this->cookieRepository = new CookieRepository(
+            $logger,
+            $loggingConfig,
+            null,
+            null,
+            null,
+            $this->tenantContext
+        );
     }
 
     /**

@@ -102,7 +102,7 @@ final class CookieTest extends UnitTestCase
             createdAt: '2025-10-21 10:00:00',
             updatedAt: '2025-10-21 10:00:00',
             deletedAt: null,
-        version: 1
+            version: 1
         );
 
         $this->assertEquals(1, $cookie->getId());
@@ -124,7 +124,7 @@ final class CookieTest extends UnitTestCase
             createdAt: '2025-10-21 10:00:00',
             updatedAt: '2025-10-21 11:00:00',
             deletedAt: '2025-10-21 12:00:00',
-        version: 1
+            version: 1
         );
 
         $this->assertEquals('2025-10-21 12:00:00', $cookie->getDeletedAt());
@@ -391,7 +391,7 @@ final class CookieTest extends UnitTestCase
             createdAt: '2025-10-21 10:00:00',
             updatedAt: '2025-10-21 10:00:00',
             deletedAt: '2025-10-21 12:00:00',
-        version: 1
+            version: 1
         );
 
         $this->assertTrue($cookie->isDeleted());
@@ -409,7 +409,7 @@ final class CookieTest extends UnitTestCase
             createdAt: '2025-10-21 10:00:00',
             updatedAt: '2025-10-21 10:00:00',
             deletedAt: null,
-        version: 1
+            version: 1
         );
 
         $this->assertFalse($cookie->isDeleted());

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Auth\Commands\ResetPassword;
 
+use App\Domain\Shared\Bus\CommandHandlerInterface;
 use App\Domain\User\Repositories\PasswordHistoryRepository;
 use App\Domain\User\Repositories\UserRepository;
 use App\Domain\User\ValueObjects\HashedPassword;
@@ -24,7 +25,7 @@ use Psr\Log\LoggerInterface;
  *
  * @package App\Infrastructure\Auth\Commands\ResetPassword
  */
-final readonly class ResetPasswordHandler
+final readonly class ResetPasswordHandler implements CommandHandlerInterface
 {
     /** @var LoggerInterface */
     private LoggerInterface $logger;

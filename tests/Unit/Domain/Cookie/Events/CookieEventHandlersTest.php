@@ -259,19 +259,33 @@ final class CookieEventHandlersTest extends UnitTestCase
         ));
     }
 
-    public function test_cookie_stock_changed_handler_allows_null_cookie_id(): void
+    public function test_events_carry_the_e04_envelope(): void
     {
-        // cookieId is nullable on the event for pre-persistence stock changes.
-        $logger = LoggerFactory::create('test.cookie.events');
-        $handler = new CookieStockChangedEventHandler($logger);
-
-        $handler(new CookieStockChangedEvent(
-            cookieId: null,
+        // E04 (round-4 R2): every domain event extends AbstractDomainEvent
+        // and carries eventId (UUIDv4), occurredAt (RFC 3339), actorId.
+        $event = new CookieStockChangedEvent(
+            cookieId: 5,
             previousStock: 0,
             newStock: 50,
-            reason: 'initial_load'
-        ));
+            reason: 'initial_load',
+            actorId: 42
+        );
 
-        $this->assertTrue(true);
+        $this->assertMatchesRegularExpression(
+            '/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/',
+            $event->eventId
+        );
+        $this->assertNotEmpty($event->occurredAt);
+        $this->assertSame(42, $event->actorId);
+
+        // Two events never share an id (dedup key for the outbox/E12).
+        $other = new CookieStockChangedEvent(cookieId: 5, previousStock: 1, newStock: 2, reason: 'x');
+        $this->assertNotSame($event->eventId, $other->eventId);
+
+        // JsonSerializable: flat wire shape with envelope + payload fields.
+        $wire = $event->jsonSerialize();
+        $this->assertSame(5, $wire['cookieId']);
+        $this->assertArrayHasKey('eventId', $wire);
+        $this->assertArrayHasKey('occurredAt', $wire);
     }
 }

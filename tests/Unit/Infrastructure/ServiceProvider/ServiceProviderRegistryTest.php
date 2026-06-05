@@ -114,9 +114,11 @@ final class ServiceProviderRegistryTest extends UnitTestCase
         // Two independent discoveries should return equal-sized provider lists
         // but the underlying object instances are NEW after a cache clear.
         $this->assertSameSize($first, $second);
-        if (count($first) > 0) {
-            $this->assertNotSame($first[0], $second[0], 'cache should have been cleared');
+        if (count($first) <= 0) {
+            return;
         }
+
+        $this->assertNotSame($first[0], $second[0], 'cache should have been cleared');
     }
 
     public function test_discovered_returns_cached_provider_list(): void

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Auth\Commands\RequestPasswordReset;
 
+use App\Domain\Shared\Bus\CommandHandlerInterface;
 use App\Domain\User\Repositories\UserRepository;
 use App\Domain\User\ValueObjects\Email;
 use App\Infrastructure\Auth\ValueObjects\PasswordResetToken;
@@ -24,7 +25,7 @@ use Psr\Log\LoggerInterface;
  *
  * @package App\Infrastructure\Auth\Commands\RequestPasswordReset
  */
-final readonly class RequestPasswordResetHandler
+final readonly class RequestPasswordResetHandler implements CommandHandlerInterface
 {
     /** @var LoggerInterface */
     private LoggerInterface $logger;

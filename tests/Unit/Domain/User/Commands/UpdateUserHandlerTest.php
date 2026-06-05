@@ -4,14 +4,14 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Domain\User\Commands;
 
+use App\Domain\Shared\Events\EventDispatcherInterface;
 use App\Domain\Shared\ValueObjects\Actor;
 use App\Domain\User\Commands\UpdateUser\UpdateUserCommand;
 use App\Domain\User\Commands\UpdateUser\UpdateUserHandler;
 use App\Domain\User\ErrorCodes;
 use App\Domain\User\Events\UserUpdated\UserUpdatedEvent;
-use App\Domain\Shared\Events\EventDispatcherInterface;
-use App\Infrastructure\Logging\LoggerFactory;
 use App\Domain\User\Ports\UserRepositoryInterface;
+use App\Infrastructure\Logging\LoggerFactory;
 use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 use Tests\Support\Factories\UserFactory;
 use Tests\Support\UnitTestCase;
@@ -120,12 +120,12 @@ final class UpdateUserHandlerTest extends UnitTestCase
 
         $existingUser = UserFactory::createPersistedUser([
             'id' => 1,
-            'email' => 'old@example.com'
+            'email' => 'old@example.com',
         ]);
 
         $conflictingUser = UserFactory::createPersistedUser([
             'id' => 2,
-            'email' => 'existing@example.com'
+            'email' => 'existing@example.com',
         ]);
 
         $this->repository
@@ -157,7 +157,7 @@ final class UpdateUserHandlerTest extends UnitTestCase
 
         $existingUser = UserFactory::createPersistedUser([
             'id' => 1,
-            'email' => 'john.doe@example.com'
+            'email' => 'john.doe@example.com',
         ]);
 
         $this->repository
@@ -196,7 +196,7 @@ final class UpdateUserHandlerTest extends UnitTestCase
             'name' => 'John Doe',
             'email' => 'john.doe@example.com',
             'role' => 'customer',
-            'status' => 'active'
+            'status' => 'active',
         ]);
 
         $this->repository->method('findById')->willReturn($existingUser);
@@ -229,7 +229,7 @@ final class UpdateUserHandlerTest extends UnitTestCase
             'name' => 'John Doe',
             'email' => 'john.doe@example.com',
             'role' => 'customer',
-            'status' => 'active'
+            'status' => 'active',
         ]);
 
         $this->repository->method('findById')->willReturn($existingUser);
@@ -263,7 +263,7 @@ final class UpdateUserHandlerTest extends UnitTestCase
             'name' => 'John Doe',
             'email' => 'john.doe@example.com',
             'role' => 'customer',
-            'status' => 'active'
+            'status' => 'active',
         ]);
 
         $this->repository->method('findById')->willReturn($existingUser);
@@ -296,7 +296,7 @@ final class UpdateUserHandlerTest extends UnitTestCase
             'name' => 'John Doe',
             'email' => 'john.doe@example.com',
             'role' => 'customer',
-            'status' => 'active'
+            'status' => 'active',
         ]);
 
         $this->repository->method('findById')->willReturn($existingUser);
@@ -329,7 +329,7 @@ final class UpdateUserHandlerTest extends UnitTestCase
             'name' => 'John Doe',
             'email' => 'john.doe@example.com',
             'role' => 'customer',
-            'status' => 'active'
+            'status' => 'active',
         ]);
 
         $this->repository->method('findById')->willReturn($existingUser);
@@ -367,7 +367,7 @@ final class UpdateUserHandlerTest extends UnitTestCase
             'name' => 'John Doe',
             'email' => 'john.doe@example.com',
             'role' => 'customer',
-            'status' => 'active'
+            'status' => 'active',
         ]);
 
         $this->repository->method('findById')->willReturn($existingUser);

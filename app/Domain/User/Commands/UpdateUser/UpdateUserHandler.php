@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\User\Commands\UpdateUser;
 
+use App\Domain\Shared\Bus\CommandHandlerInterface;
 use App\Domain\Shared\Events\EventDispatcherInterface;
 use App\Domain\Shared\Exceptions\DomainException;
 use App\Domain\User\ErrorCodes;
@@ -35,7 +36,7 @@ use Psr\Log\LoggerInterface;
  *
  * @package App\Domain\User\Commands\UpdateUser
  */
-final readonly class UpdateUserHandler
+final readonly class UpdateUserHandler implements CommandHandlerInterface
 {
     /**
      * __construct.

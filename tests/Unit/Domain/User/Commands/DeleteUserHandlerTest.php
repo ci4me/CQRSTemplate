@@ -4,14 +4,14 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Domain\User\Commands;
 
+use App\Domain\Shared\Events\EventDispatcherInterface;
 use App\Domain\Shared\ValueObjects\Actor;
 use App\Domain\User\Commands\DeleteUser\DeleteUserCommand;
 use App\Domain\User\Commands\DeleteUser\DeleteUserHandler;
 use App\Domain\User\ErrorCodes;
 use App\Domain\User\Events\UserDeleted\UserDeletedEvent;
-use App\Domain\Shared\Events\EventDispatcherInterface;
-use App\Infrastructure\Logging\LoggerFactory;
 use App\Domain\User\Ports\UserRepositoryInterface;
+use App\Infrastructure\Logging\LoggerFactory;
 use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 use Tests\Support\Factories\UserFactory;
 use Tests\Support\UnitTestCase;
@@ -163,7 +163,7 @@ final class DeleteUserHandlerTest extends UnitTestCase
 
         $customerUser = UserFactory::createPersistedUser([
             'id' => 5,
-            'role' => 'customer'
+            'role' => 'customer',
         ]);
 
         $this->repository->method('findById')->willReturn($customerUser);
@@ -181,7 +181,7 @@ final class DeleteUserHandlerTest extends UnitTestCase
         $command = new DeleteUserCommand(userId: 10, deletedBy: Actor::user(999));
 
         $adminUser = UserFactory::createPersistedAdmin([
-            'id' => 10
+            'id' => 10,
         ]);
 
         $this->repository->method('findById')->willReturn($adminUser);

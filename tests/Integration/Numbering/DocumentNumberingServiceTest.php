@@ -122,4 +122,40 @@ final class DocumentNumberingServiceTest extends IntegrationTestCase
         $no = $svc->allocate('upper-bound', '', '', '', 20);
         $this->assertSame('00000000000000000001', $no->formatted);
     }
+
+    public function test_sequences_are_partitioned_per_tenant(): void
+    {
+        // Round-4 R2 (E19): with a TenantContext injected, the tenant is
+        // folded into the scope key automatically — gapless invoice numbers
+        // can never collide across tenants because each tenant owns an
+        // independent counter row.
+        $tenantA = new \App\Infrastructure\Tenancy\TenantContext();
+        $tenantA->set(1);
+        $tenantB = new \App\Infrastructure\Tenancy\TenantContext();
+        $tenantB->set(2);
+
+        $svcA = new DocumentNumberingService(null, $tenantA);
+        $svcB = new DocumentNumberingService(null, $tenantB);
+
+        $a1 = $svcA->allocate('invoice', '2026', 'INV-', '', 4);
+        $a2 = $svcA->allocate('invoice', '2026', 'INV-', '', 4);
+        $b1 = $svcB->allocate('invoice', '2026', 'INV-', '', 4);
+
+        // Tenant A advanced to 2; tenant B starts fresh at 1.
+        $this->assertSame('INV-0001', $a1->formatted);
+        $this->assertSame('INV-0002', $a2->formatted);
+        $this->assertSame('INV-0001', $b1->formatted);
+
+        // peek() respects the same partition.
+        $this->assertSame(2, $svcA->peek('invoice', '2026'));
+        $this->assertSame(1, $svcB->peek('invoice', '2026'));
+
+        // Two distinct counter rows exist, keyed by tenant-prefixed scope.
+        $rows = Database::connect()->table('document_sequences')
+            ->where('series', 'invoice')
+            ->get()->getResultArray();
+        $scopes = array_column($rows, 'scope');
+        sort($scopes);
+        $this->assertSame(['tenant:1:2026', 'tenant:2:2026'], $scopes);
+    }
 }

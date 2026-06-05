@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Cookie\Events\CookieUpdated;
 
-use App\Domain\Shared\Events\DomainEventInterface;
+use App\Domain\Shared\Events\AbstractDomainEvent;
 
 /**
  * Event fired when a Cookie is updated.
@@ -15,9 +15,13 @@ use App\Domain\Shared\Events\DomainEventInterface;
  *
  * @package App\Domain\Cookie\Events\CookieUpdated
  */
-final readonly class CookieUpdatedEvent implements DomainEventInterface
+final readonly class CookieUpdatedEvent extends AbstractDomainEvent
 {
     /**
+     * Envelope fields (eventId/occurredAt/actorId — E04) come from the
+     * parent; `updatedBy` is kept as a payload field for back-compat and
+     * doubles as the envelope actorId.
+     *
      * @param int                        $cookieId      ID of the updated cookie
      * @param string                     $cookieName    New name (denormalised for log readability)
      * @param string                     $cookiePrice   New decimal price string
@@ -33,5 +37,6 @@ final readonly class CookieUpdatedEvent implements DomainEventInterface
         public array $newState = [],
         public int $updatedBy = 0
     ) {
+        parent::__construct(actorId: $updatedBy === 0 ? null : $updatedBy);
     }
 }

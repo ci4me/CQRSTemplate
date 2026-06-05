@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Auth\Commands\RefreshToken;
 
+use App\Domain\Shared\Bus\CommandHandlerInterface;
 use App\Domain\User\Ports\TokenBlacklistInterface;
 use App\Domain\User\Repositories\UserRepository;
 use App\Infrastructure\Auth\Services\JwtService;
@@ -30,7 +31,7 @@ use Psr\Log\LoggerInterface;
  *
  * @package App\Infrastructure\Auth\Commands\RefreshToken
  */
-final readonly class RefreshTokenHandler
+final readonly class RefreshTokenHandler implements CommandHandlerInterface
 {
     /** @var LoggerInterface */
     private LoggerInterface $logger;

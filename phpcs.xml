@@ -27,15 +27,41 @@
          CookieReadModelRepository / DatabaseTokenBlacklistService. The
          exclusion is removed so the repositories are PSR-12 + Slevomat
          clean. -->
-    <!-- CodeIgniter scaffolded test dirs (lowercase) shipped with the
-         framework template — example stubs, not our project tests.
-         The real test directories are PascalCase (tests/Unit,
-         tests/Integration, tests/Feature, tests/Support). -->
-    <exclude-pattern>tests/_support/*</exclude-pattern>
-    <exclude-pattern>tests/_skipped/*</exclude-pattern>
-    <exclude-pattern>tests/session/*</exclude-pattern>
-    <exclude-pattern>tests/database/*</exclude-pattern>
-    <exclude-pattern>tests/unit/*</exclude-pattern>
+    <!-- Round-4 R2 gate-honesty note: the old lowercase exclude-patterns
+         (tests/_support, tests/unit, ...) matched CASE-INSENSITIVELY, so
+         they silently skipped chunks of the REAL tests/Unit tree. The stub
+         trees are deleted; the patterns are gone; the deliberate test-only
+         relaxations now live as explicit per-sniff rules below (mirroring
+         the PHPStan test-path ignore policy in phpstan.neon). -->
+
+    <!-- Test-only pragmatics: callbacks routinely ignore parameters
+         (mock expectation signatures), inline fixture classes are
+         idiomatic, and iterable-shape annotations on test helpers add
+         noise without catching bugs. Production code keeps all three
+         sniffs at full strength. -->
+    <rule ref="SlevomatCodingStandard.Functions.UnusedParameter">
+        <exclude-pattern>tests/*</exclude-pattern>
+    </rule>
+    <rule ref="PSR1.Classes.ClassDeclaration.MultipleClasses">
+        <exclude-pattern>tests/*</exclude-pattern>
+    </rule>
+    <rule ref="SlevomatCodingStandard.TypeHints.ReturnTypeHint.MissingTraversableTypeHintSpecification">
+        <exclude-pattern>tests/*</exclude-pattern>
+    </rule>
+    <rule ref="SlevomatCodingStandard.TypeHints.ParameterTypeHint.MissingTraversableTypeHintSpecification">
+        <exclude-pattern>tests/*</exclude-pattern>
+    </rule>
+    <rule ref="SlevomatCodingStandard.TypeHints.ParameterTypeHint.MissingAnyTypeHint">
+        <exclude-pattern>tests/*</exclude-pattern>
+    </rule>
+    <!-- CI4's CIUnitTestCase declares $migrate/$refresh/$namespace WITHOUT
+         native types; phpstan-strict (property override rule) forbids
+         children adding one, while this sniff's fixer would re-add it —
+         the two tools fight. Tests therefore keep the @var-docblock style
+         for framework-overridden properties. -->
+    <rule ref="SlevomatCodingStandard.TypeHints.PropertyTypeHint.MissingNativeTypeHint">
+        <exclude-pattern>tests/*</exclude-pattern>
+    </rule>
 
     <!-- Arguments -->
     <arg name="basepath" value="."/>

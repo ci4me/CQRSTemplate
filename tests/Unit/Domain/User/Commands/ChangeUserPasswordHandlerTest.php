@@ -281,7 +281,7 @@ final class ChangeUserPasswordHandlerTest extends UnitTestCase
 
         $customerUser = UserFactory::createPersistedUser([
             'id' => 5,
-            'role' => 'customer'
+            'role' => 'customer',
         ]);
 
         $this->repository->method('findById')->willReturn($customerUser);
@@ -303,7 +303,7 @@ final class ChangeUserPasswordHandlerTest extends UnitTestCase
         );
 
         $adminUser = UserFactory::createPersistedAdmin([
-            'id' => 10
+            'id' => 10,
         ]);
 
         $this->repository->method('findById')->willReturn($adminUser);

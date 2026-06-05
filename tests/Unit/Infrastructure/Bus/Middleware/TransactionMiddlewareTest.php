@@ -22,9 +22,15 @@ final class TransactionMiddlewareTest extends CIUnitTestCase
     use DatabaseTestTrait;
 
     /** @var bool */
+    /** @var bool */
+    /** @var bool */
     protected $migrate = true;
     /** @var bool */
+    /** @var bool */
+    /** @var bool */
     protected $refresh = true;
+    /** @var string|null */
+    /** @var string|null */
     /** @var string|null */
     protected $namespace = null;
 
@@ -57,11 +63,13 @@ final class TransactionMiddlewareTest extends CIUnitTestCase
             $prop->setAccessible(true);
             $prop->setValue($db, true);
         }
-        if ($ref->hasProperty('transDepth')) {
-            $depth = $ref->getProperty('transDepth');
-            $depth->setAccessible(true);
-            $depth->setValue($db, 0);
+        if (!$ref->hasProperty('transDepth')) {
+            return;
         }
+
+        $depth = $ref->getProperty('transDepth');
+        $depth->setAccessible(true);
+        $depth->setValue($db, 0);
     }
 
     public function test_commits_when_handler_succeeds(): void

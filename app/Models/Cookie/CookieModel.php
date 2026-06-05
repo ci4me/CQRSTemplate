@@ -82,34 +82,35 @@ class CookieModel extends Model
     protected $cleanValidationRules = true;
 
     /**
-     * Check if a cookie exists with the given name.
+     * Check if a LIVE cookie exists with the given name.
      *
-     * Cookie names are reserved after soft delete. This matches the database
-     * unique key and preserves historical ERP/audit references.
+     * Round-4 R2 (E11): soft-deleted rows do NOT reserve their name. This
+     * matches the composite UNIQUE(tenant_id, name, deleted_at) contract —
+     * deleting "Chocolate Chip" frees the name for a new row while the
+     * historical row keeps its surrogate id for ERP/audit references.
      *
      * @param string $name The cookie name to check
-     * @return bool True if exists
+     * @return bool True if a live row uses the name
      */
     public function existsByName(string $name): bool
     {
-        return $this->withDeleted()
-            ->where('LOWER(name)', strtolower($name))
+        return $this->where('LOWER(name)', strtolower($name))
             ->countAllResults() > 0;
     }
 
     /**
-     * Check if a cookie exists with the given name, excluding a specific ID.
+     * Check if a LIVE cookie exists with the given name, excluding one ID.
      *
-     * Used for update operations to allow keeping the same name.
+     * Used for update operations to allow keeping the same name. Same
+     * soft-delete semantics as {@see self::existsByName()}.
      *
      * @param string $name The cookie name to check
      * @param int $excludeId The ID to exclude from the search
-     * @return bool True if exists
+     * @return bool True if a live row uses the name
      */
     public function existsByNameExcludingId(string $name, int $excludeId): bool
     {
-        return $this->withDeleted()
-            ->where('LOWER(name)', strtolower($name))
+        return $this->where('LOWER(name)', strtolower($name))
             ->where('id !=', $excludeId)
             ->countAllResults() > 0;
     }

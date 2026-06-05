@@ -590,6 +590,8 @@ final class CookieRepository implements CookieRepositoryInterface
     {
         $builder = $this->model->builder();
         $builder->where('deleted_at IS NULL');
+        // Round-4 R2 safety net — see GetAllCookiesQuery::MAX_RESULTS.
+        $builder->limit(\App\Domain\Cookie\Queries\GetAllCookies\GetAllCookiesQuery::MAX_RESULTS);
 
         if (!$includeInactive) {
             $builder->where('is_active', 1);
@@ -626,7 +628,10 @@ final class CookieRepository implements CookieRepositoryInterface
         }
 
         if ($searchTerm !== null && $searchTerm !== '') {
-            $builder->like('name', $searchTerm);
+            // Round-4 R2: prefix match + escaped wildcards (see
+            // CookieQueryRepository for the canonical read-side rationale).
+            $escaped = strtr($searchTerm, ['\\' => '\\\\', '%' => '\%', '_' => '\_']);
+            $builder->like('name', $escaped, 'after');
         }
 
         $totalCount = $builder->countAllResults(false);

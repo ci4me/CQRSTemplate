@@ -88,7 +88,11 @@ final class CookieQueryRepository implements CookieQueryRepositoryInterface
         $builder = $this->connection()
             ->table(self::TABLE)
             ->where('deleted_at', null)
-            ->orderBy('id', 'ASC');
+            ->orderBy('id', 'ASC')
+            // Round-4 R2 safety net: findAll is for bounded reference data;
+            // ERP-scale lists must use findPaginated. The LIMIT prevents an
+            // accidental million-row hydration from melting the request.
+            ->limit(\App\Domain\Cookie\Queries\GetAllCookies\GetAllCookiesQuery::MAX_RESULTS);
 
         if (!$includeInactive) {
             $builder->where('is_active', 1);
@@ -133,7 +137,12 @@ final class CookieQueryRepository implements CookieQueryRepositoryInterface
             // (see CreateCookiesTable migration), so LIKE is naturally
             // case-insensitive without needing a separate `name_search`
             // column.
-            $builder->like('name', $searchTerm);
+            //
+            // Round-4 R2 (E11 + read-side perf): PREFIX match instead of the
+            // old leading-wildcard '%term%' (which forced a full table scan
+            // on every search), and user-supplied wildcards are escaped so
+            // "100%_cocoa" matches literally instead of acting as a pattern.
+            $builder->like('name', self::escapeLikeTerm($searchTerm), 'after');
         }
 
         $total = $builder->countAllResults(false);
@@ -191,6 +200,17 @@ final class CookieQueryRepository implements CookieQueryRepositoryInterface
             createdAt: isset($row['created_at']) && is_string($row['created_at']) ? $row['created_at'] : null,
             updatedAt: isset($row['updated_at']) && is_string($row['updated_at']) ? $row['updated_at'] : null,
         );
+    }
+
+    /**
+     * Escape LIKE metacharacters in a user-supplied search term.
+     *
+     * Round-4 R2 (E11): without this, a search for "50%_off" behaves as a
+     * pattern ("%" any-sequence, "_" any-char) instead of a literal match.
+     */
+    private static function escapeLikeTerm(string $term): string
+    {
+        return strtr($term, ['\\' => '\\\\', '%' => '\%', '_' => '\_']);
     }
 
     /**

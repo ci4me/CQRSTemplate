@@ -6,6 +6,7 @@ namespace App\Domain\Cookie\Commands\DeleteCookie;
 
 use App\Domain\Cookie\ErrorCodes;
 use App\Domain\Cookie\Ports\CookieRepositoryInterface;
+use App\Domain\Shared\Bus\CommandHandlerInterface;
 use App\Domain\Shared\Exceptions\DomainException;
 use Psr\Log\LoggerInterface;
 
@@ -28,7 +29,7 @@ use Psr\Log\LoggerInterface;
  *
  * @package App\Domain\Cookie\Commands\DeleteCookie
  */
-final readonly class DeleteCookieHandler
+final readonly class DeleteCookieHandler implements CommandHandlerInterface
 {
     /**
      * Create a new DeleteCookieHandler.

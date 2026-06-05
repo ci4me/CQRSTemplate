@@ -8,6 +8,7 @@ use App\Domain\Cookie\ErrorCodes;
 use App\Domain\Cookie\Ports\CookieRepositoryInterface;
 use App\Domain\Cookie\ValueObjects\CookieName;
 use App\Domain\Cookie\ValueObjects\CookiePrice;
+use App\Domain\Shared\Bus\CommandHandlerInterface;
 use App\Domain\Shared\Exceptions\DomainException;
 use App\Domain\Shared\Exceptions\ValidationException;
 use Psr\Log\LoggerInterface;
@@ -33,7 +34,7 @@ use Psr\Log\LoggerInterface;
  *
  * @package App\Domain\Cookie\Commands\UpdateCookie
  */
-final readonly class UpdateCookieHandler
+final readonly class UpdateCookieHandler implements CommandHandlerInterface
 {
     /**
      * Create a new UpdateCookieHandler.

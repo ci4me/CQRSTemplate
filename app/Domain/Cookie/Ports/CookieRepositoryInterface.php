@@ -54,12 +54,12 @@ interface CookieRepositoryInterface
     ): array;
 
     /**
-     * Case-insensitive existence check by name across the live + trashed set.
+     * Case-insensitive existence check by name across LIVE rows only.
      *
-     * The underlying query does `LOWER(name) = LOWER(?)` AND includes
-     * soft-deleted rows — by design. A previously-deleted name still counts as
-     * "taken" so ERP/audit references to the historical row are preserved
-     * (the same surrogate id can't be reused without a name change first).
+     * Round-4 R2 (E11): soft-deleted rows do NOT reserve their name —
+     * matching the composite UNIQUE(tenant_id, name, deleted_at) index,
+     * which only prevents two simultaneous live rows from sharing a name.
+     * Historical rows keep their surrogate id for ERP/audit references.
      */
     public function existsByName(string $name): bool;
 
@@ -67,7 +67,7 @@ interface CookieRepositoryInterface
      * Case-insensitive existence check by name, ignoring one specific id.
      *
      * Same semantics as {@see self::existsByName()} (case-insensitive,
-     * includes soft-deleted), but excludes a single row from the comparison.
+     * live rows only), but excludes a single row from the comparison.
      * Used by the update handler to allow "rename a cookie to its own name"
      * (no change) without tripping the uniqueness check.
      */

@@ -100,8 +100,8 @@ final class CookieViewTest extends UnitTestCase
                 isActive: true,
                 createdAt: null,
                 updatedAt: null,
-            deletedAt: null,
-            version: 1
+                deletedAt: null,
+                version: 1
             ),
             Cookie::reconstitute(
                 id: 2,
@@ -112,8 +112,8 @@ final class CookieViewTest extends UnitTestCase
                 isActive: true,
                 createdAt: null,
                 updatedAt: null,
-            deletedAt: null,
-            version: 1
+                deletedAt: null,
+                version: 1
             ),
         ];
 

@@ -405,12 +405,19 @@ final class CookieRepositoryTest extends IntegrationTestCase
         $this->assertTrue($exists);
     }
 
-    public function test_exists_by_name_includes_soft_deleted_cookies(): void
+    public function test_exists_by_name_frees_soft_deleted_names_for_reuse(): void
     {
-        $id = $this->cookieRepository->save(CookieFactory::createCookie(['name' => 'Reserved Cookie']));
+        // Round-4 R2 (E11): soft-deleted rows no longer reserve their name —
+        // matching UNIQUE(tenant_id, name, deleted_at), which only blocks two
+        // simultaneous LIVE rows from sharing a name.
+        $id = $this->cookieRepository->save(CookieFactory::createCookie(['name' => 'Reusable Cookie']));
         $this->softDeleteById($id);
 
-        $this->assertTrue($this->cookieRepository->existsByName('Reserved Cookie'));
+        $this->assertFalse($this->cookieRepository->existsByName('Reusable Cookie'));
+
+        // And the name can actually be re-registered.
+        $newId = $this->cookieRepository->save(CookieFactory::createCookie(['name' => 'Reusable Cookie']));
+        $this->assertGreaterThan($id, $newId);
     }
 
     // ==========================================
@@ -455,15 +462,16 @@ final class CookieRepositoryTest extends IntegrationTestCase
         $this->assertTrue($exists);
     }
 
-    public function test_exists_by_name_excluding_id_includes_soft_deleted_cookies(): void
+    public function test_exists_by_name_excluding_id_ignores_soft_deleted_cookies(): void
     {
+        // Round-4 R2 (E11): live-rows-only semantics, mirroring existsByName.
         $activeId = $this->cookieRepository->save(CookieFactory::createCookie(['name' => 'Active Cookie']));
-        $deletedId = $this->cookieRepository->save(CookieFactory::createCookie(['name' => 'Deleted But Reserved']));
+        $deletedId = $this->cookieRepository->save(CookieFactory::createCookie(['name' => 'Deleted And Free']));
         $this->softDeleteById($deletedId);
 
-        $exists = $this->cookieRepository->existsByNameExcludingId('Deleted But Reserved', $activeId);
+        $exists = $this->cookieRepository->existsByNameExcludingId('Deleted And Free', $activeId);
 
-        $this->assertTrue($exists);
+        $this->assertFalse($exists);
     }
 
     // ==========================================
@@ -684,6 +692,41 @@ final class CookieRepositoryTest extends IntegrationTestCase
             \App\Domain\Cookie\Events\CookieUpdated\CookieUpdatedEvent::class,
             $dispatched[0]
         );
+    }
+
+    // ==========================================
+    // Cross-tenant isolation (round-4 R2 / E19)
+    // ==========================================
+
+    public function test_cross_tenant_isolation_end_to_end(): void
+    {
+        // Tenant-2 writer alongside the base-class tenant-1 repository.
+        $logger = LoggerFactory::create('test.cookie.repository.tenant2');
+        /** @var \Config\Logging $loggingConfig */
+        $loggingConfig = config('Logging');
+        $tenant2 = new \App\Infrastructure\Tenancy\TenantContext();
+        $tenant2->set(2);
+        $repoTenant2 = new CookieRepository($logger, $loggingConfig, null, null, null, $tenant2);
+
+        $idT1 = $this->cookieRepository->save(CookieFactory::createCookie(['name' => 'Tenant One Cookie']));
+        $idT2 = $repoTenant2->save(CookieFactory::createCookie(['name' => 'Tenant Two Cookie']));
+
+        // Writes stamped the owning tenant.
+        $this->assertDatabaseHas('cookies', ['id' => $idT1, 'tenant_id' => 1]);
+        $this->assertDatabaseHas('cookies', ['id' => $idT2, 'tenant_id' => 2]);
+
+        // Read side: tenant-1 context never sees tenant-2 rows and vice
+        // versa — the single most ERP-critical isolation property.
+        $readT1 = new \App\Domain\Cookie\Repositories\CookieQueryRepository(null, $this->tenantContext);
+        $readT2 = new \App\Domain\Cookie\Repositories\CookieQueryRepository(null, $tenant2);
+
+        $namesT1 = array_map(static fn($dto) => $dto->name, $readT1->findAll(true));
+        $namesT2 = array_map(static fn($dto) => $dto->name, $readT2->findAll(true));
+
+        $this->assertContains('Tenant One Cookie', $namesT1);
+        $this->assertNotContains('Tenant Two Cookie', $namesT1);
+        $this->assertContains('Tenant Two Cookie', $namesT2);
+        $this->assertNotContains('Tenant One Cookie', $namesT2);
     }
 
     // ==========================================

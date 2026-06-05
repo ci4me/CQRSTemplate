@@ -40,9 +40,12 @@ use RuntimeException;
 final class QueryBus
 {
     /**
-     * Map of query class names to their handler instances.
+     * Map of query class names to their handler invocations.
      *
-     * @var array<string, object> Format: [QueryClassName => HandlerInstance]
+     * The handle() method is captured as a Closure at registration time, so
+     * ask() never duck-types (round-4 R2, mirroring CommandBus).
+     *
+     * @var array<string, \Closure(object): mixed>
      */
     private array $handlers = [];
 
@@ -68,7 +71,8 @@ final class QueryBus
             );
         }
 
-        $this->handlers[$queryClass] = $handler;
+        // Capture the invocation as a Closure so ask() is statically typed.
+        $this->handlers[$queryClass] = \Closure::fromCallable([$handler, 'handle']);
     }
 
     /**
@@ -91,10 +95,9 @@ final class QueryBus
             );
         }
 
-        $handler = $this->handlers[$queryClass];
-
-        /** @phpstan-ignore method.notFound (handle() verified at registration time) */
-        return $handler->handle($query);
+        // register() captured handle() as a Closure; no duck-typing and no
+        // PHPStan suppression needed (round-4 R2).
+        return ($this->handlers[$queryClass])($query);
     }
 
     /**

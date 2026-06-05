@@ -5,12 +5,12 @@ declare(strict_types=1);
 namespace Tests\Unit\Domain\Cookie\Commands;
 
 use App\Domain\Cookie\Commands\UpdateCookie\UpdateCookieCommand;
-use App\Domain\Shared\ValueObjects\Actor;
 use App\Domain\Cookie\Commands\UpdateCookie\UpdateCookieHandler;
 use App\Domain\Cookie\Entities\Cookie;
 use App\Domain\Cookie\Events\CookieUpdated\CookieUpdatedEvent;
 use App\Domain\Cookie\Ports\CookieRepositoryInterface;
 use App\Domain\Shared\Exceptions\DomainException;
+use App\Domain\Shared\ValueObjects\Actor;
 use App\Infrastructure\Logging\LoggerFactory;
 use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 use Tests\Support\Factories\CookieFactory;
@@ -39,7 +39,7 @@ final class UpdateCookieHandlerTest extends UnitTestCase
             price: '3.99',
             stock: 150,
             isActive: true,
-        updatedBy: Actor::system('test')
+            updatedBy: Actor::system('test')
         );
 
         $existing = CookieFactory::createPersistedCookie(['id' => 1]);
@@ -76,7 +76,7 @@ final class UpdateCookieHandlerTest extends UnitTestCase
             price: '1.00',
             stock: 10,
             isActive: true,
-        updatedBy: Actor::system('test')
+            updatedBy: Actor::system('test')
         );
 
         $this->repository->expects($this->once())
@@ -99,7 +99,7 @@ final class UpdateCookieHandlerTest extends UnitTestCase
             price: '2.99',
             stock: 100,
             isActive: true,
-        updatedBy: Actor::system('test')
+            updatedBy: Actor::system('test')
         );
 
         $existing = CookieFactory::createPersistedCookie(['id' => 1]);

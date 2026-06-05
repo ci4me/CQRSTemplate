@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\User\Queries\GetUserById;
 
+use App\Domain\Shared\Bus\QueryHandlerInterface;
 use App\Domain\Shared\Ports\LogConfigPort;
 use App\Domain\User\DTOs\UserDTO;
 use App\Domain\User\Entities\User;
@@ -13,7 +14,7 @@ use Psr\Log\LoggerInterface;
 /**
  * GetUserByIdHandler.
  */
-final readonly class GetUserByIdHandler
+final readonly class GetUserByIdHandler implements QueryHandlerInterface
 {
     /**
      * __construct.

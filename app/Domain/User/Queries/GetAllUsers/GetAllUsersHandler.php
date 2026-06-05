@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\User\Queries\GetAllUsers;
 
+use App\Domain\Shared\Bus\QueryHandlerInterface;
 use App\Domain\Shared\Ports\LogConfigPort;
 use App\Domain\User\DTOs\UserDTO;
 use App\Domain\User\Ports\UserRepositoryInterface;
@@ -23,7 +24,7 @@ use Psr\Log\LoggerInterface;
  *
  * @package App\Domain\User\Queries\GetAllUsers
  */
-final readonly class GetAllUsersHandler
+final readonly class GetAllUsersHandler implements QueryHandlerInterface
 {
     /**
      * __construct.

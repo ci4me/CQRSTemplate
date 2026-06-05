@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\User\Commands\ChangeUserPassword;
 
+use App\Domain\Shared\Bus\CommandHandlerInterface;
 use App\Domain\Shared\Events\EventDispatcherInterface;
 use App\Domain\User\ErrorCodes;
 use App\Domain\User\Events\PasswordChanged\PasswordChangedEvent;
@@ -35,7 +36,7 @@ use Psr\Log\LoggerInterface;
  *
  * @package App\Domain\User\Commands\ChangeUserPassword
  */
-final readonly class ChangeUserPasswordHandler
+final readonly class ChangeUserPasswordHandler implements CommandHandlerInterface
 {
     /**
      * __construct.

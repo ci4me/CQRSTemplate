@@ -6,6 +6,7 @@ namespace App\Domain\Cookie\Commands\RestoreCookie;
 
 use App\Domain\Cookie\ErrorCodes;
 use App\Domain\Cookie\Ports\CookieRepositoryInterface;
+use App\Domain\Shared\Bus\CommandHandlerInterface;
 use App\Domain\Shared\Exceptions\DomainException;
 use App\Domain\Shared\Exceptions\ValidationException;
 use Psr\Log\LoggerInterface;
@@ -31,7 +32,7 @@ use Psr\Log\LoggerInterface;
  *
  * @package App\Domain\Cookie\Commands\RestoreCookie
  */
-final readonly class RestoreCookieHandler
+final readonly class RestoreCookieHandler implements CommandHandlerInterface
 {
     /**
      * Create a new RestoreCookieHandler.

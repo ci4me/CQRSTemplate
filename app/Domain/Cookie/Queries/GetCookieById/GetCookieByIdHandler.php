@@ -6,6 +6,7 @@ namespace App\Domain\Cookie\Queries\GetCookieById;
 
 use App\Domain\Cookie\DTOs\CookieDTO;
 use App\Domain\Cookie\Ports\CookieQueryRepositoryInterface;
+use App\Domain\Shared\Bus\QueryHandlerInterface;
 use App\Domain\Shared\Ports\LogConfigPort;
 use Psr\Log\LoggerInterface;
 
@@ -29,7 +30,7 @@ use Psr\Log\LoggerInterface;
  *
  * @package App\Domain\Cookie\Queries\GetCookieById
  */
-final readonly class GetCookieByIdHandler
+final readonly class GetCookieByIdHandler implements QueryHandlerInterface
 {
     /**
      * Create a new GetCookieByIdHandler.

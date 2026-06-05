@@ -164,7 +164,7 @@ final class CookieRepositoryLoggingTraitsTest extends UnitTestCase
              * @param string|\Stringable $message
              * @param array<mixed>       $context
              */
-            public function log($level, string|\Stringable $message, array $context = []): void
+            public function log(mixed $level, string|\Stringable $message, array $context = []): void
             {
                 $this->records[] = [
                     'level' => (string) $level,
