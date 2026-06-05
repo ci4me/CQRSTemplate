@@ -32,7 +32,7 @@ The project's `.mcp.json` contains:
   "mcpServers": {
     "local-logs": {
       "command": "node",
-      "args": ["/tmp/local-logs-mcp-server/local-logs-mcp-server.js"],
+      "args": ["${PWD}/.claude/tools/local-logs-mcp/local-logs-mcp-server.js"],
       "env": {
         "LOGS_DIR": "${PWD}/writable/logs",
         "LOG_EXTENSIONS": ".log,.json,.txt"
@@ -85,18 +85,15 @@ The project's `.mcp.json` contains:
 
 **Installation (Custom Server):**
 
-The Local Logs MCP Server has been installed locally in this project at:
+The Local Logs MCP Server is a zero-dependency Node.js script versioned
+inside this repository:
 ```
-/tmp/local-logs-mcp-server/
+.claude/tools/local-logs-mcp/local-logs-mcp-server.js
 ```
 
-**Alternative installation:**
-```bash
-# Clone from GitHub
-git clone https://github.com/mariosss/local-logs-mcp-server.git
-cd local-logs-mcp-server
-npm install
-```
+No `npm install` is required — it uses only Node.js built-ins. Because it is
+checked into the repo, it survives reboots (an earlier install in `/tmp` was
+wiped on reboot, which broke the server).
 
 ## Configuration
 
@@ -109,7 +106,7 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS)
   "mcpServers": {
     "local-logs": {
       "command": "node",
-      "args": ["/tmp/local-logs-mcp-server/local-logs-mcp-server.js"],
+      "args": ["${PWD}/.claude/tools/local-logs-mcp/local-logs-mcp-server.js"],
       "env": {
         "LOGS_DIR": "/home/gabriel/Documentos/CQRSTemplate/writable/logs",
         "LOG_EXTENSIONS": ".log,.json,.txt"
@@ -130,7 +127,7 @@ Add to `.mcp.json` in your project root:
   "mcpServers": {
     "local-logs": {
       "command": "node",
-      "args": ["/tmp/local-logs-mcp-server/local-logs-mcp-server.js"],
+      "args": ["${PWD}/.claude/tools/local-logs-mcp/local-logs-mcp-server.js"],
       "env": {
         "LOGS_DIR": "${PWD}/writable/logs",
         "LOG_EXTENSIONS": ".log,.json,.txt"
@@ -151,7 +148,7 @@ Add to `.cursor/mcp.json` in your project root:
   "mcpServers": {
     "local-logs": {
       "command": "node",
-      "args": ["/tmp/local-logs-mcp-server/local-logs-mcp-server.js"],
+      "args": ["${PWD}/.claude/tools/local-logs-mcp/local-logs-mcp-server.js"],
       "env": {
         "LOGS_DIR": "./writable/logs",
         "LOG_EXTENSIONS": ".log,.json,.txt"
@@ -471,7 +468,7 @@ bash temp/install-python-mcp-servers.sh
 
 1. **Check if server is installed:**
    ```bash
-   test -d /tmp/local-logs-mcp-server && echo "Installed" || echo "Not found"
+   test -f .claude/tools/local-logs-mcp/local-logs-mcp-server.js && echo "Installed" || echo "Not found"
    ```
 
 2. **Verify Node.js is available:**
@@ -520,11 +517,11 @@ bash temp/install-python-mcp-servers.sh
 
 The Local Logs MCP Server provides these tools:
 
-- `listLogFiles` - List all available log files
-- `readLogFile` - Read last N lines from a log file
-- `searchLogs` - Search for specific text across logs
-- `getErrorSummary` - Get summary of error logs
-- `tailLogs` - Real-time log tailing
+- `get_log_files` - List all available log files (size + mtime, newest first)
+- `read_log_file` - Read last N lines from a log file
+- `search_logs` - Case-insensitive regex search across logs (correlation IDs, error codes)
+- `get_error_summary` - Counts of ERROR/CRITICAL/ALERT/EMERGENCY entries + recent samples
+- `tail_log` - Snapshot tail of a file (defaults to the most recently modified log)
 
 ### Log File Discovery
 
@@ -738,7 +735,7 @@ All 8 servers provide value for this CQRS/DDD/CI4 project:
 
 ### This Project
 
-- **Local Logs MCP Server**: https://github.com/mariosss/local-logs-mcp-server
+- **Local Logs MCP Server**: `.claude/tools/local-logs-mcp/local-logs-mcp-server.js` (in-repo, custom)
 - **Monolog Documentation**: https://github.com/Seldaek/monolog
 - **PSR-3 Logger Interface**: https://www.php-fig.org/psr/psr-3/
 - **CodeIgniter 4**: https://codeigniter.com/user_guide/
