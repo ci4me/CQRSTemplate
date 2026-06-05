@@ -2,9 +2,14 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    # Round-4 follow-up (gate honesty): the stabilization branch carried
+    # destructive migrations for weeks with CI never triggering — pushes to
+    # it now run the full lane, and workflow_dispatch allows manual runs on
+    # any ref.
+    branches: [main, stabilization/erp-foundation]
   pull_request:
     branches: [main]
+  workflow_dispatch:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
