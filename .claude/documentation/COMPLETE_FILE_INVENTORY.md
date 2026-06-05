@@ -2,6 +2,34 @@
 
 When adding a new domain to this CQRS template, you create or touch **45+ files/touchpoints** (assuming 2 value objects, 3 commands, 3 queries, 3 events). The exact count varies as domains add ports, DTOs, infrastructure models, logging traits, or extra tests.
 
+> **⚠️ ROUND-4 ADDENDUM (2026-06-05)** — the Cookie reference changed; the
+> per-file lists below predate it. Deltas a clone MUST account for:
+>
+> - **Events extend `App\Domain\Shared\Events\AbstractDomainEvent`** (E04):
+>   envelope eventId/occurredAt/actorId; call `parent::__construct(actorId: ...)`.
+> - **Handlers implement the Domain-owned markers**
+>   `App\Domain\Shared\Bus\CommandHandlerInterface` / `QueryHandlerInterface`
+>   and take `(repository, logger)` — NO EventDispatcher: the repository is
+>   the single event drain (outbox-first + sync dispatch + markDelivered in
+>   one transaction).
+> - **The aggregate owns its lifecycle**: `markDeleted()`, `restore()`,
+>   `recordCreation()` (hydrator-gated, called by the repository after id
+>   assignment), `increaseStock()/decreaseStock(qty, reason)`.
+> - **Repository `delete()/restore()` are entity-based** with optimistic-
+>   locking guards (`WHERE id AND version AND deleted_at IS [NOT] NULL`).
+> - **NEW command**: `Commands/AdjustCookieStock/` (signed-delta inventory
+>   movement — the pattern ERP domains clone).
+> - **Read DTO**: implements `App\Domain\Shared\DTOs\ReadDTOInterface`
+>   (snake_case `toArray()` === `jsonSerialize()`, ISO-8601 dates, non-null
+>   id, precomputed `outOfStock` field). `ReadModels/{Entity}View.php` is
+>   GONE — one DTO per domain.
+> - **DELETED**: `Shared/StateMachine/*`, `CookiePrice::format()` (use
+>   `Services/PriceFormatter`), `CookiePrice::getValue()`, Infrastructure
+>   bus handler/middleware marker interfaces.
+> - **Views**: every dynamic output `esc()`-wrapped; every string through
+>   `lang('App.*')` (en + pt-BR parity required).
+> - Full rationale: `.audit/round4/CONSOLIDATED-PLAN.md` + `DEFERRED.md`.
+
 ---
 
 ## Domain Layer (24+ files)
