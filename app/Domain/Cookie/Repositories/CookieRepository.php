@@ -518,8 +518,9 @@ final class CookieRepository implements CookieRepositoryInterface
         // Round-4 R1: the aggregate raises CookieCreatedEvent itself now
         // that the id exists; save()'s drain ships it outbox-first in the
         // same transaction as the INSERT (previously the create handler
-        // hand-dispatched with no outbox row -> no durability).
-        $cookie->recordCreation(AggregateHydrator::key());
+        // hand-dispatched with no outbox row -> no durability). The actor
+        // rides along so the creation event's E04 actorId is populated.
+        $cookie->recordCreation(AggregateHydrator::key(), $actor);
 
         return $newId;
     }

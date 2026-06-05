@@ -680,13 +680,15 @@ final class CookieTest extends UnitTestCase
     {
         $cookie = $this->makePersisted(id: 11);
 
-        $cookie->recordCreation(AggregateHydrator::key());
+        $cookie->recordCreation(AggregateHydrator::key(), Actor::user(77));
 
         $events = $cookie->peekEvents();
         $this->assertCount(1, $events);
         $this->assertInstanceOf(CookieCreatedEvent::class, $events[0]);
         $this->assertSame(11, $events[0]->cookieId);
         $this->assertSame('Persisted Cookie', $events[0]->cookieName);
+        // Round-4 re-audit finding: the creator must reach the E04 envelope.
+        $this->assertSame(77, $events[0]->actorId);
     }
 
     public function test_record_creation_requires_persisted_entity(): void

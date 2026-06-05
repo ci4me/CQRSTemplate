@@ -312,11 +312,14 @@ final class Cookie implements AggregateRootInterface
      * lifecycle event. Hydrator-gated so handlers/controllers cannot fake
      * a creation record.
      *
-     * @param AggregateHydrator $key Permission token; pass `AggregateHydrator::key()`
+     * @param AggregateHydrator $key   Permission token; pass `AggregateHydrator::key()`
+     * @param Actor|null        $actor Who created the cookie — flows into the
+     *                                 event's actorId so the E04 audit trail
+     *                                 covers the creation path too
      * @throws DomainException When the entity has no id yet
      */
     // phpcs:ignore SlevomatCodingStandard.Functions.UnusedParameter.UnusedParameter -- $key is the security contract, not a value
-    public function recordCreation(AggregateHydrator $key): void
+    public function recordCreation(AggregateHydrator $key, ?Actor $actor = null): void
     {
         $this->assertPersisted('recordCreation');
 
@@ -324,7 +327,8 @@ final class Cookie implements AggregateRootInterface
             cookieId: (int) $this->id,
             cookieName: $this->name->getValue(),
             cookiePrice: $this->price->toDecimalString(),
-            initialStock: $this->stock->value
+            initialStock: $this->stock->value,
+            actorId: $actor?->id
         ));
     }
 

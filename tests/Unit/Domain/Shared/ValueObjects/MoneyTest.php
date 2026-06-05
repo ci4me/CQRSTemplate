@@ -211,6 +211,17 @@ final class MoneyTest extends UnitTestCase
         $large->multiply(-2);
     }
 
+    public function test_multiply_by_int_min_throws_validation_not_type_error(): void
+    {
+        // Round-4 re-audit finding: abs(PHP_INT_MIN) is a float, so the
+        // intdiv-based guard threw TypeError instead of the promised
+        // ValidationException. INT_MIN is out of domain for money.
+        $money = Money::fromMinorUnits(500, Currency::usd());
+
+        $this->expectException(ValidationException::class);
+        $money->multiply(PHP_INT_MIN);
+    }
+
     public function test_multiply_by_zero_and_boundary_succeeds(): void
     {
         $money = Money::fromMinorUnits(500, Currency::usd());

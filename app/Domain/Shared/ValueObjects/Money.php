@@ -269,6 +269,17 @@ final readonly class Money implements \JsonSerializable
      */
     public function multiply(int $multiplier): self
     {
+        // PHP_INT_MIN has no positive int counterpart: abs() degrades it to
+        // a float and intdiv() would throw TypeError instead of this guard's
+        // promised ValidationException (round-4 re-audit finding). A money
+        // factor or amount at INT_MIN is out of domain — reject outright.
+        if ($multiplier === PHP_INT_MIN || $this->amountMinor === PHP_INT_MIN) {
+            throw ValidationException::invalidFormat(
+                'amount',
+                sprintf('a value within %s minor units', PHP_INT_MAX)
+            );
+        }
+
         if (
             $multiplier !== 0
             && $this->amountMinor !== 0
