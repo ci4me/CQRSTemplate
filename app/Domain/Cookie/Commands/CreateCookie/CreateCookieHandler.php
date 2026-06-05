@@ -139,7 +139,13 @@ final readonly class CreateCookieHandler
     }
 
     /**
-     * Determine appropriate error code based on exception type and context.
+     * Pick the most specific ErrorCodes constant for a failed create.
+     *
+     * Prefers the exception's own getErrorCode() when present (validation
+     * + domain exceptions carry it); falls back to COOKIE_REPOSITORY_SAVE_FAILED
+     * for raw infrastructure errors so the structured log line always carries
+     * a numeric error_code field. English-substring matching was removed in
+     * round-4 R0 — error codes travel on the exception, never the message.
      */
     private function determineErrorCode(\Throwable $e): int
     {
@@ -147,18 +153,8 @@ final readonly class CreateCookieHandler
             return $e->getErrorCode();
         }
 
-        if ($e instanceof DomainException) {
-            if ($e->getErrorCode() !== 0) {
-                return $e->getErrorCode();
-            }
-
-            return match (true) {
-                str_contains($e->getMessage(), 'name must be unique') => ErrorCodes::COOKIE_BUSINESS_RULE_NAME_DUPLICATE,
-                str_contains($e->getMessage(), 'stock') => ErrorCodes::COOKIE_BUSINESS_RULE_STOCK_NEGATIVE,
-                str_contains($e->getMessage(), 'name') => ErrorCodes::COOKIE_VALIDATION_NAME,
-                str_contains($e->getMessage(), 'price') => ErrorCodes::COOKIE_VALIDATION_PRICE,
-                default => ErrorCodes::COOKIE_REPOSITORY_SAVE_FAILED,
-            };
+        if ($e instanceof DomainException && $e->getErrorCode() !== 0) {
+            return $e->getErrorCode();
         }
 
         return ErrorCodes::COOKIE_REPOSITORY_SAVE_FAILED;

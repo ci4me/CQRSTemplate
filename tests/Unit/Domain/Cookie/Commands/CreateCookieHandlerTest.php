@@ -264,19 +264,12 @@ final class CreateCookieHandlerTest extends UnitTestCase
     }
 
     /**
-     * Exercises the str_contains() match arms in determineErrorCode by
-     * having the repository raise a generic DomainException (errorCode=0)
-     * whose message contains the discriminator keyword.
-     *
-     * @param string $message Message containing the discriminator keyword
-     * @param int    $unused  Unused — present so PHPUnit's data provider is
-     *                        explicit about which arm is being targeted
+     * A zero-coded DomainException falls back to COOKIE_REPOSITORY_SAVE_FAILED
+     * in the failure log: error codes travel on the exception, never via
+     * message-substring matching (round-4 R0 removed the str_contains arms).
      */
-    #[\PHPUnit\Framework\Attributes\DataProvider('domainExceptionMessageProvider')]
-    public function test_determine_error_code_match_arms_for_zero_coded_domain_exceptions(
-        string $message,
-        int $unused
-    ): void {
+    public function test_determine_error_code_falls_back_for_zero_coded_domain_exceptions(): void
+    {
         $command = new CreateCookieCommand(
             name: 'Test Cookie',
             description: null,
@@ -288,25 +281,10 @@ final class CreateCookieHandlerTest extends UnitTestCase
 
         $this->repository->method('existsByName')->willReturn(false);
         $this->repository->method('save')
-            ->willThrowException(new DomainException($message, 0));
+            ->willThrowException(new DomainException('repository connection lost', 0));
 
         $this->expectException(DomainException::class);
-        $this->expectExceptionMessage($message);
+        $this->expectExceptionMessage('repository connection lost');
         $this->handler->handle($command);
-    }
-
-    /**
-     * @return array<string, array{string, int}>
-     */
-    public static function domainExceptionMessageProvider(): array
-    {
-        // Each message hits a different match-arm in determineErrorCode.
-        return [
-            'name must be unique arm' => ['Cookie name must be unique here', 0],
-            'stock arm' => ['stock fell below zero', 0],
-            'name arm' => ['the name is suspicious', 0],
-            'price arm' => ['price could not be persisted', 0],
-            'default arm' => ['repository connection lost', 0],
-        ];
     }
 }

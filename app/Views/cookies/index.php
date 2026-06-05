@@ -44,13 +44,13 @@
                     <tbody>
                         <?php foreach ($cookies as $cookie): ?>
                             <tr>
-                                <td><?= $cookie->id ?></td>
+                                <td><?= esc($cookie->id) ?></td>
                                 <td><?= esc($cookie->name) ?></td>
                                 <td><?= esc($cookie->description) ?></td>
-                                <td><?= $cookie->formattedPrice ?></td>
+                                <td><?= esc($cookie->formattedPrice) ?></td>
                                 <td>
                                     <span class="badge bg-<?= $cookie->isOutOfStock() ? 'danger' : 'success' ?>">
-                                        <?= $cookie->stock ?>
+                                        <?= esc($cookie->stock) ?>
                                     </span>
                                 </td>
                                 <td>
@@ -62,8 +62,8 @@
                                 </td>
                                 <td>
                                     <div class="btn-group btn-group-sm">
-                                        <a href="/cookies/<?= $cookie->id ?>" class="btn btn-outline-primary">View</a>
-                                        <a href="/cookies/<?= $cookie->id ?>/edit" class="btn btn-outline-secondary">Edit</a>
+                                        <a href="/cookies/<?= esc($cookie->id, 'url') ?>" class="btn btn-outline-primary">View</a>
+                                        <a href="/cookies/<?= esc($cookie->id, 'url') ?>/edit" class="btn btn-outline-secondary">Edit</a>
                                     </div>
                                 </td>
                             </tr>

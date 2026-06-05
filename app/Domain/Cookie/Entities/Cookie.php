@@ -260,7 +260,7 @@ final class Cookie implements AggregateRootInterface
             throw DomainException::invalidState(
                 'Cookie',
                 sprintf('%s requires a persisted entity (id is null)', $operation),
-                ErrorCodes::COOKIE_STATE_DELETED
+                ErrorCodes::COOKIE_STATE_NOT_PERSISTED
             );
         }
     }

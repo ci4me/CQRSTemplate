@@ -37,7 +37,7 @@ final class CookieTest extends UnitTestCase
         $this->assertInstanceOf(Cookie::class, $cookie);
         $this->assertEquals('Chocolate Chip', $cookie->getName()->getValue());
         $this->assertEquals('Delicious cookie', $cookie->getDescription());
-        $this->assertEquals(2.99, $cookie->getPrice()->getValue());
+        $this->assertSame('2.99', $cookie->getPrice()->toDecimalString());
         $this->assertEquals(100, $cookie->getStock());
         $this->assertTrue($cookie->getIsActive());
         $this->assertNull($cookie->getId());
@@ -148,7 +148,7 @@ final class CookieTest extends UnitTestCase
 
         $this->assertEquals('Updated', $cookie->getName()->getValue());
         $this->assertEquals('Updated desc', $cookie->getDescription());
-        $this->assertEquals(3.00, $cookie->getPrice()->getValue());
+        $this->assertSame('3.00', $cookie->getPrice()->toDecimalString());
         $this->assertEquals(100, $cookie->getStock());
         $this->assertFalse($cookie->getIsActive());
     }

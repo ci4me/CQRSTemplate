@@ -68,7 +68,7 @@ final readonly class RestoreCookieHandler
             throw DomainException::businessRuleViolation(
                 'Cookie is not deleted; nothing to restore.',
                 (string) $command->cookieId,
-                ErrorCodes::COOKIE_NOT_FOUND
+                ErrorCodes::COOKIE_STATE_NOT_DELETED
             );
         }
 

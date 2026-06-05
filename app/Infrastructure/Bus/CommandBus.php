@@ -29,9 +29,13 @@ use RuntimeException;
 final class CommandBus
 {
     /**
-     * Map of command class names to their handler instances.
+     * Map of command class names to their handler invocations.
      *
-     * @var array<string, object> Format: [CommandClassName => HandlerInstance]
+     * The handle() method is captured as a Closure at registration time, so
+     * dispatch() never duck-types (round-4 R0; full handler interfaces land
+     * with the E05 abstract bases).
+     *
+     * @var array<string, \Closure(object): mixed>
      */
     private array $handlers = [];
 
@@ -86,7 +90,9 @@ final class CommandBus
             );
         }
 
-        $this->handlers[$commandClass] = $handler;
+        // Capture the invocation as a Closure so dispatch() is statically
+        // typed — no second duck-type check at dispatch time.
+        $this->handlers[$commandClass] = \Closure::fromCallable([$handler, 'handle']);
     }
 
     /**
@@ -106,16 +112,9 @@ final class CommandBus
             );
         }
 
-        $handler = $this->handlers[$commandClass];
-
-        if (!method_exists($handler, 'handle')) {
-            throw new DomainException(
-                sprintf('Handler for command "%s" does not have a handle() method', $commandClass)
-            );
-        }
-
-        // Build the pipeline: outermost middleware -> ... -> handler invocation.
-        $core = static fn(object $c): mixed => $handler->handle($c);
+        // register() already captured handle() as a Closure; no second
+        // duck-type check here (dead branch removed in round-4 R0).
+        $core = $this->handlers[$commandClass];
 
         $pipeline = array_reduce(
             array_reverse($this->middleware),

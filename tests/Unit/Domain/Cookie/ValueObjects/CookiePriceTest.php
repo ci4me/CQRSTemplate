@@ -21,7 +21,6 @@ final class CookiePriceTest extends UnitTestCase
 
         $this->assertInstanceOf(CookiePrice::class, $price);
         $this->assertSame(450, $price->getMinorUnits());
-        $this->assertEquals(4.50, $price->getValue());
         $this->assertSame('4.50', $price->toDecimalString());
     }
 

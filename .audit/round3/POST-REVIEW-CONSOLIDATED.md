@@ -1,5 +1,16 @@
 # Round 3 — Post-Review Consolidated Report (UPDATED - Partial Execution)
 
+> **⚠️ ROUND-4 CORRECTION (2026-06-05 — supersedes the closure claims below):**
+> Independent re-verification against the working tree proved that **only
+> E01/E02/E03 (Phase 0) and E06 (PR #33) ever merged**. PRs #32 and #34–#42
+> were never merged; every `RE-AUDIT-*.md` row that marks a finding CLOSED
+> via those PRs describes **PR-branch state, not tree state**. Concretely:
+> slice-01 F2/F3/F6/F7/F8/F9/F11, slice-03 F5/F16 + E05 bases, slice-04
+> F3/F12, slice-05 E04 envelope, slice-06 E11 hygiene are all **OPEN** in
+> the tree as of round 4. Treat `.audit/round4/` as the source of truth;
+> round-4 remediation re-implements the PR content directly on
+> `stabilization/erp-foundation` (PR stack to be closed as folded).
+
 **Date:** 2026-05-23 (updated 2026-05-22 21:27 UTC-3)
 **Status:** Phase 0 + E06 fully merged into stabilization/erp-foundation. Remaining 10 PRs (#32, #34–#42) have merge conflicts due to base advancement — ready for GitHub UI resolution.
 

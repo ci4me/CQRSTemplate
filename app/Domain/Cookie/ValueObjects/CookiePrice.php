@@ -98,15 +98,6 @@ final readonly class CookiePrice
         return $this->money->amountMinor();
     }
 
-    /**
-     * @deprecated Prefer ::getMinorUnits or ::toDecimalString. Float drift
-     *             may bite at the boundary; kept for legacy code paths.
-     */
-    public function getValue(): float
-    {
-        return $this->money->amountMinor() / (10 ** $this->money->currency->decimals);
-    }
-
     public function toDecimalString(): string
     {
         return $this->money->toDecimalString();
@@ -161,7 +152,7 @@ final readonly class CookiePrice
     public function multiplyBy(int $quantity): self
     {
         if ($quantity <= 0) {
-            throw ValidationException::tooSmall('quantity', 1, $quantity);
+            throw ValidationException::tooSmall('quantity', 1, $quantity, ErrorCodes::COOKIE_VALIDATION_PRICE);
         }
         return new self($this->money->multiply($quantity));
     }

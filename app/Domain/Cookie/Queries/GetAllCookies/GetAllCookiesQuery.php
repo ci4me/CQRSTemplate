@@ -5,11 +5,11 @@ declare(strict_types=1);
 namespace App\Domain\Cookie\Queries\GetAllCookies;
 
 /**
- * Query to retrieve all active Cookies.
+ * Query to retrieve all non-deleted Cookies.
  *
- * Returns all cookies that are:
- * - Active (is_active = true)
- * - Not deleted (deleted_at = null)
+ * Excludes inactive cookies by default; pass `includeInactive: true` to
+ * include rows with is_active = false. Soft-deleted rows (deleted_at set)
+ * are never returned.
  *
  * @package App\Domain\Cookie\Queries\GetAllCookies
  */

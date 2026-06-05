@@ -166,7 +166,7 @@ final class CookieRepositoryTest extends IntegrationTestCase
         $this->assertInstanceOf(Cookie::class, $found);
         $this->assertEquals($id, $found->getId());
         $this->assertEquals('Findable Cookie', $found->getName()->getValue());
-        $this->assertEquals(3.99, $found->getPrice()->getValue());
+        $this->assertSame('3.99', $found->getPrice()->toDecimalString());
     }
 
     public function test_find_by_id_returns_null_when_not_exists(): void
@@ -191,7 +191,7 @@ final class CookieRepositoryTest extends IntegrationTestCase
 
         $this->assertEquals('Full Cookie', $found->getName()->getValue());
         $this->assertEquals('Complete description', $found->getDescription());
-        $this->assertEquals(4.99, $found->getPrice()->getValue());
+        $this->assertSame('4.99', $found->getPrice()->toDecimalString());
         $this->assertEquals(150, $found->getStock());
         $this->assertTrue($found->getIsActive());
         $this->assertNotNull($found->getCreatedAt());
